@@ -1,0 +1,1 @@
+- token agent and app deployment should wait for traefik CRDs
