@@ -9,24 +9,18 @@ resource "random_password" "user_password" {
   override_special = "-_=+:[]{}"
 }
 
-resource "ansible_host" "host" {
-  name = "private_server"
-
-  variables = {
-    ansible_host     = var.host
-    ansible_port     = var.initial_port
-    ansible_user     = var.username
-    ansible_ssh_pass = var.initial_password
-  }
-}
-
 resource "ansible_playbook" "playbook" {
-  name       = "secure_private_server"
+  name       = var.host
   playbook   = "${path.module}/playbook.yaml"
-  replayable = true
+  replayable = false
 
   extra_vars = {
-    username   = var.username
+    ansible_python_interpreter = "/usr/bin/python3"
+    ansible_port               = var.initial_port
+    ansible_user               = var.username
+    ansible_become_password    = var.initial_password
+    ansible_ssh_pass           = var.initial_password
+
     public_key = tls_private_key.user.public_key_openssh
     password   = random_password.user_password.result
   }

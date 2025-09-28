@@ -6,7 +6,6 @@ variable "host" {
 variable "initial_port" {
   description = "SSH port used to reach the target host."
   type        = number
-  default     = 22
 }
 
 variable "username" {
