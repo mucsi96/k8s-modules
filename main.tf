@@ -24,6 +24,11 @@ terraform {
       source  = "vancluever/acme"
       version = ">=2.28.2"
     }
+
+    ansible = {
+      source  = "ansible/ansible"
+      version = ">=1.3.0"
+    }
   }
 }
 
@@ -36,37 +41,53 @@ provider "azurerm" {
 
 provider "azuread" {}
 
-provider "kubernetes" {
-  host                   = module.setup_cluster.k8s_host
-  client_certificate     = module.setup_cluster.k8s_client_certificate
-  client_key             = module.setup_cluster.k8s_client_key
-  cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
-}
+# provider "kubernetes" {
+#   host                   = module.setup_cluster.k8s_host
+#   client_certificate     = module.setup_cluster.k8s_client_certificate
+#   client_key             = module.setup_cluster.k8s_client_key
+#   cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
+# }
 
-provider "helm" {
-  kubernetes = {
-    host                   = module.setup_cluster.k8s_host
-    client_certificate     = module.setup_cluster.k8s_client_certificate
-    client_key             = module.setup_cluster.k8s_client_key
-    cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
-  }
-}
+# provider "helm" {
+#   kubernetes = {
+#     host                   = module.setup_cluster.k8s_host
+#     client_certificate     = module.setup_cluster.k8s_client_certificate
+#     client_key             = module.setup_cluster.k8s_client_key
+#     cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
+#   }
+# }
 
 provider "acme" {
   # server_url = "https://acme-staging-v02.api.letsencrypt.org/directory" # Staging server
   server_url = "https://acme-v02.api.letsencrypt.org/directory" # Production server
 }
 
+variable "resource_group_name" {
+  description = "Name of the Azure Resource Group to deploy resources into."
+  type        = string
+  default     = "p06"
+
+}
+
+data "azurerm_key_vault" "kv" {
+  resource_group_name = var.resource_group_name
+  name                = var.resource_group_name
+}
+
+module "secure_private_server" {
+  source           = "./modules/secure_private_server"
+  host             = "127.0.0.1"
+  initial_port     = 2222
+  username         = "ubuntu"
+  initial_password = "ubuntu"
+}
+
+
 # module "setup_cluster" {
 #   source                    = "./modules/setup_cluster"
-#   azure_resource_group_name = "p05"
+#   azure_resource_group_name = "p06"
 #   azure_location            = "centralindia"
 #   azure_k8s_version         = "1.33"
-# }
-
-# data "azurerm_key_vault" "kv" {
-#   resource_group_name = module.setup_cluster.resource_group_name
-#   name                = module.setup_cluster.resource_group_name
 # }
 
 # data "azurerm_key_vault_secret" "dns_zone" {

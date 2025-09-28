@@ -46,18 +46,22 @@ fi
 if [ ! -f backend.tf ]; then
     echo "Fetching backend configuration from Key Vault..."
     az keyvault secret show \
-      --vault-name p05 \
+      --vault-name p06 \
       --name remote-backend-config \
       --query value \
       --output tsv > backend.tf
     echo "Backend configuration saved to backend.tf."
+
+    echo "Initializing Terraform..."
+    terraform init --upgrade
 else
     echo "Backend configuration already exists."
 fi
 
-echo "Initializing Terraform..."
-terraform init --upgrade
-
 # Add the Helm repository
 
 helm repo add mucsi96 https://mucsi96.github.io/k8s-helm-charts
+
+source .venv/bin/activate
+
+python3 -m pip install -r requirements.txt

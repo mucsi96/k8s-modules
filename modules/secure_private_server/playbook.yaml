@@ -1,0 +1,16 @@
+- name: Secure Private Server
+  hosts: private_server
+  gather_facts: true
+  tasks:
+    - name: Change password for existing user
+      become: true
+      ansible.builtin.user:
+        name: "{{ username }}"
+        state: present
+        password: "{{ password | password_hash('sha512', 65534 | random(seed=inventory_hostname) | string) }}"
+    - name: Enable SSH key authentication for user
+      become: true
+      ansible.posix.authorized_key:
+        user: "{{ username }}"
+        state: present
+        key: "{{ public_key }}"
