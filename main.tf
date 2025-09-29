@@ -29,14 +29,23 @@ terraform {
       source  = "ansible/ansible"
       version = ">=1.3.0"
     }
+
+    hcloud = {
+      source  = "hetznercloud/hcloud"
+      version = "~> 1.45"
+    }
   }
 }
+
+provider "random" {}
 
 
 provider "azurerm" {
   features {}
   subscription_id = var.azure_subscription_id
 }
+
+provider "azuread" {}
 
 
 # provider "kubernetes" {
@@ -83,20 +92,23 @@ data "azurerm_key_vault_secret" "hetzner_api_token" {
   name         = "hetzner-api-token"
 }
 
-module "test_virtual_machine" {
-  source            = "./modules/setup_testing_vm"
-  hetzner_api_token = data.azurerm_key_vault_secret.hetzner_api_token.value
-  name              = "test-vm"
-  ssh_user          = "ubuntu"
+provider "hcloud" {
+  token = data.azurerm_key_vault_secret.hetzner_api_token.value
 }
 
-module "secure_private_server" {
-  source           = "./modules/secure_private_server"
-  host             = module.test_virtual_machine.public_ip_address
-  initial_port     = module.test_virtual_machine.ssh_port
-  username         = module.test_virtual_machine.admin_username
-  initial_password = module.test_virtual_machine.admin_password
-}
+# module "test_virtual_machine" {
+#   source   = "./modules/setup_testing_vm"
+#   name     = "test-vm"
+#   ssh_user = "ubuntu"
+# }
+
+# module "secure_private_server" {
+#   source           = "./modules/secure_private_server"
+#   host             = module.test_virtual_machine.public_ip_address
+#   initial_port     = module.test_virtual_machine.ssh_port
+#   username         = module.test_virtual_machine.admin_username
+#   initial_password = module.test_virtual_machine.admin_password
+# }
 
 
 # module "setup_cluster" {

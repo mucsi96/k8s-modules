@@ -20,9 +20,9 @@ resource "random_integer" "ssh_port" {
   max = 65000
 }
 
-resource "ansible_playbook" "playbook" {
+resource "ansible_playbook" "secure_private_server" {
   name       = var.host
-  playbook   = "${path.module}/playbook.yaml"
+  playbook   = "${path.module}/secure_private_server.yaml"
   replayable = false
 
   extra_vars = {
@@ -38,3 +38,20 @@ resource "ansible_playbook" "playbook" {
     ssh_port          = tostring(random_integer.ssh_port.result)
   }
 }
+
+# resource "ansible_playbook" "test_connection" {
+#   name       = var.host
+#   playbook   = "${path.module}/test_connection.yaml"
+#   replayable = false
+
+#   extra_vars = {
+#     ansible_python_interpreter = "/usr/bin/python3"
+#     ansible_port               = tostring(random_integer.ssh_port.result)
+#     ansible_user               = var.username
+#     ansible_become_password    = random_password.root_password.result
+#     ansible
+#   }
+
+#   depends_on = [ansible_playbook.secure_private_server]
+
+# }

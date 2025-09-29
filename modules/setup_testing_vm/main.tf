@@ -8,10 +8,6 @@ resource "random_password" "admin" {
   override_special = "-_+=!@#%"
 }
 
-provider "hcloud" {
-  token = var.hetzner_api_token
-}
-
 resource "hcloud_server" "vm" {
   name        = var.name
   image       = "ubuntu-24.04"
