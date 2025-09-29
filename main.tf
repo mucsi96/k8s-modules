@@ -32,14 +32,12 @@ terraform {
   }
 }
 
-provider "random" {}
 
 provider "azurerm" {
   features {}
   subscription_id = var.azure_subscription_id
 }
 
-provider "azuread" {}
 
 # provider "kubernetes" {
 #   host                   = module.setup_cluster.k8s_host
@@ -69,17 +67,35 @@ variable "resource_group_name" {
 
 }
 
+variable "azure_location" {
+  description = "Azure location used for test infrastructure resources."
+  type        = string
+  default     = "centralindia"
+}
+
 data "azurerm_key_vault" "kv" {
   resource_group_name = var.resource_group_name
   name                = var.resource_group_name
 }
 
+data "azurerm_key_vault_secret" "hetzner_api_token" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "hetzner-api-token"
+}
+
+module "test_virtual_machine" {
+  source            = "./modules/setup_testing_vm"
+  hetzner_api_token = data.azurerm_key_vault_secret.hetzner_api_token.value
+  name              = "test-vm"
+  ssh_user          = "ubuntu"
+}
+
 module "secure_private_server" {
   source           = "./modules/secure_private_server"
-  host             = "127.0.0.1"
-  initial_port     = 2222
-  username         = "ubuntu"
-  initial_password = "ubuntu"
+  host             = module.test_virtual_machine.public_ip_address
+  initial_port     = module.test_virtual_machine.ssh_port
+  username         = module.test_virtual_machine.admin_username
+  initial_password = module.test_virtual_machine.admin_password
 }
 
 

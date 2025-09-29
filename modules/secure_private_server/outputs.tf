@@ -8,7 +8,7 @@ output "ssh_private_key" {
   value       = tls_private_key.user.private_key_openssh
 }
 
-output "user_password" {
-  description = "Randomly generated password for the provided user."
-  value       = random_password.user_password.result
+output "ssh_port" {
+  description = "Randomly selected SSH port."
+  value       = random_integer.ssh_port.result
 }

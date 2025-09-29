@@ -1,9 +1,3 @@
-resource "azurerm_key_vault_secret" "user_password" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "user-password"
-  value        = module.secure_private_server.user_password
-}
-
 resource "azurerm_key_vault_secret" "ssh_private_key" {
   key_vault_id = data.azurerm_key_vault.kv.id
   name         = "ssh-private-key"
@@ -14,6 +8,12 @@ resource "azurerm_key_vault_secret" "ssh_public_key" {
   key_vault_id = data.azurerm_key_vault.kv.id
   name         = "ssh-public-key"
   value        = module.secure_private_server.ssh_public_key
+}
+
+resource "azurerm_key_vault_secret" "ssh_port" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "ssh-port"
+  value        = module.secure_private_server.ssh_port
 }
 
 # resource "azurerm_key_vault_secret" "issuer" {
