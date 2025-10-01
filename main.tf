@@ -34,11 +34,17 @@ terraform {
       source  = "hetznercloud/hcloud"
       version = "~> 1.45"
     }
+
+    null = {
+      source  = "hashicorp/null"
+      version = ">=3.2.1"
+    }
   }
 }
 
 provider "random" {}
 
+provider "null" {}
 
 provider "azurerm" {
   features {}
@@ -46,6 +52,9 @@ provider "azurerm" {
 }
 
 provider "azuread" {}
+
+provider "ansible" {}
+
 
 
 # provider "kubernetes" {
@@ -96,19 +105,19 @@ provider "hcloud" {
   token = data.azurerm_key_vault_secret.hetzner_api_token.value
 }
 
-# module "test_virtual_machine" {
-#   source   = "./modules/setup_testing_vm"
-#   name     = "test-vm"
-#   ssh_user = "ubuntu"
-# }
+module "test_virtual_machine" {
+  source   = "./modules/setup_testing_vm"
+  name     = "test-vm"
+  ssh_user = "ubuntu"
+}
 
-# module "secure_private_server" {
-#   source           = "./modules/secure_private_server"
-#   host             = module.test_virtual_machine.public_ip_address
-#   initial_port     = module.test_virtual_machine.ssh_port
-#   username         = module.test_virtual_machine.admin_username
-#   initial_password = module.test_virtual_machine.admin_password
-# }
+module "setup_cluster_on_private_server" {
+  source           = "./modules/setup_cluster_on_private_server"
+  host             = module.test_virtual_machine.public_ip_address
+  initial_port     = module.test_virtual_machine.ssh_port
+  username         = module.test_virtual_machine.admin_username
+  initial_password = module.test_virtual_machine.admin_password
+}
 
 
 # module "setup_cluster" {

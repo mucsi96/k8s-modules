@@ -2,11 +2,13 @@
   hosts: all
   gather_facts: false
   become: true
+
   handlers:
-    - name: Restart sshd
-      ansible.builtin.service:
-        name: sshd
+    - name: Restart SSH service
+      ansible.builtin.systemd_service:
+        name: ssh
         state: restarted
+        enabled: true
         
   tasks:
     - name: Change SSH port
@@ -14,21 +16,21 @@
         dest: /etc/ssh/sshd_config
         regexp: "^#?Port"
         line: "Port {{ ssh_port }}"
-      notify: "Restart sshd"
+      notify: "Restart SSH service"
     - name: Disable SSH root login
       ansible.builtin.lineinfile:
         dest: /etc/ssh/sshd_config
         regexp: "^#?PermitRootLogin"
         line: "PermitRootLogin no"
       notify:
-        - Restart sshd
+        - Restart SSH service
     - name: Disable passwd login
       ansible.builtin.lineinfile:
         dest: /etc/ssh/sshd_config
         regexp: "^#?PasswordAuthentication"
         line: "PasswordAuthentication no"
       notify:
-        - Restart sshd
+        - Restart SSH service
     - name: Enable SSH key authentication for user
       ansible.posix.authorized_key:
         user: "{{ ansible_user }}"
@@ -42,7 +44,7 @@
         state: present
         password: "{{ new_root_password | password_hash('sha512', 65534 | random(seed=inventory_hostname) | string) }}"
       vars:
-        new_root_password: "{{ lookup('ansible.builtin.password', '/dev/null', seed='{{ inventory_hostname }}-root-password') }}"
+        new_root_password: "{{ lookup('ansible.builtin.password', '/dev/null', seed=inventory_hostname ~ '-root-password') }}"
     - name: Change password for existing user
       ansible.builtin.user:
         name: "{{ ansible_user }}"

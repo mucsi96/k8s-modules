@@ -1,0 +1,92 @@
+- name: Configure Firewall
+  hosts: all
+  gather_facts: false
+  become: true
+
+  handlers:
+    - name: Reload nftables
+      ansible.builtin.systemd:
+        name: nftables
+        state: reloaded
+
+  tasks:
+    - name: Collect service facts
+      ansible.builtin.service_facts:
+
+    - name: Disable firewalld service when present
+      ansible.builtin.systemd:
+        name: firewalld
+        state: stopped
+        enabled: false
+      when: "'firewalld.service' in ansible_facts.services"
+
+    - name: Remove firewalld package
+      ansible.builtin.package:
+        name: firewalld
+        state: absent
+
+    - name: Disable netfilter-persistent service when present
+      ansible.builtin.systemd:
+        name: netfilter-persistent
+        state: stopped
+        enabled: false
+      when: "'netfilter-persistent.service' in ansible_facts.services"
+
+    - name: Remove legacy iptables persistence package
+      ansible.builtin.apt:
+        name: iptables-persistent
+        state: absent
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: Ensure nftables is installed
+      ansible.builtin.apt:
+        name: nftables
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: Deploy nftables configuration
+      ansible.builtin.copy:
+        dest: /etc/nftables.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          #!/usr/sbin/nft -f
+
+          table inet filter {
+              chain input {
+                  type filter hook input priority 0;
+                  policy drop;
+
+                  iifname "lo" accept
+                  ct state established,related accept
+                  tcp dport {{ ssh_port | int }} accept
+                  tcp dport {{ kubernetes_api_port | default(6443) | int }} accept
+                  tcp dport { 80, 443 } accept
+              }
+
+              chain forward {
+                  type filter hook forward priority 0;
+                  policy drop;
+              }
+
+              chain output {
+                  type filter hook output priority 0;
+                  policy accept;
+              }
+          }
+      notify: Reload nftables
+
+    - name: Apply nftables configuration
+      ansible.builtin.command: nft -f /etc/nftables.conf
+      changed_when: false
+
+    - name: Ensure nftables service is enabled
+      ansible.builtin.systemd:
+        name: nftables
+        enabled: true
+        state: started
