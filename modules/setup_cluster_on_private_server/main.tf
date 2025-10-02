@@ -77,6 +77,46 @@ resource "ansible_playbook" "firewall" {
   depends_on = [ansible_playbook.secure_private_server]
 }
 
+resource "ansible_playbook" "system_update" {
+  name       = var.host
+  playbook   = "${path.module}/system_update.yaml"
+  replayable = false
+
+  extra_vars = {
+    ansible_python_interpreter   = "/usr/bin/python3"
+    ansible_port                 = tostring(random_integer.ssh_port.result)
+    ansible_user                 = var.username
+    ansible_become_password      = random_password.user_password.result
+    ansible_ssh_private_key_file = local_sensitive_file.user_private_key.filename
+  }
+
+  depends_on = [ansible_playbook.firewall]
+}
+
+resource "terraform_data" "wait_for_system" {
+  triggers_replace = {
+    last_run = ansible_playbook.system_update.id
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "echo 'Server reachable after updates'",
+    ]
+
+    connection {
+      type        = "ssh"
+      host        = var.host
+      port        = random_integer.ssh_port.result
+      user        = var.username
+      private_key = tls_private_key.user.private_key_openssh
+      timeout     = "10m"
+      agent       = false
+    }
+  }
+
+  depends_on = [ansible_playbook.system_update]
+}
+
 # resource "ansible_playbook" "test_connection" {
 #   name       = var.host
 #   playbook   = "${path.module}/test_connection.yaml"
