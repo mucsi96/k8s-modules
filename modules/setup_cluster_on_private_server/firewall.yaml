@@ -1,3 +1,4 @@
+# This playbook is designed for Ubuntu 24.04 servers to set up a firewall using nftables.
 - name: Configure Firewall
   hosts: all
   gather_facts: false
@@ -10,43 +11,29 @@
         state: reloaded
 
   tasks:
-    - name: Collect service facts
-      ansible.builtin.service_facts:
-
-    - name: Disable firewalld service when present
-      ansible.builtin.systemd:
-        name: firewalld
-        state: stopped
-        enabled: false
-      when: "'firewalld.service' in ansible_facts.services"
-
-    - name: Remove firewalld package
-      ansible.builtin.package:
-        name: firewalld
-        state: absent
-
-    - name: Disable netfilter-persistent service when present
-      ansible.builtin.systemd:
-        name: netfilter-persistent
-        state: stopped
-        enabled: false
-      when: "'netfilter-persistent.service' in ansible_facts.services"
-
-    - name: Remove legacy iptables persistence package
-      ansible.builtin.apt:
-        name: iptables-persistent
-        state: absent
-      environment:
-        DEBIAN_FRONTEND: noninteractive
-
-    - name: Ensure nftables is installed
-      ansible.builtin.apt:
-        name: nftables
-        state: present
-        update_cache: true
-        cache_valid_time: 3600
-      environment:
-        DEBIAN_FRONTEND: noninteractive
+    - name: Validate target system compatibility
+      ansible.builtin.command: >-
+        bash -lc '
+          set -euo pipefail
+          if [ ! -f /etc/os-release ]; then
+            echo "Unable to determine operating system" >&2
+            exit 1
+          fi
+          . /etc/os-release
+          if [ "${ID,,}" != "ubuntu" ]; then
+            echo "Unsupported operating system: ${NAME:-unknown}" >&2
+            exit 1
+          fi
+          if ! dpkg --compare-versions "${VERSION_ID:-0}" ge "22.04"; then
+            echo "Ubuntu ${VERSION_ID:-unknown} is too old" >&2
+            exit 1
+          fi
+          if ! command -v nft >/dev/null 2>&1; then
+            echo "nftables (nft) command not found" >&2
+            exit 1
+          fi
+        '
+      changed_when: false
 
     - name: Deploy nftables configuration
       ansible.builtin.copy:

@@ -26,6 +26,21 @@ resource "hcloud_server" "vm" {
         ${var.ssh_user}:${random_password.admin.result}
       expire: false
   CLOUDCFG
+
+  # Ensure Terraform waits for the VM to accept SSH connections before finishing apply
+  provisioner "remote-exec" {
+    inline = [
+      "echo 'SSH is ready'",
+    ]
+
+    connection {
+      type     = "ssh"
+      host     = self.ipv4_address
+      user     = var.ssh_user
+      password = random_password.admin.result
+      timeout  = "5m"
+    }
+  }
 }
 
 # resource "hcloud_server" "testing_vm" {
