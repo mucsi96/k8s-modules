@@ -117,19 +117,33 @@ resource "terraform_data" "wait_for_system" {
   depends_on = [ansible_playbook.system_update]
 }
 
-# resource "ansible_playbook" "test_connection" {
-#   name       = var.host
-#   playbook   = "${path.module}/test_connection.yaml"
-#   replayable = false
+resource "terraform_data" "install_k3s" {
+  triggers_replace = {
+    host     = var.host
+    ssh_port = tostring(random_integer.ssh_port.result)
+    username = var.username
+    key_hash = sha256(tls_private_key.user.public_key_openssh)
+  }
 
-#   extra_vars = {
-#     ansible_python_interpreter = "/usr/bin/python3"
-#     ansible_port               = tostring(random_integer.ssh_port.result)
-#     ansible_user               = var.username
-#     ansible_become_password    = random_password.root_password.result
-#     ansible
-#   }
+  provisioner "local-exec" {
+    interpreter = ["/bin/bash", "-lc"]
+    command     = <<-EOT
+      mkdir -p ${path.root}/.kube
+      k3sup install \
+        --ip ${var.host} \
+        --local-path ${path.root}/.kube/admin-config \
+        --ssh-key ${local_sensitive_file.user_private_key.filename} \
+        --user ${var.username} \
+        --ssh-port ${random_integer.ssh_port.result} \
+        --k3s-extra-args '--disable traefik'
+    EOT
+  }
 
-#   depends_on = [ansible_playbook.secure_private_server]
+  depends_on = [terraform_data.wait_for_system]
+}
 
-# }
+
+data "local_file" "kube_admin_config" {
+  filename   = "${path.root}/.kube/admin-config"
+  depends_on = [terraform_data.install_k3s]
+}

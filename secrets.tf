@@ -4,6 +4,12 @@
 #   value        = module.secure_private_server.ssh_private_key
 # }
 
+resource "azurerm_key_vault_secret" "k8s_admin_config_private" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "k8s-admin-config"
+  value        = module.setup_cluster_on_private_server.kube_admin_config
+}
+
 # resource "azurerm_key_vault_secret" "ssh_public_key" {
 #   key_vault_id = data.azurerm_key_vault.kv.id
 #   name         = "ssh-public-key"

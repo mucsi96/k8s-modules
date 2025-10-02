@@ -12,3 +12,10 @@ output "ssh_port" {
   description = "Randomly selected SSH port."
   value       = random_integer.ssh_port.result
 }
+
+
+output "kube_admin_config" {
+  description = "Admin kubeconfig pulled from the private server."
+  value       = data.local_file.kube_admin_config.content
+  sensitive   = true
+}

@@ -39,6 +39,23 @@ if [ "$(uname -s)" = "Linux" ] && [ -f /etc/os-release ]; then
         else
             echo "NodeJS is already installed."
         fi
+
+        # Check and install k3sup
+        if ! command -v k3sup &> /dev/null; then
+            echo "Installing k3sup..."
+            tmp_dir="$(mktemp -d)"
+            (
+                cd "$tmp_dir"
+                curl -sLS https://get.k3sup.dev | sh
+                sudo install k3sup /usr/local/bin/
+            )
+            rm -rf "$tmp_dir"
+            echo "k3sup installation completed."
+        else
+            echo "k3sup is already installed."
+        fi
+
+        k3sup --help >/dev/null
     fi
 fi
 
