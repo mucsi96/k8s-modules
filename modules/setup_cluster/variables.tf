@@ -1,26 +1,20 @@
-variable "azure_resource_group_name" {
-  description = "The name of the Azure Resource Group"
+variable "host" {
+  description = "DNS name or IP address of the target Linux host accessible over SSH."
   type        = string
 }
 
-variable "azure_location" {
-  description = "The Azure location to deploy resources"
-  type        = string
-}
-
-variable "azure_vm_size" {
-  description = "The Azure VM size"
-  type        = string
-  default     = "Standard_B4pls_v2"
-}
-
-variable "azure_vm_disk_size_gb" {
-  description = "value of the disk size in GB"
+variable "initial_port" {
+  description = "SSH port used to reach the target host."
   type        = number
-  default     = 30
 }
 
-variable "azure_k8s_version" {
-  description = "The version of Kubernetes to deploy"
+variable "username" {
+  description = "Name of the user on the target host."
   type        = string
+}
+
+variable "initial_password" {
+  description = "Initial password for the user on the target host."
+  type        = string
+  sensitive   = true
 }

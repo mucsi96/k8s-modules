@@ -4,10 +4,34 @@
 #   value        = module.secure_private_server.ssh_private_key
 # }
 
-resource "azurerm_key_vault_secret" "k8s_admin_config_private" {
+resource "azurerm_key_vault_secret" "k8s_config" {
   key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "k8s-admin-config"
-  value        = module.setup_cluster_on_private_server.kube_admin_config
+  name         = "k8s-config"
+  value        = module.setup_cluster.k8s_config
+}
+
+resource "azurerm_key_vault_secret" "k8s_host" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "k8s-host"
+  value        = module.setup_cluster.k8s_host
+}
+
+resource "azurerm_key_vault_secret" "k8s_client_certificate" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "k8s-client-certificate"
+  value        = module.setup_cluster.k8s_client_certificate
+}
+
+resource "azurerm_key_vault_secret" "k8s_client_key" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "k8s-client-key"
+  value        = module.setup_cluster.k8s_client_key
+}
+
+resource "azurerm_key_vault_secret" "k8s_cluster_ca_certificate" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "k8s-cluster-ca-certificate"
+  value        = module.setup_cluster.k8s_cluster_ca_certificate
 }
 
 # resource "azurerm_key_vault_secret" "ssh_public_key" {
@@ -123,4 +147,3 @@ resource "azurerm_key_vault_secret" "k8s_admin_config_private" {
 #   name         = "learn-language-spa-client-id"
 #   value        = module.setup_learn_language_spa.client_id
 # }
-

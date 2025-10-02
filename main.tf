@@ -57,21 +57,21 @@ provider "ansible" {}
 
 
 
-# provider "kubernetes" {
-#   host                   = module.setup_cluster.k8s_host
-#   client_certificate     = module.setup_cluster.k8s_client_certificate
-#   client_key             = module.setup_cluster.k8s_client_key
-#   cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
-# }
+provider "kubernetes" {
+  host                   = module.setup_cluster.k8s_host
+  client_certificate     = module.setup_cluster.k8s_client_certificate
+  client_key             = module.setup_cluster.k8s_client_key
+  cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
+}
 
-# provider "helm" {
-#   kubernetes = {
-#     host                   = module.setup_cluster.k8s_host
-#     client_certificate     = module.setup_cluster.k8s_client_certificate
-#     client_key             = module.setup_cluster.k8s_client_key
-#     cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
-#   }
-# }
+provider "helm" {
+  kubernetes = {
+    host                   = module.setup_cluster.k8s_host
+    client_certificate     = module.setup_cluster.k8s_client_certificate
+    client_key             = module.setup_cluster.k8s_client_key
+    cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
+  }
+}
 
 provider "acme" {
   # server_url = "https://acme-staging-v02.api.letsencrypt.org/directory" # Staging server
@@ -111,51 +111,39 @@ module "test_virtual_machine" {
   ssh_user = "ubuntu"
 }
 
-module "setup_cluster_on_private_server" {
-  source           = "./modules/setup_cluster_on_private_server"
+module "setup_cluster" {
+  source           = "./modules/setup_cluster"
   host             = module.test_virtual_machine.public_ip_address
   initial_port     = module.test_virtual_machine.ssh_port
   username         = module.test_virtual_machine.admin_username
   initial_password = module.test_virtual_machine.admin_password
 }
 
-
-# module "setup_cluster" {
-#   source                    = "./modules/setup_cluster"
-#   azure_resource_group_name = "p06"
-#   azure_location            = "centralindia"
-#   azure_k8s_version         = "1.33"
-# }
-
-# data "azurerm_key_vault_secret" "dns_zone" {
-#   key_vault_id = data.azurerm_key_vault.kv.id
-#   name         = "dns-zone"
-# }
+data "azurerm_key_vault_secret" "dns_zone" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "dns-zone"
+}
 
 # data "azurerm_key_vault_secret" "ip_range" {
 #   key_vault_id = data.azurerm_key_vault.kv.id
 #   name         = "ip-range"
 # }
 
-# data "azurerm_key_vault_secret" "letsencrypt_email" {
-#   key_vault_id = data.azurerm_key_vault.kv.id
-#   name         = "letsencrypt-email"
-# }
+data "azurerm_key_vault_secret" "letsencrypt_email" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "letsencrypt-email"
+}
 
-# module "setup_ingress_controller" {
-#   source                = "./modules/setup_ingress_controller"
-#   resource_group_name   = module.setup_cluster.resource_group_name
-#   location              = module.setup_cluster.location
-#   owner                 = module.setup_cluster.owner
-#   tenant_id             = module.setup_cluster.tenant_id
-#   subscription_id       = module.setup_cluster.subscription_id
-#   dns_zone              = data.azurerm_key_vault_secret.dns_zone.value
-#   traefik_chart_version = "37.1.1" #https://github.com/traefik/traefik-helm-chart/releases
-#   ip_range              = data.azurerm_key_vault_secret.ip_range.value
-#   letsencrypt_email     = data.azurerm_key_vault_secret.letsencrypt_email.value
+module "setup_ingress_controller" {
+  source                = "./modules/setup_ingress_controller"
+  resource_group_name   = var.resource_group_name
+  subscription_id       = var.azure_subscription_id
+  dns_zone              = data.azurerm_key_vault_secret.dns_zone.value
+  traefik_chart_version = "37.1.1" #https://github.com/traefik/traefik-helm-chart/releases
+  letsencrypt_email     = data.azurerm_key_vault_secret.letsencrypt_email.value
 
-#   depends_on = [module.setup_cluster]
-# }
+  depends_on = [module.setup_cluster]
+}
 
 # module "create_database_namespace" {
 #   source                    = "./modules/create_app_namespace"
