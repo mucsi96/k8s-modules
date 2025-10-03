@@ -14,3 +14,9 @@
 # Auth
 
 - [Traefik - Replacing Basic Authentication with Azure SSO Using ForwardAuth](https://scottmckendry.tech/traefik-replacing-basic-authentication-with-sso/)
+
+# Terraform
+
+- [`terraform destroy`](https://developer.hashicorp.com/terraform/cli/commands/destroy) - Deprovisions everything tracked by the configuration. It's an alias for `terraform apply -destroy`, so it accepts most apply options and you can preview the effect with `terraform plan -destroy`.
+- `terraform destroy -target <resource_address>` - Uses the `-target` option to destroy a specific resource and its dependencies without touching the rest of the workspace.
+- [`terraform state rm`](https://developer.hashicorp.com/terraform/cli/commands/state/rm) - Removes Terraform's binding to remote objects without deleting them. Prefer `removed` blocks when possible and use flags like `-dry-run` or `-lock=false` to control the behavior.
