@@ -55,14 +55,25 @@
       changed_when: false
 
     - name: Generate MicroK8s kubeconfig
-      ansible.builtin.command: microk8s config --format=kubeconfig
+      ansible.builtin.command: microk8s config
       register: microk8s_config
       changed_when: false
 
-    - name: Persist kubeconfig for Terraform download
+    - name: Ensure local kubeconfig directory exists
+      ansible.builtin.file:
+        path: "{{ local_kubeconfig_path | dirname }}"
+        state: directory
+        mode: '0700'
+      become: false
+      delegate_to: localhost
+
+    - name: Persist kubeconfig to local file
       ansible.builtin.copy:
-        dest: "/home/{{ ansible_user }}/microk8s-admin.conf"
+        dest: "{{ local_kubeconfig_path }}"
         content: "{{ microk8s_config.stdout }}"
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
         mode: '0600'
+      become: false
+      delegate_to: localhost
+

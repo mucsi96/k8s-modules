@@ -1,4 +1,9 @@
 
+locals {
+  repo_root             = abspath("${path.module}/../..")
+  local_kubeconfig_path = "${local.repo_root}/.kube/admin-config"
+}
+
 resource "tls_private_key" "user" {
   algorithm = "ED25519"
 }
@@ -133,38 +138,13 @@ resource "ansible_playbook" "install_microk8s" {
     ansible_user                 = var.username
     ansible_become_password      = random_password.user_password.result
     ansible_ssh_private_key_file = local_sensitive_file.user_private_key.filename
+    local_kubeconfig_path        = local.local_kubeconfig_path
   }
 
   depends_on = [terraform_data.wait_for_system]
 }
 
-resource "terraform_data" "fetch_microk8s_config" {
-  triggers_replace = {
-    host             = var.host
-    ssh_port         = tostring(random_integer.ssh_port.result)
-    username         = var.username
-    key_hash         = sha256(tls_private_key.user.public_key_openssh)
-    microk8s_channel = "1.30/stable"
-  }
-
-  provisioner "local-exec" {
-    interpreter = ["/bin/bash", "-lc"]
-    command     = <<-EOT
-      set -euo pipefail
-      mkdir -p ${path.root}/.kube
-      scp -i ${local_sensitive_file.user_private_key.filename} \
-        -P ${random_integer.ssh_port.result} \
-        ${var.username}@${var.host}:/home/${var.username}/microk8s-admin.conf \
-        ${path.root}/.kube/admin-config
-      chmod 600 ${path.root}/.kube/admin-config
-    EOT
-  }
-
-  depends_on = [ansible_playbook.install_microk8s]
-}
-
-
 data "local_file" "kube_admin_config" {
-  filename   = "${path.root}/.kube/admin-config"
-  depends_on = [terraform_data.fetch_microk8s_config]
+  filename   = local.local_kubeconfig_path
+  depends_on = [ansible_playbook.install_microk8s]
 }

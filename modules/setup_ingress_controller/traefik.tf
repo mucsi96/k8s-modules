@@ -14,6 +14,7 @@ resource "helm_release" "traefik" {
   timeout    = 600
   #https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml
   values = [yamlencode({
+    versionOverride = "v3.5.3" #https://github.com/traefik/traefik/releases
     logs = {
       general = {
         level = "DEBUG"
@@ -70,7 +71,7 @@ resource "helm_release" "traefik" {
     interpreter = ["/bin/bash", "-lc"]
     command     = <<-EOT
       set -euo pipefail
-      export KUBECONFIG="${path.root}/.kube/admin-config"
+      export KUBECONFIG="${abspath("${path.module}/../..")}/.kube/admin-config"
 
       # Wait for the Traefik CRD to be available
       for attempt in $(seq 1 60); do

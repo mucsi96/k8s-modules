@@ -159,7 +159,7 @@ module "setup_ingress_controller" {
   resource_group_name   = var.resource_group_name
   subscription_id       = var.azure_subscription_id
   dns_zone              = data.azurerm_key_vault_secret.dns_zone.value
-  traefik_chart_version = "37.1.1" #https://github.com/traefik/traefik-helm-chart/releases
+  traefik_chart_version = "37.1.2" #https://github.com/traefik/traefik-helm-chart/releases
   letsencrypt_email     = data.azurerm_key_vault_secret.letsencrypt_email.value
 
   depends_on = [module.setup_cluster]
