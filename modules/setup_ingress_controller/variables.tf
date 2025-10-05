@@ -19,6 +19,11 @@ variable "traefik_chart_version" {
   type        = string
 }
 
+variable "traefik_version" {
+  description = "The version of Traefik to deploy"
+  type        = string
+}
+
 variable "letsencrypt_email" {
   description = "The email address to use for Let's Encrypt"
   type        = string

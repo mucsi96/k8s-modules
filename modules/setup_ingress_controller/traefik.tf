@@ -14,7 +14,7 @@ resource "helm_release" "traefik" {
   timeout    = 600
   #https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml
   values = [yamlencode({
-    versionOverride = "v3.5.3" #https://github.com/traefik/traefik/releases
+    versionOverride = var.traefik_version
     logs = {
       general = {
         level = "DEBUG"
