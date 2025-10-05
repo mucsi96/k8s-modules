@@ -105,18 +105,38 @@ provider "hcloud" {
   token = data.azurerm_key_vault_secret.hetzner_api_token.value
 }
 
-module "test_virtual_machine" {
-  source   = "./modules/setup_testing_vm"
-  name     = "test-vm"
-  ssh_user = "ubuntu"
+# module "test_virtual_machine" {
+#   source   = "./modules/setup_testing_vm"
+#   name     = "test-vm"
+#   ssh_user = "ubuntu"
+# }
+
+data "azurerm_key_vault_secret" "setup_cluster_host" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "host"
+}
+
+data "azurerm_key_vault_secret" "setup_cluster_username" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "ssh-user-name"
+}
+
+data "azurerm_key_vault_secret" "setup_cluster_initial_password" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "ssh-initial-password"
+}
+
+data "azurerm_key_vault_secret" "setup_cluster_initial_port" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "ssh-initial-port"
 }
 
 module "setup_cluster" {
   source           = "./modules/setup_cluster"
-  host             = module.test_virtual_machine.public_ip_address
-  initial_port     = module.test_virtual_machine.ssh_port
-  username         = module.test_virtual_machine.admin_username
-  initial_password = module.test_virtual_machine.admin_password
+  host             = data.azurerm_key_vault_secret.setup_cluster_host.value
+  initial_port     = tonumber(data.azurerm_key_vault_secret.setup_cluster_initial_port.value)
+  username         = data.azurerm_key_vault_secret.setup_cluster_username.value
+  initial_password = data.azurerm_key_vault_secret.setup_cluster_initial_password.value
 }
 
 data "azurerm_key_vault_secret" "dns_zone" {

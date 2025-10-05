@@ -25,11 +25,16 @@ resource "local_sensitive_file" "user_private_key" {
   file_permission      = "0600"
   directory_permission = "0700"
   filename             = "${path.module}/.generated/${var.host}-id_ed25519"
+
+  depends_on = [var.host]
 }
 
 resource "terraform_data" "known_hosts_entry" {
   provisioner "local-exec" {
-    command = "ssh-keyscan -H ${var.host} >> ~/.ssh/known_hosts"
+    interpreter = ["/bin/bash", "-lc"]
+    command     = <<-EOT
+      ssh-keyscan -H ${var.host} -p ${var.initial_port} >> ~/.ssh/known_hosts || ssh-keyscan -p ${random_integer.ssh_port.result} -H ${var.host} >> ~/.ssh/known_hosts
+    EOT
   }
 
   triggers_replace = {
@@ -117,33 +122,49 @@ resource "terraform_data" "wait_for_system" {
   depends_on = [ansible_playbook.system_update]
 }
 
-resource "terraform_data" "install_k3s" {
-  triggers_replace = {
-    host     = var.host
-    ssh_port = tostring(random_integer.ssh_port.result)
-    username = var.username
-    key_hash = sha256(tls_private_key.user.public_key_openssh)
-  }
+resource "ansible_playbook" "install_microk8s" {
+  name       = var.host
+  playbook   = "${path.module}/install_microk8s.yaml"
+  replayable = false
 
-  provisioner "local-exec" {
-    interpreter = ["/bin/bash", "-lc"]
-    command     = <<-EOT
-      mkdir -p ${path.root}/.kube
-      k3sup install \
-        --ip ${var.host} \
-        --local-path ${path.root}/.kube/admin-config \
-        --ssh-key ${local_sensitive_file.user_private_key.filename} \
-        --user ${var.username} \
-        --ssh-port ${random_integer.ssh_port.result} \
-        --k3s-extra-args '--disable traefik'
-    EOT
+  extra_vars = {
+    ansible_python_interpreter   = "/usr/bin/python3"
+    ansible_port                 = tostring(random_integer.ssh_port.result)
+    ansible_user                 = var.username
+    ansible_become_password      = random_password.user_password.result
+    ansible_ssh_private_key_file = local_sensitive_file.user_private_key.filename
   }
 
   depends_on = [terraform_data.wait_for_system]
 }
 
+resource "terraform_data" "fetch_microk8s_config" {
+  triggers_replace = {
+    host             = var.host
+    ssh_port         = tostring(random_integer.ssh_port.result)
+    username         = var.username
+    key_hash         = sha256(tls_private_key.user.public_key_openssh)
+    microk8s_channel = "1.30/stable"
+  }
+
+  provisioner "local-exec" {
+    interpreter = ["/bin/bash", "-lc"]
+    command     = <<-EOT
+      set -euo pipefail
+      mkdir -p ${path.root}/.kube
+      scp -i ${local_sensitive_file.user_private_key.filename} \
+        -P ${random_integer.ssh_port.result} \
+        ${var.username}@${var.host}:/home/${var.username}/microk8s-admin.conf \
+        ${path.root}/.kube/admin-config
+      chmod 600 ${path.root}/.kube/admin-config
+    EOT
+  }
+
+  depends_on = [ansible_playbook.install_microk8s]
+}
+
 
 data "local_file" "kube_admin_config" {
   filename   = "${path.root}/.kube/admin-config"
-  depends_on = [terraform_data.install_k3s]
+  depends_on = [terraform_data.fetch_microk8s_config]
 }

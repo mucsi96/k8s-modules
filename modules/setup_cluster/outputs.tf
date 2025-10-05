@@ -13,6 +13,12 @@ output "ssh_port" {
   value       = random_integer.ssh_port.result
 }
 
+output "user_password" {
+  description = "Password for the provided user."
+  value       = random_password.user_password.result
+  sensitive   = true
+}
+
 
 locals {
   kube_admin_config_struct = yamldecode(data.local_file.kube_admin_config.content)

@@ -1,4 +1,4 @@
-# This playbook is designed for Ubuntu 24.04 servers to set up a firewall using nftables.
+# This playbook is designed for Ubuntu 24.04 or newer servers to set up a firewall using nftables.
 - name: Configure Firewall
   hosts: all
   gather_facts: false
@@ -10,31 +10,38 @@
         name: nftables
         state: reloaded
 
-  tasks:
-    - name: Validate target system compatibility
-      ansible.builtin.command: >-
-        bash -lc '
-          set -euo pipefail
-          if [ ! -f /etc/os-release ]; then
-            echo "Unable to determine operating system" >&2
-            exit 1
-          fi
-          . /etc/os-release
-          if [ "${ID,,}" != "ubuntu" ]; then
-            echo "Unsupported operating system: ${NAME:-unknown}" >&2
-            exit 1
-          fi
-          if ! dpkg --compare-versions "${VERSION_ID:-0}" ge "22.04"; then
-            echo "Ubuntu ${VERSION_ID:-unknown} is too old" >&2
-            exit 1
-          fi
-          if ! command -v nft >/dev/null 2>&1; then
-            echo "nftables (nft) command not found" >&2
-            exit 1
-          fi
-        '
-      changed_when: false
+  pre_tasks:
+    - name: Ensure target is Ubuntu 24.04 or newer
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == "Ubuntu"
+          - ansible_distribution_version is version('24.04', '>=')
+        fail_msg: "Installation supported only on Ubuntu Server 24.04 or newer"
+    - name: Ensure nftables and helpers are present; remove ufw if present
+      apt:
+        name:
+          - nftables
+          - conntrack
+          - ipset
+        state: present
+        update_cache: true
 
+    - name: Ensure UFW is absent (avoid double firewalls)
+      apt:
+        name: ufw
+        state: absent
+      ignore_errors: true
+    - name: Ensure legacy iptables services are disabled (best-effort)
+      systemd:
+        name: "{{ item }}"
+        enabled: false
+        state: stopped
+      loop:
+        - iptables
+        - ip6tables
+      ignore_errors: true
+
+  tasks:
     - name: Deploy nftables configuration
       ansible.builtin.copy:
         dest: /etc/nftables.conf
@@ -53,7 +60,6 @@
                   ct state established,related accept
                   tcp dport {{ ssh_port | int }} accept
                   tcp dport {{ kubernetes_api_port | default(6443) | int }} accept
-                  tcp dport { 80, 443 } accept
               }
 
               chain forward {
@@ -76,4 +82,4 @@
       ansible.builtin.systemd:
         name: nftables
         enabled: true
-        state: started
+        state: restarted

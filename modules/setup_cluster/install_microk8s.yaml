@@ -1,0 +1,68 @@
+# Installs Canonical MicroK8s on Ubuntu 24.04+ hosts via snap and prepares kubeconfig for download.
+- name: Install MicroK8s
+  hosts: all
+  gather_facts: true
+  become: true
+
+  vars:
+    microk8s_channel: "1.30/stable"
+
+  pre_tasks:
+    - name: Ensure target is Ubuntu 24.04 or newer
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == "Ubuntu"
+          - ansible_distribution_version is version('24.04', '>=')
+        fail_msg: "MicroK8s installation supported only on Ubuntu Server 24.04 or newer"
+
+  tasks:
+    - name: Ensure snapd is installed
+      ansible.builtin.apt:
+        name: snapd
+        state: present
+        update_cache: true
+
+    - name: Check if MicroK8s is installed
+      ansible.builtin.command: snap list microk8s
+      register: microk8s_list
+      failed_when: false
+      changed_when: false
+
+    - name: Install MicroK8s snap
+      ansible.builtin.command:
+        cmd: "snap install microk8s --classic --channel={{ microk8s_channel }}"
+      when: microk8s_list.rc != 0
+
+    - name: Refresh MicroK8s to desired channel
+      ansible.builtin.command:
+        cmd: "snap refresh microk8s --channel={{ microk8s_channel }}"
+      when: microk8s_list.rc == 0
+
+    - name: Ensure MicroK8s group exists
+      ansible.builtin.group:
+        name: microk8s
+        state: present
+
+    - name: Ensure {{ ansible_user }} is in microk8s group
+      ansible.builtin.user:
+        name: "{{ ansible_user }}"
+        groups: microk8s
+        append: true
+
+    - name: Wait for MicroK8s API to become ready
+      ansible.builtin.command: microk8s status --wait-ready --timeout 600
+      register: microk8s_status
+      changed_when: false
+
+    - name: Generate MicroK8s kubeconfig
+      ansible.builtin.command: microk8s config --format=kubeconfig
+      register: microk8s_config
+      changed_when: false
+
+    - name: Persist kubeconfig for Terraform download
+      ansible.builtin.copy:
+        dest: "/home/{{ ansible_user }}/microk8s-admin.conf"
+        content: "{{ microk8s_config.stdout }}"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0600'
