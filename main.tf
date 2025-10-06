@@ -30,26 +30,16 @@ terraform {
       version = ">=1.3.0"
     }
 
-    hcloud = {
-      source  = "hetznercloud/hcloud"
-      version = "~> 1.45"
-    }
-
-    null = {
-      source  = "hashicorp/null"
-      version = ">=3.2.1"
-    }
-
     cloudflare = {
       source  = "cloudflare/cloudflare"
-      version = "~> 5"
+      version = "5.10.1" // Update after https://github.com/cloudflare/terraform-provider-cloudflare/issues/6308 is resolved
     }
   }
+
+  required_version = ">= 1.2"
 }
 
 provider "random" {}
-
-provider "null" {}
 
 provider "azurerm" {
   features {}
@@ -103,10 +93,6 @@ variable "azure_location" {
 data "azurerm_key_vault" "kv" {
   resource_group_name = var.resource_group_name
   name                = var.resource_group_name
-}
-
-provider "hcloud" {
-  token = data.azurerm_key_vault_secret.hetzner_api_token.value
 }
 
 data "azurerm_key_vault_secret" "setup_cluster_host" {

@@ -1,28 +1,19 @@
 terraform {
   required_providers {
     ansible = {
-      source  = "ansible/ansible"
-      version = ">=1.3.0"
+      source = "ansible/ansible"
     }
 
     tls = {
-      source  = "hashicorp/tls"
-      version = ">=4.0.5"
+      source = "hashicorp/tls"
     }
 
     random = {
-      source  = "hashicorp/random"
-      version = ">=3.6.3"
+      source = "hashicorp/random"
     }
 
     local = {
-      source  = "hashicorp/local"
-      version = ">=2.4.0"
-    }
-
-    null = {
-      source  = "hashicorp/null"
-      version = ">=3.2.1"
+      source = "hashicorp/local"
     }
   }
 }

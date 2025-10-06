@@ -1,4 +1,4 @@
-resource "kubernetes_namespace" "k8s_namespace" {
+resource "kubernetes_namespace" "traefik" {
   metadata {
     name = "traefik"
   }
@@ -9,7 +9,7 @@ resource "helm_release" "traefik" {
   repository = "https://traefik.github.io/charts"
   chart      = "traefik"
   version    = var.traefik_chart_version
-  namespace  = kubernetes_namespace.k8s_namespace.metadata[0].name
+  namespace  = kubernetes_namespace.traefik.metadata[0].name
   wait       = true
   timeout    = 600
   #https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml

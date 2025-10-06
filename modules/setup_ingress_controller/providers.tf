@@ -1,38 +1,31 @@
 terraform {
   required_providers {
     azurerm = {
-      source  = "hashicorp/azurerm"
-      version = ">=4.14.0"
+      source = "hashicorp/azurerm"
     }
 
     kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = ">=2.35.0"
+      source = "hashicorp/kubernetes"
     }
 
     helm = {
-      source  = "hashicorp/helm"
-      version = ">=2.16.1"
+      source = "hashicorp/helm"
     }
 
     tls = {
-      source  = "hashicorp/tls"
-      version = ">=4.0.6"
+      source = "hashicorp/tls"
     }
 
     acme = {
-      source  = "vancluever/acme"
-      version = ">=2.28.2"
+      source = "vancluever/acme"
     }
 
     cloudflare = {
-      source  = "cloudflare/cloudflare"
-      version = "~> 5"
+      source = "cloudflare/cloudflare"
     }
 
     random = {
-      source  = "hashicorp/random"
-      version = "~> 3.5"
+      source = "hashicorp/random"
     }
   }
 }

@@ -1,13 +1,11 @@
 terraform {
   required_providers {
     random = {
-      source  = "hashicorp/random"
-      version = ">=3.6.3"
+      source = "hashicorp/random"
     }
 
     helm = {
-      source  = "hashicorp/helm"
-      version = ">=2.16.1"
+      source = "hashicorp/helm"
     }
   }
 }
