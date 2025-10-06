@@ -17,7 +17,7 @@ data "cloudflare_zero_trust_tunnel_cloudflared_token" "traefik_tunnel_token" {
 
 resource "cloudflare_dns_record" "cname_record" {
   zone_id = var.cloudflare_zone_id
-  name    = var.resource_group_name
+  name    = "*"
   content = "${cloudflare_zero_trust_tunnel_cloudflared.traefik_tunnel.id}.cfargotunnel.com"
   type    = "CNAME"
   ttl     = 1
@@ -30,8 +30,11 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "traefik_tunnel_confi
   source     = "cloudflare"
 
   config = {
-
     ingress = [
+      {
+        hostname = "traefik.${var.dns_zone}"
+        service  = "http://traefik.${kubernetes_namespace.traefik.metadata[0].name}.svc.cluster.local:8080"
+      },
       {
         hostname = "*.${var.dns_zone}"
         service  = "http://traefik.${kubernetes_namespace.traefik.metadata[0].name}.svc.cluster.local:80"

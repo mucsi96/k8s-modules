@@ -33,6 +33,13 @@ resource "helm_release" "traefik" {
         type = "ClusterIP"
       }
     }
+    ports = {
+      traefik = {
+        expose = {
+          default = true
+        }
+      }
+    }
   })]
 
   provisioner "local-exec" {

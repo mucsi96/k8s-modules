@@ -45,3 +45,8 @@ variable "cloudflare_api_token" {
   type        = string
   sensitive   = true
 }
+
+variable "cloudflare_team_domain" {
+  description = "Cloudflare Team Domain (e.g., example.cloudflareaccess.com)"
+  type        = string
+}

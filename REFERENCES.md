@@ -24,3 +24,4 @@
 # Cloudflare
 
 - [Deploy Cloudflare Tunnel with Terraform](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/deployment-guides/terraform/)
+- [SSO integration](https://developers.cloudflare.com/cloudflare-one/identity/idp-integration/)
