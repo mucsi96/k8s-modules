@@ -39,6 +39,11 @@ terraform {
       source  = "hashicorp/null"
       version = ">=3.2.1"
     }
+
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5"
+    }
   }
 }
 
@@ -78,6 +83,10 @@ provider "acme" {
   server_url = "https://acme-v02.api.letsencrypt.org/directory" # Production server
 }
 
+provider "cloudflare" {
+  api_token = data.azurerm_key_vault_secret.cloudflare_api_token.value
+}
+
 variable "resource_group_name" {
   description = "Name of the Azure Resource Group to deploy resources into."
   type        = string
@@ -96,20 +105,9 @@ data "azurerm_key_vault" "kv" {
   name                = var.resource_group_name
 }
 
-data "azurerm_key_vault_secret" "hetzner_api_token" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "hetzner-api-token"
-}
-
 provider "hcloud" {
   token = data.azurerm_key_vault_secret.hetzner_api_token.value
 }
-
-# module "test_virtual_machine" {
-#   source   = "./modules/setup_testing_vm"
-#   name     = "test-vm"
-#   ssh_user = "ubuntu"
-# }
 
 data "azurerm_key_vault_secret" "setup_cluster_host" {
   key_vault_id = data.azurerm_key_vault.kv.id
@@ -154,6 +152,21 @@ data "azurerm_key_vault_secret" "letsencrypt_email" {
   name         = "letsencrypt-email"
 }
 
+data "azurerm_key_vault_secret" "cloudflare_zone_id" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "cloudflare-zone-id"
+}
+
+data "azurerm_key_vault_secret" "cloudflare_account_id" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "cloudflare-account-id"
+}
+
+data "azurerm_key_vault_secret" "cloudflare_api_token" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "cloudflare-api-token"
+}
+
 module "setup_ingress_controller" {
   source                = "./modules/setup_ingress_controller"
   resource_group_name   = var.resource_group_name
@@ -162,6 +175,9 @@ module "setup_ingress_controller" {
   traefik_chart_version = "37.1.2" #https://github.com/traefik/traefik-helm-chart/releases
   traefik_version       = "v3.5.3" #https://github.com/traefik/traefik/releases
   letsencrypt_email     = data.azurerm_key_vault_secret.letsencrypt_email.value
+  cloudflare_api_token  = data.azurerm_key_vault_secret.cloudflare_api_token.value
+  cloudflare_account_id = data.azurerm_key_vault_secret.cloudflare_account_id.value
+  cloudflare_zone_id    = data.azurerm_key_vault_secret.cloudflare_zone_id.value
 
   depends_on = [module.setup_cluster]
 }

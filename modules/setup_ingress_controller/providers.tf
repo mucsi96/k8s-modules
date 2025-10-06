@@ -24,5 +24,15 @@ terraform {
       source  = "vancluever/acme"
       version = ">=2.28.2"
     }
+
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5"
+    }
+
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.5"
+    }
   }
 }

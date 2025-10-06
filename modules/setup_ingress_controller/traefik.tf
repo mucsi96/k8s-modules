@@ -28,44 +28,12 @@ resource "helm_release" "traefik" {
         enabled = true
       }
     }
-    ports = {
-      web = {
-        redirections = {
-          entryPoint = {
-            to        = "websecure"
-            scheme    = "https"
-            permanent = true
-          }
-        }
-      }
-    }
     service = {
       spec = {
         type = "ClusterIP"
       }
     }
-    # tlsStore = {
-    #   default = {
-    #     defaultCertificate = {
-    #       secretName = "traefik-default-cert"
-    #     }
-    #   }
-    # }
-    # extraObjects = [
-    #   {
-    #     apiVersion = "v1"
-    #     kind       = "Secret"
-    #     metadata = {
-    #       name = "traefik-default-cert"
-    #     }
-    #     stringData = {
-    #       "tls.crt" = acme_certificate.certificate.certificate_pem
-    #       "tls.key" = acme_certificate.certificate.private_key_pem
-    #     }
-    #   }
-    # ]
-    }
-  )]
+  })]
 
   provisioner "local-exec" {
     interpreter = ["/bin/bash", "-lc"]
