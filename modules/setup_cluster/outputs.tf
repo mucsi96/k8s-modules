@@ -20,37 +20,66 @@ output "user_password" {
 }
 
 
-locals {
-  kube_admin_config_struct = yamldecode(data.local_file.kube_admin_config.content)
-  k8s_cluster              = local.kube_admin_config_struct.clusters[0].cluster
-  k8s_user                 = local.kube_admin_config_struct.users[0].user
+data "azurerm_key_vault" "kv" {
+  name                = var.azure_key_vault_name
+  resource_group_name = var.azure_resource_group_name
+}
+
+data "azurerm_key_vault_secret" "k8s_config" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "k8s-config"
+  depends_on   = [ansible_playbook.install_microk8s]
+}
+
+data "azurerm_key_vault_secret" "k8s_host" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "k8s-host"
+  depends_on   = [ansible_playbook.install_microk8s]
+}
+
+data "azurerm_key_vault_secret" "k8s_client_certificate" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "k8s-client-certificate"
+  depends_on   = [ansible_playbook.install_microk8s]
+}
+
+data "azurerm_key_vault_secret" "k8s_client_key" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "k8s-client-key"
+  depends_on   = [ansible_playbook.install_microk8s]
+}
+
+data "azurerm_key_vault_secret" "k8s_cluster_ca_certificate" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "k8s-cluster-ca-certificate"
+  depends_on   = [ansible_playbook.install_microk8s]
 }
 
 output "k8s_config" {
   description = "Admin kubeconfig pulled from the private server."
-  value       = data.local_file.kube_admin_config.content
+  value       = data.azurerm_key_vault_secret.k8s_config.value
   sensitive   = true
 }
 
 output "k8s_host" {
   description = "Kubernetes API server endpoint extracted from the admin kubeconfig."
-  value       = local.k8s_cluster.server
+  value       = data.azurerm_key_vault_secret.k8s_host.value
 }
 
 output "k8s_client_certificate" {
   description = "Client certificate for authenticating against the Kubernetes API server."
-  value       = base64decode(local.k8s_user["client-certificate-data"])
+  value       = data.azurerm_key_vault_secret.k8s_client_certificate.value
   sensitive   = true
 }
 
 output "k8s_client_key" {
   description = "Client private key for authenticating against the Kubernetes API server."
-  value       = base64decode(local.k8s_user["client-key-data"])
+  value       = data.azurerm_key_vault_secret.k8s_client_key.value
   sensitive   = true
 }
 
 output "k8s_cluster_ca_certificate" {
   description = "Cluster CA certificate used to verify the Kubernetes API server."
-  value       = base64decode(local.k8s_cluster["certificate-authority-data"])
+  value       = data.azurerm_key_vault_secret.k8s_cluster_ca_certificate.value
   sensitive   = true
 }

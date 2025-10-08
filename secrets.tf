@@ -16,35 +16,6 @@ resource "azurerm_key_vault_secret" "user_password" {
   value        = module.setup_cluster.user_password
 }
 
-resource "azurerm_key_vault_secret" "k8s_config" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "k8s-config"
-  value        = module.setup_cluster.k8s_config
-}
-
-resource "azurerm_key_vault_secret" "k8s_host" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "k8s-host"
-  value        = module.setup_cluster.k8s_host
-}
-
-resource "azurerm_key_vault_secret" "k8s_client_certificate" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "k8s-client-certificate"
-  value        = module.setup_cluster.k8s_client_certificate
-}
-
-resource "azurerm_key_vault_secret" "k8s_client_key" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "k8s-client-key"
-  value        = module.setup_cluster.k8s_client_key
-}
-
-resource "azurerm_key_vault_secret" "k8s_cluster_ca_certificate" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "k8s-cluster-ca-certificate"
-  value        = module.setup_cluster.k8s_cluster_ca_certificate
-}
 
 # resource "azurerm_key_vault_secret" "issuer" {
 #   key_vault_id = data.azurerm_key_vault.kv.id

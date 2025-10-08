@@ -1,0 +1,66 @@
+- name: Revert Secure Private Server Changes
+  hosts: all
+  gather_facts: false
+  become: true
+
+  handlers:
+    - name: Restart SSH service
+      ansible.builtin.systemd_service:
+        name: ssh
+        state: restarted
+        enabled: true
+        
+  tasks:
+    - name: Disable nftables service
+      ansible.builtin.systemd:
+        name: nftables
+        enabled: false
+        state: stopped
+      ignore_errors: true
+      
+    - name: Flush all nftables rules
+      ansible.builtin.command: nft flush ruleset
+      changed_when: false
+      ignore_errors: true
+      
+    - name: Remove nftables configuration
+      ansible.builtin.file:
+        path: /etc/nftables.conf
+        state: absent
+      ignore_errors: true
+
+    - name: Restore SSH port to initial value
+      ansible.builtin.lineinfile:
+        dest: /etc/ssh/sshd_config
+        regexp: "^#?Port"
+        line: "Port {{ initial_port }}"
+      notify: "Restart SSH service"
+      
+    - name: Enable SSH root login
+      ansible.builtin.lineinfile:
+        dest: /etc/ssh/sshd_config
+        regexp: "^#?PermitRootLogin"
+        line: "PermitRootLogin yes"
+      notify: "Restart SSH service"
+      
+    - name: Enable password authentication
+      ansible.builtin.lineinfile:
+        dest: /etc/ssh/sshd_config
+        regexp: "^#?PasswordAuthentication"
+        line: "PasswordAuthentication yes"
+      notify: "Restart SSH service"
+      
+    - name: Apply SSH configuration changes
+      ansible.builtin.meta: flush_handlers
+      
+    - name: Reset root password to initial value
+      ansible.builtin.user:
+        name: root
+        state: present
+        password: "{{ initial_password | password_hash('sha512', 65534 | random(seed=inventory_hostname) | string) }}"
+      
+    - name: Reset user password to initial value
+      ansible.builtin.user:
+        name: "{{ initial_username }}"
+        state: present
+        password: "{{ initial_password | password_hash('sha512', 65534 | random(seed=inventory_hostname) | string) }}"

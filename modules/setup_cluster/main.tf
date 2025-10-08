@@ -1,8 +1,4 @@
 
-locals {
-  repo_root             = abspath("${path.module}/../..")
-  local_kubeconfig_path = "${local.repo_root}/.kube/admin-config"
-}
 
 resource "tls_private_key" "user" {
   algorithm = "ED25519"
@@ -38,7 +34,7 @@ resource "terraform_data" "known_hosts_entry" {
   provisioner "local-exec" {
     interpreter = ["/bin/bash", "-lc"]
     command     = <<-EOT
-      ssh-keyscan -H ${var.host} -p ${var.initial_port} >> ~/.ssh/known_hosts || ssh-keyscan -p ${random_integer.ssh_port.result} -H ${var.host} >> ~/.ssh/known_hosts
+      ssh-keyscan -H ${var.host} -p ${var.initial_port} >> ~/.ssh/known_hosts
     EOT
   }
 
@@ -138,13 +134,9 @@ resource "ansible_playbook" "install_microk8s" {
     ansible_user                 = var.username
     ansible_become_password      = random_password.user_password.result
     ansible_ssh_private_key_file = local_sensitive_file.user_private_key.filename
-    local_kubeconfig_path        = local.local_kubeconfig_path
+    azure_key_vault_name         = var.azure_key_vault_name
+    azure_subscription_id        = var.azure_subscription_id
   }
 
   depends_on = [terraform_data.wait_for_system]
-}
-
-data "local_file" "kube_admin_config" {
-  filename   = local.local_kubeconfig_path
-  depends_on = [ansible_playbook.install_microk8s]
 }

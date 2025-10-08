@@ -59,21 +59,58 @@
       register: microk8s_config
       changed_when: false
 
-    - name: Ensure local kubeconfig directory exists
-      ansible.builtin.file:
-        path: "{{ local_kubeconfig_path | dirname }}"
-        state: directory
-        mode: '0700'
-      become: false
-      delegate_to: localhost
+    - name: Parse kubeconfig YAML
+      ansible.builtin.set_fact:
+        kubeconfig_data: "{{ microk8s_config.stdout | from_yaml }}"
 
-    - name: Persist kubeconfig to local file
-      ansible.builtin.copy:
-        dest: "{{ local_kubeconfig_path }}"
-        content: "{{ microk8s_config.stdout }}"
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
-        mode: '0600'
-      become: false
+    - name: Ensure Python is available on localhost
+      ansible.builtin.set_fact:
+        ansible_python_interpreter: '{{ ansible_playbook_python }}'
+      delegate_to: localhost    
+      delegate_facts: true
+
+    - name: Save k8s-config to Azure Key Vault
+      azure.azcollection.azure_rm_keyvaultsecret:
+        secret_name: k8s-config
+        secret_value: "{{ microk8s_config.stdout }}"
+        keyvault_uri: "https://{{ azure_key_vault_name }}.vault.azure.net"
+        subscription_id: "{{ azure_subscription_id }}"
       delegate_to: localhost
+      become: false
+
+    - name: Save k8s-host to Azure Key Vault
+      azure.azcollection.azure_rm_keyvaultsecret:
+        secret_name: k8s-host
+        secret_value: "{{ kubeconfig_data.clusters[0].cluster.server }}"
+        keyvault_uri: "https://{{ azure_key_vault_name }}.vault.azure.net"
+        subscription_id: "{{ azure_subscription_id }}"
+      delegate_to: localhost
+      become: false
+
+    - name: Save k8s-client-certificate to Azure Key Vault
+      azure.azcollection.azure_rm_keyvaultsecret:
+        secret_name: k8s-client-certificate
+        secret_value: "{{ kubeconfig_data.users[0].user['client-certificate-data'] }}"
+        keyvault_uri: "https://{{ azure_key_vault_name }}.vault.azure.net"
+        subscription_id: "{{ azure_subscription_id }}"
+      delegate_to: localhost
+      become: false
+
+    - name: Save k8s-client-key to Azure Key Vault
+      azure.azcollection.azure_rm_keyvaultsecret:
+        secret_name: k8s-client-key
+        secret_value: "{{ kubeconfig_data.users[0].user['client-key-data'] }}"
+        keyvault_uri: "https://{{ azure_key_vault_name }}.vault.azure.net"
+        subscription_id: "{{ azure_subscription_id }}"
+      delegate_to: localhost
+      become: false
+
+    - name: Save k8s-cluster-ca-certificate to Azure Key Vault
+      azure.azcollection.azure_rm_keyvaultsecret:
+        secret_name: k8s-cluster-ca-certificate
+        secret_value: "{{ kubeconfig_data.clusters[0].cluster['certificate-authority-data'] }}"
+        keyvault_uri: "https://{{ azure_key_vault_name }}.vault.azure.net"
+        subscription_id: "{{ azure_subscription_id }}"
+      delegate_to: localhost
+      become: false
 

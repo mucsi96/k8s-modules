@@ -66,3 +66,5 @@ helm repo add mucsi96 https://mucsi96.github.io/k8s-helm-charts
 source .venv/bin/activate
 
 python3 -m pip install -r requirements.txt
+
+ansible-galaxy collection install azure.azcollection

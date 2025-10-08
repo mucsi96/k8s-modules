@@ -18,3 +18,20 @@ variable "initial_password" {
   type        = string
   sensitive   = true
 }
+
+
+variable "azure_key_vault_name" {
+  description = "Name of the Azure Key Vault to store Kubernetes secrets."
+  type        = string
+}
+
+variable "azure_subscription_id" {
+  description = "Azure subscription ID for Key Vault access."
+  type        = string
+}
+
+
+variable "azure_resource_group_name" {
+  description = "Name of the Azure Resource Group containing the Key Vault."
+  type        = string
+}
