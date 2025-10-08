@@ -4,6 +4,9 @@
   gather_facts: true
   become: true
 
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
   handlers:
     - name: Reload nftables
       ansible.builtin.systemd:

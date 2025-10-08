@@ -4,6 +4,9 @@
   gather_facts: true
   become: true
 
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
   pre_tasks:
     - name: Verify internet connectivity
       ansible.builtin.command: ping -c 3 -W 2 1.1.1.1

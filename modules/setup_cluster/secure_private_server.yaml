@@ -3,6 +3,9 @@
   gather_facts: false
   become: true
 
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
   handlers:
     - name: Restart SSH service
       ansible.builtin.systemd_service:

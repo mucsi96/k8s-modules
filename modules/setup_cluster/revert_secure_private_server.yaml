@@ -3,6 +3,9 @@
   gather_facts: false
   become: true
 
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
   handlers:
     - name: Restart SSH service
       ansible.builtin.systemd_service:
@@ -50,9 +53,6 @@
         line: "PasswordAuthentication yes"
       notify: "Restart SSH service"
       
-    - name: Apply SSH configuration changes
-      ansible.builtin.meta: flush_handlers
-      
     - name: Reset root password to initial value
       ansible.builtin.user:
         name: root
@@ -64,3 +64,6 @@
         name: "{{ initial_username }}"
         state: present
         password: "{{ initial_password | password_hash('sha512', 65534 | random(seed=inventory_hostname) | string) }}"
+
+    - name: Apply SSH configuration changes
+      ansible.builtin.meta: flush_handlers

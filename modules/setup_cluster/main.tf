@@ -49,11 +49,10 @@ resource "ansible_playbook" "secure_private_server" {
   replayable = false
 
   extra_vars = {
-    ansible_python_interpreter = "/usr/bin/python3"
-    ansible_port               = var.initial_port
-    ansible_user               = var.username
-    ansible_become_password    = var.initial_password
-    ansible_ssh_pass           = var.initial_password
+    ansible_port            = var.initial_port
+    ansible_user            = var.username
+    ansible_become_password = var.initial_password
+    ansible_ssh_pass        = var.initial_password
 
     public_key        = tls_private_key.user.public_key_openssh
     password          = random_password.user_password.result
@@ -70,7 +69,6 @@ resource "ansible_playbook" "firewall" {
   replayable = false
 
   extra_vars = {
-    ansible_python_interpreter   = "/usr/bin/python3"
     ansible_port                 = tostring(random_integer.ssh_port.result)
     ansible_user                 = var.username
     ansible_become_password      = random_password.user_password.result
@@ -89,7 +87,6 @@ resource "ansible_playbook" "system_update" {
   replayable = false
 
   extra_vars = {
-    ansible_python_interpreter   = "/usr/bin/python3"
     ansible_port                 = tostring(random_integer.ssh_port.result)
     ansible_user                 = var.username
     ansible_become_password      = random_password.user_password.result
@@ -129,7 +126,7 @@ resource "ansible_playbook" "install_microk8s" {
   replayable = false
 
   extra_vars = {
-    ansible_python_interpreter   = "/usr/bin/python3"
+    local_python_interpreter     = "${abspath(path.root)}/.venv/bin/python"
     ansible_port                 = tostring(random_integer.ssh_port.result)
     ansible_user                 = var.username
     ansible_become_password      = random_password.user_password.result

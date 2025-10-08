@@ -6,6 +6,7 @@
 
   vars:
     microk8s_channel: "1.30/stable"
+    ansible_python_interpreter: /usr/bin/python3
 
   pre_tasks:
     - name: Ensure target is Ubuntu 24.04 or newer
@@ -63,12 +64,6 @@
       ansible.builtin.set_fact:
         kubeconfig_data: "{{ microk8s_config.stdout | from_yaml }}"
 
-    - name: Ensure Python is available on localhost
-      ansible.builtin.set_fact:
-        ansible_python_interpreter: '{{ ansible_playbook_python }}'
-      delegate_to: localhost    
-      delegate_facts: true
-
     - name: Save k8s-config to Azure Key Vault
       azure.azcollection.azure_rm_keyvaultsecret:
         secret_name: k8s-config
@@ -77,6 +72,8 @@
         subscription_id: "{{ azure_subscription_id }}"
       delegate_to: localhost
       become: false
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
 
     - name: Save k8s-host to Azure Key Vault
       azure.azcollection.azure_rm_keyvaultsecret:
@@ -86,6 +83,8 @@
         subscription_id: "{{ azure_subscription_id }}"
       delegate_to: localhost
       become: false
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
 
     - name: Save k8s-client-certificate to Azure Key Vault
       azure.azcollection.azure_rm_keyvaultsecret:
@@ -95,6 +94,8 @@
         subscription_id: "{{ azure_subscription_id }}"
       delegate_to: localhost
       become: false
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
 
     - name: Save k8s-client-key to Azure Key Vault
       azure.azcollection.azure_rm_keyvaultsecret:
@@ -104,6 +105,8 @@
         subscription_id: "{{ azure_subscription_id }}"
       delegate_to: localhost
       become: false
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
 
     - name: Save k8s-cluster-ca-certificate to Azure Key Vault
       azure.azcollection.azure_rm_keyvaultsecret:
@@ -113,4 +116,6 @@
         subscription_id: "{{ azure_subscription_id }}"
       delegate_to: localhost
       become: false
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
 
