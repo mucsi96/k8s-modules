@@ -31,7 +31,7 @@ variable "azure_subscription_id" {
 }
 
 
-variable "azure_resource_group_name" {
+variable "environment_name" {
   description = "Name of the Azure Resource Group containing the Key Vault."
   type        = string
 }

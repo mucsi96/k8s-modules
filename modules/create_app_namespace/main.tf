@@ -10,10 +10,6 @@ terraform {
   }
 }
 
-data "azurerm_kubernetes_cluster" "kubernetes_cluster" {
-  name                = var.azure_resource_group_name
-  resource_group_name = var.azure_resource_group_name
-}
 
 resource "kubernetes_namespace" "namespace" {
   metadata {

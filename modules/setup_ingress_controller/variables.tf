@@ -1,4 +1,4 @@
-variable "resource_group_name" {
+variable "environment_name" {
   description = "The name of the Azure Resource Group"
   type        = string
 }

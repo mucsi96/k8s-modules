@@ -5,8 +5,8 @@ kind: Config
 clusters:
   - name: cluster
     cluster:
-      server: ${yamldecode(data.azurerm_kubernetes_cluster.kubernetes_cluster.kube_config_raw).clusters[0].cluster.server}
-      certificate-authority-data: ${yamldecode(data.azurerm_kubernetes_cluster.kubernetes_cluster.kube_config_raw).clusters[0].cluster.certificate-authority-data}
+      server: ${var.k8s_host}
+      certificate-authority-data: ${var.k8s_cluster_ca_certificate}
 users:
   - name: user
     user:
@@ -17,6 +17,7 @@ contexts:
       cluster: cluster
       name: default
       user: user
+      namespace: ${var.k8s_namespace}
 current-context: default
 EOT
   sensitive = true

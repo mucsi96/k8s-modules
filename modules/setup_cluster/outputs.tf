@@ -22,7 +22,7 @@ output "user_password" {
 
 data "azurerm_key_vault" "kv" {
   name                = var.azure_key_vault_name
-  resource_group_name = var.azure_resource_group_name
+  resource_group_name = var.environment_name
 }
 
 data "azurerm_key_vault_secret" "k8s_config" {

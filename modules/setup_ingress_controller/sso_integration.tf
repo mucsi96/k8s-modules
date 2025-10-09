@@ -8,7 +8,7 @@ resource "azuread_service_principal" "msgraph" {
 }
 
 resource "azuread_application" "cloudflare_sso" {
-  display_name     = "Cloudflare SSO - ${var.resource_group_name}"
+  display_name     = "Cloudflare SSO - ${var.environment_name}"
   sign_in_audience = "AzureADMyOrg"
   owners           = [data.azuread_client_config.current.object_id]
 
@@ -63,12 +63,12 @@ resource "azuread_service_principal_delegated_permission_grant" "allow_cloudflar
 
 resource "azuread_application_password" "cloudflare_sso" {
   application_id = azuread_application.cloudflare_sso.id
-  display_name   = "Cloudflare SSO - ${var.resource_group_name}"
+  display_name   = "Cloudflare SSO - ${var.environment_name}"
 }
 
 resource "cloudflare_zero_trust_access_identity_provider" "entra_id" {
   account_id = var.cloudflare_account_id
-  name       = "Microsoft Entra ID - ${var.resource_group_name}"
+  name       = "Microsoft Entra ID - ${var.environment_name}"
   type       = "azureAD"
 
   config = {
@@ -80,7 +80,7 @@ resource "cloudflare_zero_trust_access_identity_provider" "entra_id" {
 
 resource "cloudflare_zero_trust_access_policy" "cloudflare_sso" {
   account_id = var.cloudflare_account_id
-  name       = "Allow Entra ID Users - ${var.resource_group_name}"
+  name       = "Allow Entra ID Users - ${var.environment_name}"
   decision   = "allow"
 
   include = [{

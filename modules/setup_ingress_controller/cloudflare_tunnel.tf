@@ -6,7 +6,7 @@ resource "kubernetes_namespace" "cloudflare" {
 
 resource "cloudflare_zero_trust_tunnel_cloudflared" "traefik_tunnel" {
   account_id = var.cloudflare_account_id
-  name       = "${var.resource_group_name} tunnel"
+  name       = "${var.environment_name} tunnel"
   config_src = "cloudflare"
 }
 

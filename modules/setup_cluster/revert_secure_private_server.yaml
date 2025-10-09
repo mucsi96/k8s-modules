@@ -12,21 +12,18 @@
         dest: /etc/ssh/sshd_config
         regexp: "^#?Port"
         line: "Port {{ initial_port }}"
-      notify: "Restart SSH service"
       
     - name: Enable SSH root login
       ansible.builtin.lineinfile:
         dest: /etc/ssh/sshd_config
         regexp: "^#?PermitRootLogin"
         line: "PermitRootLogin yes"
-      notify: "Restart SSH service"
       
     - name: Enable password authentication
       ansible.builtin.lineinfile:
         dest: /etc/ssh/sshd_config
         regexp: "^#?PasswordAuthentication"
         line: "PasswordAuthentication yes"
-      notify: "Restart SSH service"
       
     - name: Reset root password to initial value
       ansible.builtin.user:

@@ -1,6 +1,6 @@
 resource "cloudflare_zero_trust_access_application" "traefik_dashboard_access" {
   account_id                = var.cloudflare_account_id
-  name                      = "Traefik Dashboard - ${var.resource_group_name}"
+  name                      = "Traefik Dashboard - ${var.environment_name}"
   domain                    = "traefik.${var.dns_zone}"
   session_duration          = "24h"
   type                      = "self_hosted"

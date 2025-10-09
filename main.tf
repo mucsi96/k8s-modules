@@ -77,8 +77,8 @@ provider "cloudflare" {
   api_token = data.azurerm_key_vault_secret.cloudflare_api_token.value
 }
 
-variable "resource_group_name" {
-  description = "Name of the Azure Resource Group to deploy resources into."
+variable "environment_name" {
+  description = "Name of the environment. Used for naming resources."
   type        = string
   default     = "p06"
 
@@ -91,8 +91,8 @@ variable "azure_location" {
 }
 
 data "azurerm_key_vault" "kv" {
-  resource_group_name = var.resource_group_name
-  name                = var.resource_group_name
+  resource_group_name = var.environment_name
+  name                = var.environment_name
 }
 
 data "azurerm_key_vault_secret" "setup_cluster_host" {
@@ -116,14 +116,14 @@ data "azurerm_key_vault_secret" "setup_cluster_initial_port" {
 }
 
 module "setup_cluster" {
-  source                    = "./modules/setup_cluster"
-  host                      = data.azurerm_key_vault_secret.setup_cluster_host.value
-  initial_port              = tonumber(data.azurerm_key_vault_secret.setup_cluster_initial_port.value)
-  username                  = data.azurerm_key_vault_secret.setup_cluster_username.value
-  initial_password          = data.azurerm_key_vault_secret.setup_cluster_initial_password.value
-  azure_key_vault_name      = data.azurerm_key_vault.kv.name
-  azure_resource_group_name = var.resource_group_name
-  azure_subscription_id     = var.azure_subscription_id
+  source                = "./modules/setup_cluster"
+  host                  = data.azurerm_key_vault_secret.setup_cluster_host.value
+  initial_port          = tonumber(data.azurerm_key_vault_secret.setup_cluster_initial_port.value)
+  username              = data.azurerm_key_vault_secret.setup_cluster_username.value
+  initial_password      = data.azurerm_key_vault_secret.setup_cluster_initial_password.value
+  azure_key_vault_name  = data.azurerm_key_vault.kv.name
+  environment_name      = var.environment_name
+  azure_subscription_id = var.azure_subscription_id
 }
 
 data "azurerm_key_vault_secret" "dns_zone" {
@@ -158,7 +158,7 @@ data "azurerm_key_vault_secret" "cloudflare_team_domain" {
 
 module "setup_ingress_controller" {
   source                 = "./modules/setup_ingress_controller"
-  resource_group_name    = var.resource_group_name
+  environment_name       = var.environment_name
   subscription_id        = var.azure_subscription_id
   dns_zone               = data.azurerm_key_vault_secret.dns_zone.value
   traefik_chart_version  = "37.1.2" #https://github.com/traefik/traefik-helm-chart/releases
@@ -171,20 +171,23 @@ module "setup_ingress_controller" {
   depends_on             = [module.setup_cluster]
 }
 
-# module "create_database_namespace" {
-#   source                    = "./modules/create_app_namespace"
-#   azure_resource_group_name = module.setup_cluster.resource_group_name
-#   k8s_namespace             = "db"
+module "create_database_namespace" {
+  source           = "./modules/create_app_namespace"
+  environment_name = var.environment_name
+  k8s_namespace    = "db"
 
-#   depends_on = [module.setup_ingress_controller]
-# }
+  k8s_host                   = module.setup_cluster.k8s_host
+  k8s_cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
 
-# module "create_database" {
-#   source        = "./modules/create_postgres_database"
-#   k8s_name      = "postgres1"
-#   k8s_namespace = module.create_database_namespace.k8s_namespace
-#   db_name       = "postgres1"
-# }
+  depends_on = [module.setup_ingress_controller]
+}
+
+module "create_database" {
+  source        = "./modules/create_postgres_database"
+  k8s_name      = "postgres1"
+  k8s_namespace = module.create_database_namespace.k8s_namespace
+  db_name       = "postgres1"
+}
 
 # module "setup_backup_app" {
 #   source                    = "./modules/setup_backup_app"
