@@ -55,6 +55,12 @@ resource "azuread_service_principal" "cloudflare_sso" {
   app_role_assignment_required = false
 }
 
+resource "azuread_service_principal_delegated_permission_grant" "allow_cloudflare_sso_to_access_msgraph_user_profile" {
+  service_principal_object_id          = azuread_service_principal.cloudflare_sso.object_id
+  resource_service_principal_object_id = azuread_service_principal.msgraph.object_id
+  claim_values                         = ["email", "offline_access", "openid", "User.Read"]
+}
+
 resource "azuread_application_password" "cloudflare_sso" {
   application_id = azuread_application.cloudflare_sso.id
   display_name   = "Cloudflare SSO - ${var.resource_group_name}"

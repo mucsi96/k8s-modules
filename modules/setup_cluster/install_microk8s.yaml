@@ -7,6 +7,7 @@
   vars:
     microk8s_channel: "1.30/stable"
     ansible_python_interpreter: /usr/bin/python3
+    local_python_interpreter: "{{ playbook_dir ~ '/../../.venv/bin/python' }}"
 
   pre_tasks:
     - name: Ensure target is Ubuntu 24.04 or newer
@@ -89,7 +90,7 @@
     - name: Save k8s-client-certificate to Azure Key Vault
       azure.azcollection.azure_rm_keyvaultsecret:
         secret_name: k8s-client-certificate
-        secret_value: "{{ kubeconfig_data.users[0].user['client-certificate-data'] }}"
+        secret_value: "{{ kubeconfig_data.users[0].user['client-certificate-data'] | ansible.builtin.b64decode }}"
         keyvault_uri: "https://{{ azure_key_vault_name }}.vault.azure.net"
         subscription_id: "{{ azure_subscription_id }}"
       delegate_to: localhost
@@ -100,7 +101,7 @@
     - name: Save k8s-client-key to Azure Key Vault
       azure.azcollection.azure_rm_keyvaultsecret:
         secret_name: k8s-client-key
-        secret_value: "{{ kubeconfig_data.users[0].user['client-key-data'] }}"
+        secret_value: "{{ kubeconfig_data.users[0].user['client-key-data'] | ansible.builtin.b64decode }}"
         keyvault_uri: "https://{{ azure_key_vault_name }}.vault.azure.net"
         subscription_id: "{{ azure_subscription_id }}"
       delegate_to: localhost
@@ -111,11 +112,10 @@
     - name: Save k8s-cluster-ca-certificate to Azure Key Vault
       azure.azcollection.azure_rm_keyvaultsecret:
         secret_name: k8s-cluster-ca-certificate
-        secret_value: "{{ kubeconfig_data.clusters[0].cluster['certificate-authority-data'] }}"
+        secret_value: "{{ kubeconfig_data.clusters[0].cluster['certificate-authority-data'] | ansible.builtin.b64decode }}"
         keyvault_uri: "https://{{ azure_key_vault_name }}.vault.azure.net"
         subscription_id: "{{ azure_subscription_id }}"
       delegate_to: localhost
       become: false
       vars:
         ansible_python_interpreter: "{{ local_python_interpreter }}"
-

@@ -2,28 +2,17 @@
 
 set -euo pipefail
 
-# Ensure Terraform runs within the project virtualenv for provider plugins.
 source .venv/bin/activate
 
 terraform destroy -target=module.setup_cluster.ansible_playbook.secure_private_server
 
-get_secret() {
-  local secret_name=$1
-
-  az keyvault secret show \
-    --vault-name p06 \
-    --name "$secret_name" \
-    --query value \
-    --output tsv
-}
-
-ssh_host=$(get_secret "host")
-ssh_user=$(get_secret "ssh-user-name")
-ssh_port=$(get_secret "ssh-port")
+ssh_host=$(az keyvault secret show --vault-name p06 --name "host" --query value --output tsv)
+ssh_user=$(az keyvault secret show --vault-name p06 --name "ssh-user-name" --query value --output tsv)
+ssh_port=$(az keyvault secret show --vault-name p06 --name "ssh-port" --query value --output tsv)
 ssh_key_path="modules/setup_cluster/.generated/${ssh_host}-id_ed25519"
-user_password=$(get_secret "user-password")
-initial_password=$(get_secret "ssh-initial-password")
-initial_port=$(get_secret "ssh-initial-port")
+user_password=$(az keyvault secret show --vault-name p06 --name "user-password" --query value --output tsv)
+initial_password=$(az keyvault secret show --vault-name p06 --name "ssh-initial-password" --query value --output tsv)
+initial_port=$(az keyvault secret show --vault-name p06 --name "ssh-initial-port" --query value --output tsv)
 
 ansible-playbook \
   -i "$ssh_host," \

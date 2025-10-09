@@ -126,50 +126,50 @@ module "setup_cluster" {
   azure_subscription_id     = var.azure_subscription_id
 }
 
-# data "azurerm_key_vault_secret" "dns_zone" {
-#   key_vault_id = data.azurerm_key_vault.kv.id
-#   name         = "dns-zone"
-# }
+data "azurerm_key_vault_secret" "dns_zone" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "dns-zone"
+}
 
-# data "azurerm_key_vault_secret" "letsencrypt_email" {
-#   key_vault_id = data.azurerm_key_vault.kv.id
-#   name         = "letsencrypt-email"
-# }
+data "azurerm_key_vault_secret" "letsencrypt_email" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "letsencrypt-email"
+}
 
-# data "azurerm_key_vault_secret" "cloudflare_zone_id" {
-#   key_vault_id = data.azurerm_key_vault.kv.id
-#   name         = "cloudflare-zone-id"
-# }
+data "azurerm_key_vault_secret" "cloudflare_zone_id" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "cloudflare-zone-id"
+}
 
-# data "azurerm_key_vault_secret" "cloudflare_account_id" {
-#   key_vault_id = data.azurerm_key_vault.kv.id
-#   name         = "cloudflare-account-id"
-# }
+data "azurerm_key_vault_secret" "cloudflare_account_id" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "cloudflare-account-id"
+}
 
-# data "azurerm_key_vault_secret" "cloudflare_api_token" {
-#   key_vault_id = data.azurerm_key_vault.kv.id
-#   name         = "cloudflare-api-token"
-# }
+data "azurerm_key_vault_secret" "cloudflare_api_token" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "cloudflare-api-token"
+}
 
-# data "azurerm_key_vault_secret" "cloudflare_team_domain" {
-#   key_vault_id = data.azurerm_key_vault.kv.id
-#   name         = "cloudflare-team-domain"
-# }
+data "azurerm_key_vault_secret" "cloudflare_team_domain" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "cloudflare-team-domain"
+}
 
-# module "setup_ingress_controller" {
-#   source                 = "./modules/setup_ingress_controller"
-#   resource_group_name    = var.resource_group_name
-#   subscription_id        = var.azure_subscription_id
-#   dns_zone               = data.azurerm_key_vault_secret.dns_zone.value
-#   traefik_chart_version  = "37.1.2" #https://github.com/traefik/traefik-helm-chart/releases
-#   traefik_version        = "v3.5.3" #https://github.com/traefik/traefik/releases
-#   letsencrypt_email      = data.azurerm_key_vault_secret.letsencrypt_email.value
-#   cloudflare_api_token   = data.azurerm_key_vault_secret.cloudflare_api_token.value
-#   cloudflare_account_id  = data.azurerm_key_vault_secret.cloudflare_account_id.value
-#   cloudflare_zone_id     = data.azurerm_key_vault_secret.cloudflare_zone_id.value
-#   cloudflare_team_domain = data.azurerm_key_vault_secret.cloudflare_team_domain.value
-#   depends_on             = [module.setup_cluster]
-# }
+module "setup_ingress_controller" {
+  source                 = "./modules/setup_ingress_controller"
+  resource_group_name    = var.resource_group_name
+  subscription_id        = var.azure_subscription_id
+  dns_zone               = data.azurerm_key_vault_secret.dns_zone.value
+  traefik_chart_version  = "37.1.2" #https://github.com/traefik/traefik-helm-chart/releases
+  traefik_version        = "v3.5.3" #https://github.com/traefik/traefik/releases
+  letsencrypt_email      = data.azurerm_key_vault_secret.letsencrypt_email.value
+  cloudflare_api_token   = data.azurerm_key_vault_secret.cloudflare_api_token.value
+  cloudflare_account_id  = data.azurerm_key_vault_secret.cloudflare_account_id.value
+  cloudflare_zone_id     = data.azurerm_key_vault_secret.cloudflare_zone_id.value
+  cloudflare_team_domain = data.azurerm_key_vault_secret.cloudflare_team_domain.value
+  depends_on             = [module.setup_cluster]
+}
 
 # module "create_database_namespace" {
 #   source                    = "./modules/create_app_namespace"

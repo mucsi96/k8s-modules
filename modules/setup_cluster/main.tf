@@ -63,24 +63,6 @@ resource "ansible_playbook" "secure_private_server" {
   depends_on = [terraform_data.known_hosts_entry]
 }
 
-resource "ansible_playbook" "firewall" {
-  name       = var.host
-  playbook   = "${path.module}/firewall.yaml"
-  replayable = false
-
-  extra_vars = {
-    ansible_port                 = tostring(random_integer.ssh_port.result)
-    ansible_user                 = var.username
-    ansible_become_password      = random_password.user_password.result
-    ansible_ssh_private_key_file = local_sensitive_file.user_private_key.filename
-
-    ssh_port            = tostring(random_integer.ssh_port.result)
-    kubernetes_api_port = "6443"
-  }
-
-  depends_on = [ansible_playbook.secure_private_server]
-}
-
 resource "ansible_playbook" "system_update" {
   name       = var.host
   playbook   = "${path.module}/system_update.yaml"
@@ -93,7 +75,7 @@ resource "ansible_playbook" "system_update" {
     ansible_ssh_private_key_file = local_sensitive_file.user_private_key.filename
   }
 
-  depends_on = [ansible_playbook.firewall]
+  depends_on = [ansible_playbook.secure_private_server]
 }
 
 resource "terraform_data" "wait_for_system" {
@@ -126,7 +108,6 @@ resource "ansible_playbook" "install_microk8s" {
   replayable = false
 
   extra_vars = {
-    local_python_interpreter     = "${abspath(path.root)}/.venv/bin/python"
     ansible_port                 = tostring(random_integer.ssh_port.result)
     ansible_user                 = var.username
     ansible_become_password      = random_password.user_password.result
