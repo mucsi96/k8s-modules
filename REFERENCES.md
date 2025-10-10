@@ -4,6 +4,8 @@
 - [Demystifying Service Principals – Managed Identities](https://devblogs.microsoft.com/devops/demystifying-service-principals-managed-identities)
 - [IPInfo](https://ipinfo.io/)
 - [ASN IP ranges](https://github.com/ipverse/asn-ip)
+- [Workload identity federation](https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation)
+- [Azure AD Workload Identity](https://azure.github.io/azure-workload-identity/docs/introduction.html)
 
 # DNS
 
@@ -25,3 +27,4 @@
 
 - [Deploy Cloudflare Tunnel with Terraform](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/deployment-guides/terraform/)
 - [SSO integration](https://developers.cloudflare.com/cloudflare-one/identity/idp-integration/)
+- [Configure Cloudflare with Microsoft Entra ID for secure hybrid access](https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/cloudflare-integration)

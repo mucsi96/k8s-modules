@@ -40,6 +40,9 @@
         cmd: "snap refresh microk8s --channel={{ microk8s_channel }}"
       when: microk8s_list.rc == 0
 
+    - name: Enable MicroK8s addons # https://microk8s.io/docs/addons
+      ansible.builtin.command: microk8s enable dns hostpath-storage
+
     - name: Ensure MicroK8s group exists
       ansible.builtin.group:
         name: microk8s
