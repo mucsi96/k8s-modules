@@ -20,7 +20,7 @@ ansible-playbook \
   --extra-vars "ansible_user=$ssh_user" \
   --extra-vars "ansible_port=$ssh_port" \
   --extra-vars "ansible_ssh_private_key_file=$ssh_key_path" \
-  --extra-vars "ansible_become_password=$user_password" \
+  --extra-vars "user_password=$user_password" \
   --extra-vars "initial_username=$ssh_user" \
   --extra-vars "initial_password=$initial_password" \
   --extra-vars "initial_port=$initial_port"

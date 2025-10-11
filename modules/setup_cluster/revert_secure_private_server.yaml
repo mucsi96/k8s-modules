@@ -5,6 +5,7 @@
 
   vars:
     ansible_python_interpreter: /usr/bin/python3
+    ansible_become_password: "{{ user_password }}"
         
   tasks:
     - name: Restore SSH port to initial value
@@ -42,3 +43,5 @@
         name: ssh
         state: restarted
         enabled: true
+      vars:
+        ansible_become_password: "{{ initial_password }}"
