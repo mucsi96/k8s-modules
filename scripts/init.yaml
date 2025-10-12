@@ -1,0 +1,125 @@
+---
+- name: Provision Azure resources for Terraform backend and write backend.tf
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  collections:
+    - azure.azcollection
+
+  vars:
+    ansible_python_interpreter: "{{ playbook_dir ~ '/../.venv/bin/python' }}"
+    location: "centralindia"
+    sas_expiry_utc: "{{ lookup('pipe', 'date -u -d \"365 days\" +%Y-%m-%dT%H:%MZ') }}"
+
+  pre_tasks:
+    - name: Get subscription ID
+      ansible.builtin.command: az account show --query id -o tsv
+      register: subscription_id_cmd
+      changed_when: false
+
+    - name: Get tenant ID
+      ansible.builtin.command: az account show --query tenantId -o tsv
+      register: tenant_id_cmd
+      changed_when: false
+
+    - name: Get current signed-in user object ID
+      ansible.builtin.command: az ad signed-in-user show --query id -o tsv
+      register: user_object_id_cmd
+      changed_when: false
+
+  tasks:
+    - name: Create/ensure resource group
+      azure.azcollection.azure_rm_resourcegroup:
+        name: "{{ resource_group_name }}"
+        location: "{{ location }}"
+
+    - name: Create/ensure Key Vault
+      azure.azcollection.azure_rm_keyvault:
+        resource_group: "{{ resource_group_name }}"
+        vault_name: "{{ resource_group_name }}"
+        location: "{{ location }}"
+        tenant_id: "{{ tenant_id_cmd.stdout }}"
+        sku:
+          name: standard
+          family: A
+        enable_rbac_authorization: false
+        access_policies:
+          - tenant_id: "{{ tenant_id_cmd.stdout }}"
+            object_id: "{{ user_object_id_cmd.stdout }}"
+            secrets :
+              - get
+              - list
+              - set
+              - delete
+              - recover
+              - backup
+              - restore
+              - purge
+
+    - name: Create storage account
+      azure.azcollection.azure_rm_storageaccount:
+        resource_group: "{{ resource_group_name }}"
+        name: "{{ resource_group_name }}ibari"
+        location: "{{ location }}"
+        account_type: Standard_LRS
+        kind: BlobStorage
+        allow_blob_public_access: false
+        access_tier: Hot
+
+    - name: Create blob container for Terraform state
+      azure.azcollection.azure_rm_storageblob:
+        resource_group: "{{ resource_group_name }}"
+        storage_account_name: "{{ resource_group_name }}ibari"
+        container: terraform-state
+
+    - name: Generate SAS token for the storage container (1 year)
+      ansible.builtin.command: >
+        az storage container generate-sas
+        --account-name {{ resource_group_name }}ibari
+        --name terraform-state
+        --permissions acdlrw
+        --expiry {{ sas_expiry_utc }}
+        --output tsv
+      register: sas_token_cmd
+      changed_when: false
+
+    - name: Build Terraform backend configuration text
+      ansible.builtin.set_fact:
+        backend_config_text: |
+          terraform {
+              backend "azurerm" {
+                  storage_account_name = "{{ resource_group_name }}ibari"
+                  container_name       = terraform-state
+                  key                  = terraform.tfstate
+                  sas_token            = "{{ sas_token_cmd.stdout }}"
+              }
+          }
+
+          variable "azure_subscription_id" {
+            type    = string
+            default = "{{ subscription_id_cmd.stdout }}"
+          }
+
+          variable "azure_tenant_id" {
+            type    = string
+            default = "{{ tenant_id_cmd.stdout }}"
+          }
+
+          variable "storage_account_name" {
+            type    = string
+            default = "{{ resource_group_name }}ibari"
+          }
+
+    - name: Save backend configuration as Key Vault secret
+      azure.azcollection.azure_rm_keyvaultsecret:
+        keyvault_uri: "https://{{ resource_group_name }}.vault.azure.net/"
+        secret_name: remote-backend-config
+        secret_value: "{{ backend_config_text }}"
+      register: secret_set
+
+    - name: Write backend.tf locally
+      ansible.builtin.copy:
+        dest: backend.tf
+        content: "{{ backend_config_text }}"
+        mode: "0644"
