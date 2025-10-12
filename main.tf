@@ -77,19 +77,6 @@ provider "cloudflare" {
   api_token = data.azurerm_key_vault_secret.cloudflare_api_token.value
 }
 
-variable "environment_name" {
-  description = "Name of the environment. Used for naming resources."
-  type        = string
-  default     = "p06"
-
-}
-
-variable "azure_location" {
-  description = "Azure location used for test infrastructure resources."
-  type        = string
-  default     = "centralindia"
-}
-
 data "azurerm_key_vault" "kv" {
   resource_group_name = var.environment_name
   name                = var.environment_name

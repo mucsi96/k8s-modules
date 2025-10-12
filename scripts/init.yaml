@@ -64,51 +64,72 @@
         location: "{{ location }}"
         account_type: Standard_LRS
         kind: BlobStorage
-        allow_blob_public_access: false
         access_tier: Hot
+        allow_shared_key_access: false
+        encryption:
+          services:
+            blob:
+              enabled: true
+      register: sa_info
 
     - name: Create blob container for Terraform state
       azure.azcollection.azure_rm_storageblob:
         resource_group: "{{ resource_group_name }}"
         storage_account_name: "{{ resource_group_name }}ibari"
-        container: terraform-state
+        container: tfstate
+        auth_mode: login
 
-    - name: Generate SAS token for the storage container (1 year)
-      ansible.builtin.command: >
-        az storage container generate-sas
-        --account-name {{ resource_group_name }}ibari
-        --name terraform-state
-        --permissions acdlrw
-        --expiry {{ sas_expiry_utc }}
-        --output tsv
-      register: sas_token_cmd
-      changed_when: false
+    - name: Get blob data owner role ID
+      azure.azcollection.azure_rm_roledefinition_info:
+        scope: "{{ sa_info.state.id }}"
+        role_name: "Storage Blob Data Owner"
+      register: blob_data_owner_role
+
+    - name: Allow owner access to storage account
+      azure.azcollection.azure_rm_roleassignment:
+        scope: "{{ sa_info.state.id }}"
+        role_definition_id: "{{ blob_data_owner_role.roledefinitions[0].id }}"
+        assignee_object_id: "{{ user_object_id_cmd.stdout }}"
+
+    - name: Show warning about propagation delay
+      ansible.builtin.debug:
+        msg: "Role assignment might take a few minutes to propagate. If subsequent tasks fail due to permission issues, please retry after some time."
 
     - name: Build Terraform backend configuration text
       ansible.builtin.set_fact:
         backend_config_text: |
           terraform {
               backend "azurerm" {
+                  resource_group_name  = "{{ resource_group_name }}"
                   storage_account_name = "{{ resource_group_name }}ibari"
-                  container_name       = terraform-state
-                  key                  = terraform.tfstate
-                  sas_token            = "{{ sas_token_cmd.stdout }}"
+                  container_name       = "tfstate"
+                  key                  = "terraform.tfstate"
+                  use_azuread_auth     = true
               }
           }
 
           variable "azure_subscription_id" {
+            description = "The subscription ID to deploy resources into."
             type    = string
             default = "{{ subscription_id_cmd.stdout }}"
           }
 
-          variable "azure_tenant_id" {
-            type    = string
-            default = "{{ tenant_id_cmd.stdout }}"
-          }
-
           variable "storage_account_name" {
+            description = "Name of the storage account to hold Terraform state."
             type    = string
             default = "{{ resource_group_name }}ibari"
+          }
+
+          variable "environment_name" {
+            description = "Name of the environment. Used for naming resources."
+            type        = string
+            default     = "{{ resource_group_name }}"
+          }
+
+          variable "azure_location" {
+            description = "Azure region to deploy resources into."
+            type        = string
+            default     = "{{ location }}"
           }
 
     - name: Save backend configuration as Key Vault secret
@@ -120,6 +141,6 @@
 
     - name: Write backend.tf locally
       ansible.builtin.copy:
-        dest: backend.tf
+        dest: "{{ playbook_dir ~ '/../backend.tf' }}"
         content: "{{ backend_config_text }}"
         mode: "0644"
