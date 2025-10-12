@@ -4,9 +4,6 @@
   connection: local
   gather_facts: false
 
-  collections:
-    - azure.azcollection
-
   vars:
     ansible_python_interpreter: "{{ playbook_dir ~ '/../.venv/bin/python' }}"
     location: "centralindia"
@@ -66,6 +63,8 @@
         kind: BlobStorage
         access_tier: Hot
         allow_shared_key_access: false
+        static_website:
+          enabled: true
         encryption:
           services:
             blob:
