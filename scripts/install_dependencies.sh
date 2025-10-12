@@ -67,6 +67,6 @@ source .venv/bin/activate
 
 python3 -m pip install -r requirements.txt
 
-ansible-galaxy collection install azure.azcollection==3.9.0 # https://github.com/ansible-collections/azure/releases
+ansible-galaxy collection install -r requirements.yml
 
 python3 -m pip install -r ~/.ansible/collections/ansible_collections/azure/azcollection/requirements.txt
