@@ -60,7 +60,7 @@
         name: "{{ resource_group_name }}ibari"
         location: "{{ location }}"
         account_type: Standard_LRS
-        kind: BlobStorage
+        kind: StorageV2
         access_tier: Hot
         allow_shared_key_access: false
         static_website:
