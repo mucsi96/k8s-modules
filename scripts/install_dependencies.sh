@@ -40,6 +40,19 @@ if [ "$(uname -s)" = "Linux" ] && [ -f /etc/os-release ]; then
             echo "NodeJS is already installed."
         fi
 
+        # Check and install azwi
+        if ! command -v azwi &> /dev/null; then
+            echo "Installing azwi..."
+            tmp_dir=$(mktemp -d)
+            azwi_version=$(curl -s https://api.github.com/repos/Azure/azure-workload-identity/releases/latest | grep -m1 '"tag_name":' | cut -d'"' -f4 || true)
+            curl -sL "https://github.com/Azure/azure-workload-identity/releases/download/${azwi_version}/azwi-${azwi_version}-linux-amd64.tar.gz" -o "$tmp_dir/azwi.tar.gz"
+            sudo tar -xzf "$tmp_dir/azwi.tar.gz" -C /usr/local/bin azwi
+            sudo chmod 755 /usr/local/bin/azwi
+            rm -rf "$tmp_dir"
+        else
+            echo "azwi is already installed."
+        fi
+
     fi
 fi
 

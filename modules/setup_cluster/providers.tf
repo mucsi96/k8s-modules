@@ -15,5 +15,9 @@ terraform {
     local = {
       source = "hashicorp/local"
     }
+
+    azurerm = {
+      source = "hashicorp/azurerm"
+    }
   }
 }

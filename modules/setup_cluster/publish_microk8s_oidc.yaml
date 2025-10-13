@@ -1,0 +1,115 @@
+- name: Publish MicroK8s OIDC documents
+  hosts: all
+  gather_facts: true
+
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    local_python_interpreter: "{{ playbook_dir ~ '/../../.venv/bin/python' }}"
+
+  tasks:
+    - name: Create a temporary file for public key
+      ansible.builtin.tempfile:
+        suffix: ".pub"
+        state: file
+      register: publickey_tmp
+      delegate_to: localhost
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
+
+    - name: Create service account public key file
+      community.crypto.openssl_publickey:
+        privatekey_path: "/var/snap/microk8s/current/certs/serviceaccount.key"
+        path: "/var/snap/microk8s/current/certs/serviceaccount.pub"
+        return_content: true
+      register: publickey_result
+
+    - name: Write public key to temporary file
+      ansible.builtin.copy:
+        dest: "{{ publickey_tmp.path }}"
+        content: "{{ publickey_result.publickey }}"
+        mode: "0644"
+      delegate_to: localhost
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
+
+    - name: Create a temporary file for the JWKS
+      ansible.builtin.tempfile:
+        suffix: ".json"
+        state: file
+      register: jwks_tmp
+      delegate_to: localhost
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
+    
+    - name: Generate JWKS document with azwi
+      ansible.builtin.command:
+        argv:
+          - azwi
+          - jwks
+          - --public-keys
+          - "{{ publickey_tmp.path }}"
+          - --output-file
+          - "{{ jwks_tmp.path }}"
+      delegate_to: localhost
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
+
+    - name: Build OIDC discovery document as a dict
+      ansible.builtin.set_fact:
+        directory_document:
+          issuer: "{{ issuer }}"
+          jwks_uri: "{{ issuer }}openid/v1/jwks"
+          response_types_supported: ["id_token"]
+          subject_types_supported: ["public"]
+          id_token_signing_alg_values_supported: ["RS256"]
+      delegate_to: localhost
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
+          
+
+    - name: Create a temporary file for the discovery document on the target
+      ansible.builtin.tempfile:
+        suffix: ".json"
+        state: file
+      register: discovery_tmp
+      delegate_to: localhost
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
+
+    - name: Write discovery document to the temp file (pretty JSON)
+      ansible.builtin.copy:
+        dest: "{{ discovery_tmp.path }}"
+        content: "{{ directory_document | to_nice_json }}"
+        mode: "0644"
+      delegate_to: localhost
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
+
+    - name: Upload discovery document to storage account website
+      azure.azcollection.azure_rm_storageblob:
+        resource_group: "{{ resource_group }}"
+        storage_account_name: "{{ storage_account_name }}"
+        container: "$web"
+        blob: ".well-known/openid-configuration"
+        src: "{{ discovery_tmp.path }}"
+        content_type: application/json
+        force: true
+        auth_mode: login
+      delegate_to: localhost
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
+
+    - name: Upload JWKS document to storage account website
+      azure.azcollection.azure_rm_storageblob:
+        resource_group: "{{ resource_group }}"
+        storage_account_name: "{{ storage_account_name }}"
+        container: "$web"
+        blob: "openid/v1/jwks"
+        src: "{{ jwks_tmp.path }}"
+        content_type: application/json
+        force: true
+        auth_mode: login
+      delegate_to: localhost
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
+

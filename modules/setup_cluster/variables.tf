@@ -35,3 +35,8 @@ variable "environment_name" {
   description = "Name of the Azure Resource Group containing the Key Vault."
   type        = string
 }
+
+variable "storage_account_name" {
+  description = "Name of the Azure Storage Account to store OIDC configuration."
+  type        = string
+}

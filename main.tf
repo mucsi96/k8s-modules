@@ -111,6 +111,7 @@ module "setup_cluster" {
   azure_key_vault_name  = data.azurerm_key_vault.kv.name
   environment_name      = var.environment_name
   azure_subscription_id = var.azure_subscription_id
+  storage_account_name  = var.storage_account_name
 }
 
 # data "azurerm_key_vault_secret" "dns_zone" {

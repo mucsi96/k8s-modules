@@ -118,3 +118,27 @@ resource "ansible_playbook" "install_microk8s" {
 
   depends_on = [terraform_data.wait_for_system]
 }
+
+data "azurerm_storage_account" "oidc" {
+  name                = var.storage_account_name
+  resource_group_name = var.environment_name
+}
+
+resource "ansible_playbook" "publish_microk8s_oidc" {
+  name       = var.host
+  playbook   = "${path.module}/publish_microk8s_oidc.yaml"
+  replayable = false
+
+  extra_vars = {
+    ansible_port                 = tostring(random_integer.ssh_port.result)
+    ansible_user                 = var.username
+    ansible_become_password      = random_password.user_password.result
+    ansible_ssh_private_key_file = local_sensitive_file.user_private_key.filename
+    resource_group               = var.environment_name
+    storage_account_name         = var.storage_account_name
+    issuer                       = data.azurerm_storage_account.oidc.primary_web_endpoint
+    azwi_version                 = "v1.5.1"
+  }
+
+  depends_on = [ansible_playbook.install_microk8s]
+}

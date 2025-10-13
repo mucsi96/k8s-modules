@@ -83,3 +83,9 @@ output "k8s_cluster_ca_certificate" {
   value       = data.azurerm_key_vault_secret.k8s_cluster_ca_certificate.value
   sensitive   = true
 }
+
+output "oidc_issuer_url" {
+  description = "Public issuer URL exposing the MicroK8s OIDC discovery document."
+  value       = data.azurerm_storage_account.oidc.primary_web_endpoint
+  depends_on  = [ansible_playbook.publish_microk8s_oidc]
+}
