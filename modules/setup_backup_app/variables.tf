@@ -1,5 +1,5 @@
-variable "azure_resource_group_name" {
-  description = "The name of the Azure Resource Group"
+variable "environment_name" {
+  description = "The name of the environment"
   type        = string
 }
 
@@ -31,4 +31,16 @@ variable "azure_storage_account_name" {
 variable "hostname" {
   description = "The hostname of the ingress controller"
   type        = string
+}
+
+variable "k8s_host" {
+  description = "The Kubernetes API server endpoint"
+  type        = string
+  sensitive   = true
+}
+
+variable "k8s_cluster_ca_certificate" {
+  description = "The cluster CA certificate for the Kubernetes cluster"
+  type        = string
+  sensitive   = true
 }

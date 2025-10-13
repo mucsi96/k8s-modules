@@ -1,7 +1,9 @@
 module "create_backup_namespace" {
-  source                    = "../create_app_namespace"
-  azure_resource_group_name = var.azure_resource_group_name
-  k8s_namespace             = "backup"
+  source                     = "../create_app_namespace"
+  environment_name           = var.environment_name
+  k8s_namespace              = "backup"
+  k8s_host                   = var.k8s_host
+  k8s_cluster_ca_certificate = var.k8s_cluster_ca_certificate
 }
 
 module "setup_backup_api" {
