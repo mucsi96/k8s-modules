@@ -1,0 +1,25 @@
+- name: Configure MicroK8s OIDC issuer
+  hosts: all
+  gather_facts: false
+  become: true
+
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
+  tasks:
+    - name: Set kube-apiserver service account issuer
+      ansible.builtin.lineinfile:
+        path: /var/snap/microk8s/current/args/kube-apiserver
+        regexp: '^--service-account-issuer='
+        line: "--service-account-issuer={{ issuer }}"
+        state: present
+      register: service_account_issuer
+
+    - name: Restart MicroK8s
+      ansible.builtin.command: snap restart microk8s
+      when: service_account_issuer.changed
+
+    - name: Wait for MicroK8s API to become ready
+      ansible.builtin.command: microk8s status --wait-ready --timeout 600
+      changed_when: false
+      when: service_account_issuer.changed

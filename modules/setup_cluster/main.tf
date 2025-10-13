@@ -143,6 +143,22 @@ resource "ansible_playbook" "publish_microk8s_oidc" {
   depends_on = [ansible_playbook.install_microk8s]
 }
 
+resource "ansible_playbook" "configure_microk8s_oidc" {
+  name       = var.host
+  playbook   = "${path.module}/configure_microk8s_oidc.yaml"
+  replayable = false
+
+  extra_vars = {
+    ansible_port                 = tostring(random_integer.ssh_port.result)
+    ansible_user                 = var.username
+    ansible_become_password      = random_password.user_password.result
+    ansible_ssh_private_key_file = local_sensitive_file.user_private_key.filename
+    issuer                       = data.azurerm_storage_account.oidc.primary_web_endpoint
+  }
+
+  depends_on = [ansible_playbook.publish_microk8s_oidc]
+}
+
 resource "helm_release" "workload_identity_webhook" {
   name             = "workload-identity-webhook"
   repository       = "https://azure.github.io/azure-workload-identity/charts"
@@ -154,5 +170,5 @@ resource "helm_release" "workload_identity_webhook" {
     azureTenantID = var.azure_tenant_id
   })]
 
-  depends_on = [ansible_playbook.publish_microk8s_oidc]
+  depends_on = [ansible_playbook.configure_microk8s_oidc]
 }
