@@ -6,7 +6,7 @@ clusters:
   - name: cluster
     cluster:
       server: ${var.k8s_host}
-      certificate-authority-data: ${var.k8s_cluster_ca_certificate}
+      certificate-authority-data: ${base64encode(var.k8s_cluster_ca_certificate)}
 users:
   - name: user
     user:
