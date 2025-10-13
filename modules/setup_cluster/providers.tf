@@ -19,5 +19,9 @@ terraform {
     azurerm = {
       source = "hashicorp/azurerm"
     }
+
+    helm = {
+      source = "hashicorp/helm"
+    }
   }
 }

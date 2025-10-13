@@ -142,3 +142,17 @@ resource "ansible_playbook" "publish_microk8s_oidc" {
 
   depends_on = [ansible_playbook.install_microk8s]
 }
+
+resource "helm_release" "workload_identity_webhook" {
+  name             = "workload-identity-webhook"
+  repository       = "https://azure.github.io/azure-workload-identity/charts"
+  chart            = "workload-identity-webhook"
+  namespace        = "azure-workload-identity-system"
+  create_namespace = true
+
+  values = [yamlencode({
+    azureTenantID = var.azure_tenant_id
+  })]
+
+  depends_on = [ansible_playbook.publish_microk8s_oidc]
+}

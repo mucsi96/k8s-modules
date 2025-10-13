@@ -40,3 +40,8 @@ variable "storage_account_name" {
   description = "Name of the Azure Storage Account to store OIDC configuration."
   type        = string
 }
+
+variable "azure_tenant_id" {
+  description = "Azure tenant ID used by the workload identity webhook."
+  type        = string
+}

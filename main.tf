@@ -112,6 +112,7 @@ module "setup_cluster" {
   environment_name      = var.environment_name
   azure_subscription_id = var.azure_subscription_id
   storage_account_name  = var.storage_account_name
+  azure_tenant_id       = data.azurerm_client_config.current.tenant_id
 }
 
 data "azurerm_key_vault_secret" "dns_zone" {
