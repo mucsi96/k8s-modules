@@ -200,38 +200,41 @@ module "setup_backup_app" {
   depends_on = [module.setup_ingress_controller]
 }
 
-# module "create_learn_language_namespace" {
-#   source                    = "./modules/create_app_namespace"
-#   azure_resource_group_name = module.setup_cluster.resource_group_name
-#   k8s_namespace             = "learn-language"
+module "create_learn_language_namespace" {
+  source           = "./modules/create_app_namespace"
+  environment_name = var.environment_name
+  k8s_namespace    = "learn-language"
 
-#   depends_on = [module.setup_ingress_controller]
-# }
+  k8s_host                   = module.setup_cluster.k8s_host
+  k8s_cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
 
-# module "setup_learn_language_api" {
-#   source = "./modules/register_api"
-#   owner  = data.azurerm_client_config.current.object_id
+  depends_on = [module.setup_ingress_controller]
+}
 
-#   display_name = "Learn Language API"
-#   roles        = ["DeckReader", "DeckCreator"]
-#   scopes       = ["readDecks", "createDeck"]
+module "setup_learn_language_api" {
+  source = "./modules/register_api"
+  owner  = data.azurerm_client_config.current.object_id
 
-#   k8s_oidc_issuer_url           = module.setup_cluster.oidc_issuer_url
-#   k8s_service_account_namespace = "learn-language"
-#   k8s_service_account_name      = "learn-language-api-workload-identity"
-# }
+  display_name = "Learn Language API"
+  roles        = ["DeckReader", "DeckCreator"]
+  scopes       = ["readDecks", "createDeck"]
 
-# module "setup_learn_language_spa" {
-#   source = "./modules/register_spa"
-#   owner  = data.azurerm_client_config.current.object_id
+  k8s_oidc_issuer_url           = module.setup_cluster.oidc_issuer_url
+  k8s_service_account_namespace = "learn-language"
+  k8s_service_account_name      = "learn-language-api-workload-identity"
+}
 
-#   display_name  = "Learn Language SPA"
-#   redirect_uris = ["https://language.${module.setup_ingress_controller.hostname}/auth", "http://localhost:4200/auth"]
+module "setup_learn_language_spa" {
+  source = "./modules/register_spa"
+  owner  = data.azurerm_client_config.current.object_id
 
-#   api_id        = module.setup_learn_language_api.application_id
-#   api_client_id = module.setup_learn_language_api.client_id
-#   api_scope_ids = [
-#     module.setup_learn_language_api.scope_ids["readDecks"],
-#     module.setup_learn_language_api.scope_ids["createDeck"]
-#   ]
-# }
+  display_name  = "Learn Language SPA"
+  redirect_uris = ["https://language.${data.azurerm_key_vault_secret.dns_zone.value}/auth", "http://localhost:4200/auth"]
+
+  api_id        = module.setup_learn_language_api.application_id
+  api_client_id = module.setup_learn_language_api.client_id
+  api_scope_ids = [
+    module.setup_learn_language_api.scope_ids["readDecks"],
+    module.setup_learn_language_api.scope_ids["createDeck"]
+  ]
+}
