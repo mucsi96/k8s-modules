@@ -2,6 +2,10 @@ output "client_id" {
   value = azuread_application.api.client_id
 }
 
+output "client_secret" {
+  value = azuread_application_password.api_password.value
+}
+
 output "roles_ids" {
   value = { for role in var.roles : role => random_uuid.role_id[role].result }
 }

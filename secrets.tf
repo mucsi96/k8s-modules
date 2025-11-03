@@ -68,6 +68,12 @@ resource "azurerm_key_vault_secret" "backup_api_client_id" {
   value        = module.setup_backup_app.backup_api_client_id
 }
 
+resource "azurerm_key_vault_secret" "backup_api_client_secret" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "backup-api-client-secret"
+  value        = module.setup_backup_app.backup_api_client_secret
+}
+
 resource "azurerm_key_vault_secret" "backup_spa_client_id" {
   key_vault_id = data.azurerm_key_vault.kv.id
   name         = "backup-spa-client-id"
@@ -91,10 +97,6 @@ resource "azurerm_key_vault_secret" "learn_language_namespace_k8s_user_config" {
   value        = module.create_learn_language_namespace.k8s_user_config
 }
 
-resource "azuread_application_password" "learn_language_api_password" {
-  application_id = module.setup_learn_language_api.application_id
-}
-
 resource "azurerm_key_vault_secret" "learn_language_api_client_id" {
   key_vault_id = data.azurerm_key_vault.kv.id
   name         = "learn-language-api-client-id"
@@ -104,7 +106,7 @@ resource "azurerm_key_vault_secret" "learn_language_api_client_id" {
 resource "azurerm_key_vault_secret" "learn_language_api_client_secret" {
   key_vault_id = data.azurerm_key_vault.kv.id
   name         = "learn-language-api-client-secret"
-  value        = azuread_application_password.learn_language_api_password.value
+  value        = module.setup_learn_language_api.client_secret
 }
 
 resource "azurerm_key_vault_secret" "learn_language_spa_client_id" {

@@ -6,6 +6,10 @@ output "backup_api_client_id" {
   value = module.setup_backup_api.client_id
 }
 
+output "backup_api_client_secret" {
+  value = module.setup_backup_api.client_secret
+}
+
 output "backup_spa_client_id" {
   value = module.setup_backup_spa.client_id
 }

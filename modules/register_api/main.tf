@@ -58,3 +58,7 @@ resource "azuread_application_federated_identity_credential" "federated_identity
   issuer         = var.k8s_oidc_issuer_url
   subject        = "system:serviceaccount:${var.k8s_service_account_namespace}:${var.k8s_service_account_name}"
 }
+
+resource "azuread_application_password" "api_password" {
+  application_id = azuread_application.api.id
+}
