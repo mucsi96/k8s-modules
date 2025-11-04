@@ -28,6 +28,12 @@ resource "azurerm_role_assignment" "allow_backup_api_to_write_storage_container"
   principal_id         = module.setup_backup_app.backup_api_resource_object_id
 }
 
+resource "azurerm_role_assignment" "allow_backup_api_to_read_and_write_learn_language_storage_container" {
+  scope                = data.azurerm_storage_container.learn_language_storage_container.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = module.setup_backup_app.backup_api_resource_object_id
+}
+
 resource "azuread_app_role_assignment" "allow_admin_user_read_backups" {
   app_role_id         = module.setup_backup_app.backup_api_roles_ids["DatabaseBackupsReader"]
   principal_object_id = data.azurerm_client_config.current.object_id
