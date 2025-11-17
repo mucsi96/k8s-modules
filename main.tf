@@ -238,3 +238,21 @@ module "setup_learn_language_spa" {
     module.setup_learn_language_api.scope_ids["createDeck"]
   ]
 }
+
+resource "kubernetes_persistent_volume_claim" "learn_language_pvc" {
+  metadata {
+    name      = "learn-language-pvc"
+    namespace = module.create_learn_language_namespace.k8s_namespace
+  }
+
+  wait_until_bound = false
+
+  spec {
+    access_modes = ["ReadWriteMany"]
+    resources {
+      requests = {
+        storage = "1Gi"
+      }
+    }
+  }
+}
