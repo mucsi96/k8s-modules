@@ -52,6 +52,26 @@ if [ -z "$ssh_port" ]; then
   exit 1
 fi
 
+
+# echo "Copying files to the server..."
+# scp \
+#   -i "$ssh_key_path" \
+#   -P "$ssh_port" \
+#   ~/test/A1_SD1_Wortliste_02.pdf \
+#   "$ssh_user@$ssh_host:/var/snap/microk8s/common/default-storage/learn-language-learn-language-learn-language-pvc-xx/sources/"
+
+# scp \
+#   -i "$ssh_key_path" \
+#   -P "$ssh_port" \
+#   ~/test/Goethe-Zertifikat_A2_Wortliste.pdf \
+#   "$ssh_user@$ssh_host:/var/snap/microk8s/common/default-storage/learn-language-learn-language-learn-language-pvc-xx/sources/"
+
+# scp \
+#   -i "$ssh_key_path" \
+#   -P "$ssh_port" \
+#   ~/test/Goethe-Zertifikat_B1_Wortliste.pdf \
+#   "$ssh_user@$ssh_host:/var/snap/microk8s/common/default-storage/learn-language-learn-language-learn-language-pvc-xx/sources/"
+
 ssh \
   -i "$ssh_key_path" \
   -p "$ssh_port" \
