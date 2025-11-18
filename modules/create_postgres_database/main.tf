@@ -24,19 +24,21 @@ resource "random_password" "exporter_password" {
   override_special = "-_=+:[]{}" // verified: []
 }
 
-resource "kubernetes_persistent_volume_claim" "database" {
+resource "kubernetes_persistent_volume" "database_pv" {
   metadata {
-    name      = var.k8s_name
-    namespace = var.k8s_namespace
+    name = "database"
   }
 
-  wait_until_bound = false
-
   spec {
-    access_modes = ["ReadWriteOnce"]
-    resources {
-      requests = {
-        storage = "1Gi"
+    storage_class_name = ""
+    access_modes       = ["ReadWriteOnce"]
+    capacity = {
+      storage = "5Gi"
+    }
+    persistent_volume_reclaim_policy = "Retain"
+    persistent_volume_source {
+      host_path {
+        path = "/data/database"
       }
     }
   }
@@ -46,16 +48,20 @@ resource "helm_release" "database" {
   name       = var.k8s_name
   repository = "https://mucsi96.github.io/k8s-helm-charts"
   chart      = "postgres-db"
-  version    = "8.0.0"
+  version    = "10.0.0"
   namespace  = var.k8s_namespace
   wait       = true
   # https://github.com/mucsi96/k8s-helm-charts/tree/main/charts/postgres_db
   values = [yamlencode({
-    name                              = var.db_name
-    existingPersistentVolumeClaimName = kubernetes_persistent_volume_claim.database.metadata[0].name
-    username                          = random_string.db_username.result
-    password                          = random_password.db_password.result
-    exporterUsername                  = random_string.exporter_username.result
-    exporterPassword                  = random_password.exporter_password.result
+    name = var.db_name
+    persistentVolumeClaim = {
+      storageClassName = ""
+      volumeName       = kubernetes_persistent_volume.database_pv.metadata[0].name
+      accessMode       = "ReadWriteOnce"
+    }
+    username         = random_string.db_username.result
+    password         = random_password.db_password.result
+    exporterUsername = random_string.exporter_username.result
+    exporterPassword = random_password.exporter_password.result
   })]
 }

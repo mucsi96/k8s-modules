@@ -239,19 +239,41 @@ module "setup_learn_language_spa" {
   ]
 }
 
-resource "kubernetes_persistent_volume_claim" "learn_language_pvc" {
+resource "kubernetes_persistent_volume" "learn_language_app_pv" {
   metadata {
-    name      = "learn-language-pvc"
-    namespace = module.create_learn_language_namespace.k8s_namespace
+    name = "learn-language-app"
   }
 
-  wait_until_bound = false
+  spec {
+    storage_class_name = ""
+    access_modes       = ["ReadWriteOnce"]
+    capacity = {
+      storage = "5Gi"
+    }
+    persistent_volume_reclaim_policy = "Retain"
+    persistent_volume_source {
+      host_path {
+        path = "/data/learn-language"
+      }
+    }
+  }
+}
+
+resource "kubernetes_persistent_volume" "learn_language_backup_pv" {
+  metadata {
+    name = "learn-language-backup"
+  }
 
   spec {
-    access_modes = ["ReadWriteMany"]
-    resources {
-      requests = {
-        storage = "1Gi"
+    storage_class_name = ""
+    access_modes       = ["ReadWriteOnce"]
+    capacity = {
+      storage = "5Gi"
+    }
+    persistent_volume_reclaim_policy = "Retain"
+    persistent_volume_source {
+      host_path {
+        path = "/data/learn-language"
       }
     }
   }
