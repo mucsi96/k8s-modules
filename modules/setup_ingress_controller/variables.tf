@@ -50,3 +50,9 @@ variable "cloudflare_team_domain" {
   description = "Cloudflare Team Domain (e.g., example.cloudflareaccess.com)"
   type        = string
 }
+
+variable "enable_geo_based_rate_limiting" {
+  description = "Enable geographic-based rate limiting for high-risk regions"
+  type        = bool
+  default     = false
+}
