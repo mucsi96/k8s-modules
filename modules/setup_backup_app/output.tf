@@ -22,10 +22,3 @@ output "backup_api_roles_ids" {
   value = module.setup_backup_api.roles_ids
 }
 
-output "backup_cron_job_client_id" {
-  value = module.setup_backup_cron_job.client_id
-}
-
-output "backup_cron_job_resource_object_id" {
-  value = module.setup_backup_cron_job.resource_object_id
-}

@@ -80,13 +80,6 @@ resource "azurerm_key_vault_secret" "backup_spa_client_id" {
   value        = module.setup_backup_app.backup_spa_client_id
 }
 
-resource "azurerm_key_vault_secret" "backup_cron_job_client_id" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "backup-cron-job-client-id"
-  value        = module.setup_backup_app.backup_cron_job_client_id
-}
-
-
 /**
  * Learn Language
  */
