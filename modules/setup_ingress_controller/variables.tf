@@ -50,3 +50,9 @@ variable "cloudflare_team_domain" {
   description = "Cloudflare Team Domain (e.g., example.cloudflareaccess.com)"
   type        = string
 }
+
+variable "authorized_as" {
+  description = "Authorized AS number for firewall rules"
+  type        = string
+  sensitive   = true
+}

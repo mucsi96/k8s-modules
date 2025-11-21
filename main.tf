@@ -145,6 +145,11 @@ data "azurerm_key_vault_secret" "cloudflare_team_domain" {
   name         = "cloudflare-team-domain"
 }
 
+data "azurerm_key_vault_secret" "authorized_as" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "authorized-as"
+}
+
 module "setup_ingress_controller" {
   source                 = "./modules/setup_ingress_controller"
   environment_name       = var.environment_name
@@ -157,6 +162,7 @@ module "setup_ingress_controller" {
   cloudflare_account_id  = data.azurerm_key_vault_secret.cloudflare_account_id.value
   cloudflare_zone_id     = data.azurerm_key_vault_secret.cloudflare_zone_id.value
   cloudflare_team_domain = data.azurerm_key_vault_secret.cloudflare_team_domain.value
+  authorized_as          = data.azurerm_key_vault_secret.authorized_as.value
   depends_on             = [module.setup_cluster]
 }
 

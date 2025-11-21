@@ -44,8 +44,15 @@ Before using this module, you need to perform these manual steps in the Cloudfla
    - Click "Create Token"
    - Use the "Custom token" template
    - Configure the token with the following permissions:
-     - Zone:Zone:Read
-     - Zone:DNS:Edit
+
+   | Resource Type | Permission | Access Level |
+   |---------------|------------|--------------|
+   | Account | Cloudflare Tunnel | Edit |
+   | Account | Access: Organizations, Identity Providers, and Groups | Edit |
+   | Account | Access: Apps and Policies | Edit |
+   | Zone | DNS | Edit |
+   | Account | Account Rulesets | Edit |
+
    - Set "Zone Resources" to "Include" → "Specific zone" → select your domain
    - Click "Continue to summary" and then "Create Token"
    - Copy the token value immediately as it won't be shown again
