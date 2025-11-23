@@ -162,3 +162,21 @@ resource "azurerm_key_vault_secret" "learn_language_hostname" {
   name         = "hostname"
   value        = "language.${data.azurerm_key_vault_secret.dns_zone.value}"
 }
+
+resource "azurerm_key_vault_secret" "learn_language_db_url" {
+  key_vault_id = data.azurerm_key_vault.learn_language_kv.id
+  name         = "db-url"
+  value        = module.create_database.jdbc_url
+}
+
+resource "azurerm_key_vault_secret" "learn_language_db_username" {
+  key_vault_id = data.azurerm_key_vault.learn_language_kv.id
+  name         = "db-username"
+  value        = module.create_database.username
+}
+
+resource "azurerm_key_vault_secret" "learn_language_db_password" {
+  key_vault_id = data.azurerm_key_vault.learn_language_kv.id
+  name         = "db-password"
+  value        = module.create_database.password
+}
