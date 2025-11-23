@@ -113,6 +113,12 @@ resource "azurerm_key_vault_secret" "backup_dbs_config" {
   ])
 }
 
+resource "azurerm_key_vault_secret" "backup_hostname" {
+  key_vault_id = data.azurerm_key_vault.backup_kv.id
+  name         = "hostname"
+  value        = "backup.${data.azurerm_key_vault_secret.dns_zone.value}"
+}
+
 /**
  * Learn Language
  */
@@ -149,4 +155,10 @@ resource "azurerm_key_vault_secret" "learn_language_spa_client_id" {
   key_vault_id = data.azurerm_key_vault.learn_language_kv.id
   name         = "spa-client-id"
   value        = module.setup_learn_language_spa.client_id
+}
+
+resource "azurerm_key_vault_secret" "learn_language_hostname" {
+  key_vault_id = data.azurerm_key_vault.learn_language_kv.id
+  name         = "hostname"
+  value        = "language.${data.azurerm_key_vault_secret.dns_zone.value}"
 }
