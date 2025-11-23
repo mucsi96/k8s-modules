@@ -17,6 +17,12 @@ resource "azurerm_role_assignment" "allow_backup_api_to_write_storage_container"
   principal_id         = module.setup_backup_app.backup_api_resource_object_id
 }
 
+resource "azurerm_role_assignment" "allow_backup_api_to_read_backup_kv" {
+  scope                = data.azurerm_key_vault.backup_kv.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = module.setup_backup_app.backup_api_resource_object_id
+}
+
 resource "azuread_app_role_assignment" "allow_admin_user_read_backups" {
   app_role_id         = module.setup_backup_app.backup_api_roles_ids["DatabaseBackupsReader"]
   principal_object_id = data.azurerm_client_config.current.object_id
@@ -61,4 +67,10 @@ resource "azuread_app_role_assignment" "allow_admin_user_to_create_learn_languag
   app_role_id         = module.setup_learn_language_api.roles_ids["DeckCreator"]
   principal_object_id = data.azurerm_client_config.current.object_id
   resource_object_id  = module.setup_learn_language_api.resource_object_id
+}
+
+resource "azurerm_role_assignment" "allow_learn_language_api_to_read_learn_language_kv" {
+  scope                = data.azurerm_key_vault.learn_language_kv.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = module.setup_learn_language_api.resource_object_id
 }

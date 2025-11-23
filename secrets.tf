@@ -56,54 +56,97 @@ resource "azurerm_key_vault_secret" "db_password" {
 /**
  * Backup App
  */
+data "azurerm_key_vault" "backup_kv" {
+  resource_group_name = var.environment_name
+  name                = "${var.environment_name}-backup"
+}
+
 resource "azurerm_key_vault_secret" "backup_namespace_k8s_user_config" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "backup-namespace-k8s-user-config"
+  key_vault_id = data.azurerm_key_vault.backup_kv.id
+  name         = "k8s-config"
   value        = module.setup_backup_app.k8s_user_config
 }
 
+resource "azurerm_key_vault_secret" "backup_api_tenant_id" {
+  key_vault_id = data.azurerm_key_vault.backup_kv.id
+  name         = "tenant-id"
+  value        = data.azurerm_client_config.current.tenant_id
+}
+
 resource "azurerm_key_vault_secret" "backup_api_client_id" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "backup-api-client-id"
+  key_vault_id = data.azurerm_key_vault.backup_kv.id
+  name         = "api-client-id"
   value        = module.setup_backup_app.backup_api_client_id
 }
 
 resource "azurerm_key_vault_secret" "backup_api_client_secret" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "backup-api-client-secret"
+  key_vault_id = data.azurerm_key_vault.backup_kv.id
+  name         = "api-client-secret"
   value        = module.setup_backup_app.backup_api_client_secret
 }
 
 resource "azurerm_key_vault_secret" "backup_spa_client_id" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "backup-spa-client-id"
+  key_vault_id = data.azurerm_key_vault.backup_kv.id
+  name         = "spa-client-id"
   value        = module.setup_backup_app.backup_spa_client_id
+}
+
+resource "azurerm_key_vault_secret" "backup_dbs_config" {
+  key_vault_id = data.azurerm_key_vault.backup_kv.id
+  name         = "dbs-config"
+  value = jsonencode([
+    {
+      name            = "Learn language"
+      host            = "postgres1.db"
+      port            = 5432
+      database        = "postgres1"
+      schema          = "learn_language"
+      username        = module.create_database.username
+      password        = module.create_database.password
+      createPlainDump = true
+      folderBackups = [
+        {
+          path = "/app/storage/learn-language"
+        }
+      ]
+    }
+  ])
 }
 
 /**
  * Learn Language
  */
+data "azurerm_key_vault" "learn_language_kv" {
+  resource_group_name = var.environment_name
+  name                = "${var.environment_name}-learn-language"
+}
 
 resource "azurerm_key_vault_secret" "learn_language_namespace_k8s_user_config" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "learn-language-namespace-k8s-user-config"
+  key_vault_id = data.azurerm_key_vault.learn_language_kv.id
+  name         = "k8s-config"
   value        = module.create_learn_language_namespace.k8s_user_config
 }
 
+resource "azurerm_key_vault_secret" "learn_language_tenant_id" {
+  key_vault_id = data.azurerm_key_vault.learn_language_kv.id
+  name         = "tenant-id"
+  value        = data.azurerm_client_config.current.tenant_id
+}
+
 resource "azurerm_key_vault_secret" "learn_language_api_client_id" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "learn-language-api-client-id"
+  key_vault_id = data.azurerm_key_vault.learn_language_kv.id
+  name         = "api-client-id"
   value        = module.setup_learn_language_api.client_id
 }
 
 resource "azurerm_key_vault_secret" "learn_language_api_client_secret" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "learn-language-api-client-secret"
+  key_vault_id = data.azurerm_key_vault.learn_language_kv.id
+  name         = "api-client-secret"
   value        = module.setup_learn_language_api.client_secret
 }
 
 resource "azurerm_key_vault_secret" "learn_language_spa_client_id" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "learn-language-spa-client-id"
+  key_vault_id = data.azurerm_key_vault.learn_language_kv.id
+  name         = "spa-client-id"
   value        = module.setup_learn_language_spa.client_id
 }

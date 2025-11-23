@@ -40,24 +40,24 @@
         sku:
           name: standard
           family: A
-        enable_rbac_authorization: false
-        access_policies:
-          - tenant_id: "{{ tenant_id_cmd.stdout }}"
-            object_id: "{{ user_object_id_cmd.stdout }}"
-            secrets :
-              - get
-              - list
-              - set
-              - delete
-              - recover
-              - backup
-              - restore
-              - purge
+        enable_rbac_authorization: true
+      register: kv_info
+    - name: Get Key Vault Administrator role ID
+      azure.azcollection.azure_rm_roledefinition_info:
+        scope: "{{ kv_info.id }}"
+        role_name: "Key Vault Administrator"
+      register: key_vault_admin_role
+    - name: Allow owner access to Key Vault
+      azure.azcollection.azure_rm_roleassignment:
+        scope: "{{ kv_info.id }}"
+        role_definition_id: "{{ key_vault_admin_role.roledefinitions[0].id }}"
+        assignee_object_id: "{{ user_object_id_cmd.stdout }}"
 
     - name: Create storage account
       azure.azcollection.azure_rm_storageaccount:
         resource_group: "{{ resource_group_name }}"
         name: "{{ resource_group_name }}ibari"
+        auth_mode: login
         location: "{{ location }}"
         account_type: Standard_LRS
         kind: StorageV2
@@ -143,3 +143,48 @@
         dest: "{{ playbook_dir ~ '/../backend.tf' }}"
         content: "{{ backend_config_text }}"
         mode: "0644"
+
+
+    - name: Create Key Vault for backup application
+      azure.azcollection.azure_rm_keyvault:
+        resource_group: "{{ resource_group_name }}"
+        vault_name: "{{ resource_group_name }}-backup"
+        location: "{{ location }}"
+        tenant_id: "{{ tenant_id_cmd.stdout }}"
+        sku:
+          name: standard
+          family: A
+        enable_rbac_authorization: true
+      register: kv_info
+    - name: Get Key Vault Administrator role ID for backup Key Vault
+      azure.azcollection.azure_rm_roledefinition_info:
+        scope: "{{ kv_info.id }}"
+        role_name: "Key Vault Administrator"
+      register: key_vault_admin_role_backup
+    - name: Allow owner access to Key Vault for backup Key Vault
+      azure.azcollection.azure_rm_roleassignment:
+        scope: "{{ kv_info.id }}"
+        role_definition_id: "{{ key_vault_admin_role_backup.roledefinitions[0].id }}"
+        assignee_object_id: "{{ user_object_id_cmd.stdout }}"
+
+    - name: Create Key Vault for learn language application
+      azure.azcollection.azure_rm_keyvault:
+        resource_group: "{{ resource_group_name }}"
+        vault_name: "{{ resource_group_name }}-learn-language"
+        location: "{{ location }}"
+        tenant_id: "{{ tenant_id_cmd.stdout }}"
+        sku:
+          name: standard
+          family: A
+        enable_rbac_authorization: true
+      register: kv_info
+    - name: Get Key Vault Administrator role ID for learn language Key Vault
+      azure.azcollection.azure_rm_roledefinition_info:
+        scope: "{{ kv_info.id }}"
+        role_name: "Key Vault Administrator"
+      register: key_vault_admin_role_learn_language
+    - name: Allow owner access to Key Vault for learn language Key Vault
+      azure.azcollection.azure_rm_roleassignment:
+        scope: "{{ kv_info.id }}"
+        role_definition_id: "{{ key_vault_admin_role_learn_language.roledefinitions[0].id }}"
+        assignee_object_id: "{{ user_object_id_cmd.stdout }}"
