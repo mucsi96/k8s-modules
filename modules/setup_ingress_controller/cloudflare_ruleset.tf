@@ -36,7 +36,7 @@ resource "cloudflare_ruleset" "rate_limiting" {
   rules = [{
     action      = "block"
     enabled     = true
-    description = "Rate Limit: 17 requests per 10 seconds"
+    description = "Rate Limit: 25 requests per 10 seconds"
     expression  = "true"
 
     action_parameters = {
@@ -50,7 +50,7 @@ resource "cloudflare_ruleset" "rate_limiting" {
     ratelimit = {
       characteristics     = ["cf.colo.id", "ip.src"]
       period              = 10
-      requests_per_period = 17
+      requests_per_period = 25
       mitigation_timeout  = 10
     }
   }]

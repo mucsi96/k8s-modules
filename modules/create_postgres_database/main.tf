@@ -48,7 +48,7 @@ resource "helm_release" "database" {
   name       = var.k8s_name
   repository = "https://mucsi96.github.io/k8s-helm-charts"
   chart      = "postgres-db"
-  version    = "10.0.0"
+  version    = "11.0.0"
   namespace  = var.k8s_namespace
   wait       = true
   # https://github.com/mucsi96/k8s-helm-charts/tree/main/charts/postgres_db
