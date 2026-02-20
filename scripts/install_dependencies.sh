@@ -70,6 +70,7 @@ if [ ! -f backend.tf ]; then
     terraform init --upgrade
 else
     echo "Backend configuration already exists."
+    terraform init
 fi
 
 # Add the Helm repository
