@@ -21,7 +21,6 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: "npm"
       - env:
           LOG_LEVEL: debug
         run: npx renovate --token ${{ secrets.GITHUB_TOKEN }} --platform github --autodiscover
