@@ -5,3 +5,4 @@ tfplan
 .kube/
 backend.tf
 .generated/
+.venv/
