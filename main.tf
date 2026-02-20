@@ -235,7 +235,7 @@ module "setup_learn_language_spa" {
   owner  = data.azurerm_client_config.current.object_id
 
   display_name  = "Learn Language SPA"
-  redirect_uris = ["https://language.${data.azurerm_key_vault_secret.dns_zone.value}/auth", "http://localhost:4200/auth"]
+  redirect_uris = ["https://language.${data.azurerm_key_vault_secret.dns_zone.value}/", "http://localhost:4200/"]
 
   api_id        = module.setup_learn_language_api.application_id
   api_client_id = module.setup_learn_language_api.client_id
