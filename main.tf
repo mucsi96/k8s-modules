@@ -32,7 +32,7 @@ terraform {
 
     cloudflare = {
       source  = "cloudflare/cloudflare"
-      version = "5.10.1" // Update after https://github.com/cloudflare/terraform-provider-cloudflare/issues/6308 is resolved
+      version = "5.17.0" // Update after https://github.com/cloudflare/terraform-provider-cloudflare/issues/6308 is resolved
     }
   }
 
