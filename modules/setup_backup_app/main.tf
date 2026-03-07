@@ -36,3 +36,13 @@ module "setup_backup_spa" {
     module.setup_backup_api.scope_ids["downloadBackup"]
   ]
 }
+
+data "azurerm_storage_account" "storage_account" {
+  name                = var.azure_storage_account_name
+  resource_group_name = var.azure_storage_account_resource_group_name
+}
+
+data "azurerm_storage_container" "backups_storage_container" {
+  name               = "backups"
+  storage_account_id = data.azurerm_storage_account.storage_account.id
+}

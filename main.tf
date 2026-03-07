@@ -199,6 +199,9 @@ module "setup_backup_app" {
   k8s_cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
   k8s_oidc_issuer_url        = module.setup_cluster.oidc_issuer_url
   hostname                   = data.azurerm_key_vault_secret.dns_zone.value
+  tenant_id                  = data.azurerm_client_config.current.tenant_id
+  db_username                = module.create_database.username
+  db_password                = module.create_database.password
 
   azure_storage_account_resource_group_name = "ibari"
   azure_storage_account_name                = "ibari"
@@ -206,81 +209,18 @@ module "setup_backup_app" {
   depends_on = [module.setup_ingress_controller]
 }
 
-module "create_learn_language_namespace" {
-  source           = "./modules/create_app_namespace"
-  environment_name = var.environment_name
-  k8s_namespace    = "learn-language"
-
+module "setup_learn_language_app" {
+  source                     = "./modules/setup_learn_language_app"
+  environment_name           = var.environment_name
+  owner                      = local.owner
   k8s_host                   = module.setup_cluster.k8s_host
   k8s_cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
+  k8s_oidc_issuer_url        = module.setup_cluster.oidc_issuer_url
+  hostname                   = data.azurerm_key_vault_secret.dns_zone.value
+  tenant_id                  = data.azurerm_client_config.current.tenant_id
+  db_jdbc_url                = module.create_database.jdbc_url
+  db_username                = module.create_database.username
+  db_password                = module.create_database.password
 
   depends_on = [module.setup_ingress_controller]
-}
-
-module "setup_learn_language_api" {
-  source = "./modules/register_api"
-  owner  = data.azurerm_client_config.current.object_id
-
-  display_name = "Learn Language API"
-  roles        = ["DeckReader", "DeckCreator"]
-  scopes       = ["readDecks", "createDeck"]
-
-  k8s_oidc_issuer_url           = module.setup_cluster.oidc_issuer_url
-  k8s_service_account_namespace = "learn-language"
-  k8s_service_account_name      = "learn-language-api-workload-identity"
-}
-
-module "setup_learn_language_spa" {
-  source = "./modules/register_spa"
-  owner  = data.azurerm_client_config.current.object_id
-
-  display_name  = "Learn Language SPA"
-  redirect_uris = ["https://language.${data.azurerm_key_vault_secret.dns_zone.value}/", "http://localhost:4200/"]
-
-  api_id        = module.setup_learn_language_api.application_id
-  api_client_id = module.setup_learn_language_api.client_id
-  api_scope_ids = [
-    module.setup_learn_language_api.scope_ids["readDecks"],
-    module.setup_learn_language_api.scope_ids["createDeck"]
-  ]
-}
-
-resource "kubernetes_persistent_volume" "learn_language_app_pv" {
-  metadata {
-    name = "learn-language-app"
-  }
-
-  spec {
-    storage_class_name = ""
-    access_modes       = ["ReadWriteOnce"]
-    capacity = {
-      storage = "5Gi"
-    }
-    persistent_volume_reclaim_policy = "Retain"
-    persistent_volume_source {
-      host_path {
-        path = "/data/learn-language"
-      }
-    }
-  }
-}
-
-resource "kubernetes_persistent_volume" "learn_language_backup_pv" {
-  metadata {
-    name = "learn-language-backup"
-  }
-
-  spec {
-    storage_class_name = ""
-    access_modes       = ["ReadWriteOnce"]
-    capacity = {
-      storage = "5Gi"
-    }
-    persistent_volume_reclaim_policy = "Retain"
-    persistent_volume_source {
-      host_path {
-        path = "/data/learn-language"
-      }
-    }
-  }
 }
