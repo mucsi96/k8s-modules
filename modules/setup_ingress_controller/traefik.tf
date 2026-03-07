@@ -14,7 +14,7 @@ resource "helm_release" "traefik" {
   repository = "https://traefik.github.io/charts"
   chart      = "traefik"
   version    = var.traefik_chart_version
-  namespace  = kubernetes_namespace.traefik.metadata[0].name
+  namespace  = kubernetes_namespace_v1.traefik.metadata[0].name
   wait       = true
   timeout    = 600
   #https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml
@@ -54,7 +54,7 @@ resource "kubernetes_manifest" "traefik_redirect_root_to_dashboard" {
     kind       = "Middleware"
     metadata = {
       name      = "redirect-root-to-dashboard"
-      namespace = kubernetes_namespace.traefik.metadata[0].name
+      namespace = kubernetes_namespace_v1.traefik.metadata[0].name
     }
     spec = {
       redirectRegex = {
@@ -74,7 +74,7 @@ resource "kubernetes_manifest" "traefik_dashboard_ingress_route" {
     kind       = "IngressRoute"
     metadata = {
       name      = "traefik-dashboard-redirect-root-to-dashboard"
-      namespace = kubernetes_namespace.traefik.metadata[0].name
+      namespace = kubernetes_namespace_v1.traefik.metadata[0].name
     }
     spec = {
       entryPoints = ["traefik"]
@@ -85,7 +85,7 @@ resource "kubernetes_manifest" "traefik_dashboard_ingress_route" {
           middlewares = [
             {
               name      = "redirect-root-to-dashboard"
-              namespace = kubernetes_namespace.traefik.metadata[0].name
+              namespace = kubernetes_namespace_v1.traefik.metadata[0].name
             }
           ]
           services = [

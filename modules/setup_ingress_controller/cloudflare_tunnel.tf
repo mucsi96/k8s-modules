@@ -33,11 +33,11 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "traefik_tunnel_confi
     ingress = [
       {
         hostname = "traefik.${var.dns_zone}"
-        service  = "http://traefik.${kubernetes_namespace.traefik.metadata[0].name}.svc.cluster.local:8080"
+        service  = "http://traefik.${kubernetes_namespace_v1.traefik.metadata[0].name}.svc.cluster.local:8080"
       },
       {
         hostname = "*.${var.dns_zone}"
-        service  = "http://traefik.${kubernetes_namespace.traefik.metadata[0].name}.svc.cluster.local:80"
+        service  = "http://traefik.${kubernetes_namespace_v1.traefik.metadata[0].name}.svc.cluster.local:80"
       },
       {
         service = "http_status:404"
@@ -50,7 +50,7 @@ resource "helm_release" "cloudflared" {
   name       = "cloudflared"
   repository = "https://cloudflare.github.io/helm-charts"
   chart      = "cloudflare-tunnel-remote"
-  namespace  = kubernetes_namespace.cloudflare.metadata[0].name
+  namespace  = kubernetes_namespace_v1.cloudflare.metadata[0].name
   version    = "0.1.2" # https://github.com/cloudflare/helm-charts/releases
 
   values = [yamlencode({

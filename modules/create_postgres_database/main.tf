@@ -56,7 +56,7 @@ resource "helm_release" "database" {
     name = var.db_name
     persistentVolumeClaim = {
       storageClassName = ""
-      volumeName       = kubernetes_persistent_volume.database_pv.metadata[0].name
+      volumeName       = kubernetes_persistent_volume_v1.database_pv.metadata[0].name
       accessMode       = "ReadWriteOnce"
     }
     username         = random_string.db_username.result

@@ -10,7 +10,7 @@ clusters:
 users:
   - name: user
     user:
-      token: ${kubernetes_secret.service_account_token_secret.data.token}
+      token: ${kubernetes_secret_v1.service_account_token_secret.data.token}
 contexts:
   - name: default
     context:
@@ -24,5 +24,5 @@ EOT
 }
 
 output "k8s_namespace" {
-  value = kubernetes_namespace.namespace.metadata[0].name
+  value = kubernetes_namespace_v1.namespace.metadata[0].name
 }
