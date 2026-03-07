@@ -23,6 +23,8 @@ resource "kubernetes_service_account_v1" "service_account" {
     namespace = var.k8s_namespace
   }
   automount_service_account_token = false
+
+  depends_on = [kubernetes_namespace_v1.namespace]
 }
 
 resource "kubernetes_cluster_role_v1" "cluster_role" {
@@ -72,6 +74,8 @@ resource "kubernetes_role_v1" "role" {
       "*",
     ]
   }
+
+  depends_on = [kubernetes_namespace_v1.namespace]
 }
 
 resource "kubernetes_secret_v1" "service_account_token_secret" {
@@ -85,6 +89,8 @@ resource "kubernetes_secret_v1" "service_account_token_secret" {
 
   type                           = "kubernetes.io/service-account-token"
   wait_for_service_account_token = true
+
+  depends_on = [kubernetes_namespace_v1.namespace]
 }
 
 resource "kubernetes_role_binding_v1" "role_binding" {
@@ -105,6 +111,8 @@ resource "kubernetes_role_binding_v1" "role_binding" {
     name      = kubernetes_role_v1.role.metadata.0.name
     api_group = "rbac.authorization.k8s.io"
   }
+
+  depends_on = [kubernetes_namespace_v1.namespace]
 }
 
 resource "kubernetes_cluster_role_binding_v1" "cluster_role_binding" {
