@@ -2,7 +2,7 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = ">=4.14.0"
+      version = ">= 4.14.0"
     }
 
     kubernetes = {
@@ -22,7 +22,7 @@ terraform {
 
     acme = {
       source  = "vancluever/acme"
-      version = ">=2.28.2"
+      version = ">= 2.28.2"
     }
 
     ansible = {
@@ -32,7 +32,7 @@ terraform {
 
     cloudflare = {
       source  = "cloudflare/cloudflare"
-      version = "5.17.0" // Update after https://github.com/cloudflare/terraform-provider-cloudflare/issues/6308 is resolved
+      version = "5.18.0" // Update after https://github.com/cloudflare/terraform-provider-cloudflare/issues/6308 is resolved
     }
   }
 
