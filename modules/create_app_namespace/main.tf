@@ -20,11 +20,9 @@ resource "kubernetes_namespace_v1" "namespace" {
 resource "kubernetes_service_account_v1" "service_account" {
   metadata {
     name      = "${var.k8s_namespace}-namespace-admin"
-    namespace = var.k8s_namespace
+    namespace = kubernetes_namespace_v1.namespace.metadata[0].name
   }
   automount_service_account_token = false
-
-  depends_on = [kubernetes_namespace_v1.namespace]
 }
 
 resource "kubernetes_cluster_role_v1" "cluster_role" {
@@ -60,7 +58,7 @@ resource "kubernetes_cluster_role_v1" "cluster_role" {
 resource "kubernetes_role_v1" "role" {
   metadata {
     name      = var.k8s_namespace
-    namespace = var.k8s_namespace
+    namespace = kubernetes_namespace_v1.namespace.metadata[0].name
   }
 
   rule {
@@ -74,14 +72,12 @@ resource "kubernetes_role_v1" "role" {
       "*",
     ]
   }
-
-  depends_on = [kubernetes_namespace_v1.namespace]
 }
 
 resource "kubernetes_secret_v1" "service_account_token_secret" {
   metadata {
     name      = "service-account-token"
-    namespace = var.k8s_namespace
+    namespace = kubernetes_namespace_v1.namespace.metadata[0].name
     annotations = {
       "kubernetes.io/service-account.name" = kubernetes_service_account_v1.service_account.metadata.0.name
     }
@@ -89,20 +85,18 @@ resource "kubernetes_secret_v1" "service_account_token_secret" {
 
   type                           = "kubernetes.io/service-account-token"
   wait_for_service_account_token = true
-
-  depends_on = [kubernetes_namespace_v1.namespace]
 }
 
 resource "kubernetes_role_binding_v1" "role_binding" {
   metadata {
     name      = var.k8s_namespace
-    namespace = var.k8s_namespace
+    namespace = kubernetes_namespace_v1.namespace.metadata[0].name
   }
 
   subject {
     kind      = "ServiceAccount"
     name      = kubernetes_service_account_v1.service_account.metadata.0.name
-    namespace = var.k8s_namespace
+    namespace = kubernetes_namespace_v1.namespace.metadata[0].name
 
   }
 
@@ -111,8 +105,6 @@ resource "kubernetes_role_binding_v1" "role_binding" {
     name      = kubernetes_role_v1.role.metadata.0.name
     api_group = "rbac.authorization.k8s.io"
   }
-
-  depends_on = [kubernetes_namespace_v1.namespace]
 }
 
 resource "kubernetes_cluster_role_binding_v1" "cluster_role_binding" {
@@ -123,7 +115,7 @@ resource "kubernetes_cluster_role_binding_v1" "cluster_role_binding" {
   subject {
     kind      = "ServiceAccount"
     name      = kubernetes_service_account_v1.service_account.metadata.0.name
-    namespace = var.k8s_namespace
+    namespace = kubernetes_namespace_v1.namespace.metadata[0].name
 
   }
 

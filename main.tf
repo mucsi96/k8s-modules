@@ -173,8 +173,7 @@ module "create_database_namespace" {
 
   k8s_host                   = module.setup_cluster.k8s_host
   k8s_cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
-
-  depends_on = [module.setup_ingress_controller]
+  wait_for                   = module.setup_ingress_controller.traefik_ready
 }
 
 module "create_database" {
@@ -202,11 +201,10 @@ module "setup_backup_app" {
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   db_username                = module.create_database.username
   db_password                = module.create_database.password
+  wait_for                   = module.setup_ingress_controller.traefik_ready
 
   azure_storage_account_resource_group_name = "ibari"
   azure_storage_account_name                = "ibari"
-
-  depends_on = [module.setup_ingress_controller]
 }
 
 module "setup_learn_language_app" {
@@ -221,6 +219,5 @@ module "setup_learn_language_app" {
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password
-
-  depends_on = [module.setup_ingress_controller]
+  wait_for                   = module.setup_ingress_controller.traefik_ready
 }

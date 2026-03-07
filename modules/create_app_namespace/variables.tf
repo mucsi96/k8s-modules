@@ -19,3 +19,9 @@ variable "k8s_cluster_ca_certificate" {
   type        = string
   sensitive   = true
 }
+
+variable "wait_for" {
+  description = "Optional dependency to wait for before creating namespace (e.g., ingress controller status)"
+  type        = string
+  default     = null
+}

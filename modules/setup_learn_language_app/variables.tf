@@ -50,3 +50,9 @@ variable "db_password" {
   type        = string
   sensitive   = true
 }
+
+variable "wait_for" {
+  description = "Optional dependency to wait for before setting up app (e.g., ingress controller status)"
+  type        = string
+  default     = null
+}
