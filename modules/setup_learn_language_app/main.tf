@@ -34,7 +34,7 @@ module "setup_learn_language_spa" {
   ]
 }
 
-resource "kubernetes_persistent_volume" "learn_language_app_pv" {
+resource "kubernetes_persistent_volume_v1" "learn_language_app_pv" {
   metadata {
     name = "learn-language-app"
   }
@@ -54,7 +54,7 @@ resource "kubernetes_persistent_volume" "learn_language_app_pv" {
   }
 }
 
-resource "kubernetes_persistent_volume" "learn_language_backup_pv" {
+resource "kubernetes_persistent_volume_v1" "learn_language_backup_pv" {
   metadata {
     name = "learn-language-backup"
   }

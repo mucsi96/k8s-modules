@@ -51,6 +51,12 @@ resource "azurerm_key_vault_secret" "backup_dbs_config" {
           path = "/app/storage/learn-language"
         }
       ]
+      excludeTables = [
+        "study_sessions",
+        "study_session_cards",
+        "model_usage_logs",
+        "unhealthy_cards"
+      ]
     }
   ])
 }

@@ -24,7 +24,7 @@ resource "random_password" "exporter_password" {
   override_special = "-_=+:[]{}" // verified: []
 }
 
-resource "kubernetes_persistent_volume" "database_pv" {
+resource "kubernetes_persistent_volume_v1" "database_pv" {
   metadata {
     name = "database"
   }

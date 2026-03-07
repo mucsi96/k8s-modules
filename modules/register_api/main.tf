@@ -36,6 +36,12 @@ resource "azuread_application" "api" {
       }
     }
   }
+
+  lifecycle {
+    ignore_changes = [
+      identifier_uris,
+    ]
+  }
 }
 
 resource "azuread_application_identifier_uri" "app_uri" {
