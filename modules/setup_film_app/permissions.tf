@@ -11,7 +11,7 @@ resource "azuread_app_role_assignment" "allow_admin_user_to_create_films" {
 }
 
 resource "azurerm_role_assignment" "allow_film_api_to_read_film_kv" {
-  scope                = data.azurerm_key_vault.film_kv.id
+  scope                = azurerm_key_vault.film_kv.id
   role_definition_name = "Key Vault Secrets User"
   principal_id         = module.setup_film_api.resource_object_id
 }

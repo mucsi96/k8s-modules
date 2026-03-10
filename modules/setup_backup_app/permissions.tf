@@ -5,7 +5,7 @@ resource "azurerm_role_assignment" "allow_backup_api_to_write_storage_container"
 }
 
 resource "azurerm_role_assignment" "allow_backup_api_to_read_backup_kv" {
-  scope                = data.azurerm_key_vault.backup_kv.id
+  scope                = azurerm_key_vault.backup_kv.id
   role_definition_name = "Key Vault Secrets User"
   principal_id         = module.setup_backup_api.resource_object_id
 }

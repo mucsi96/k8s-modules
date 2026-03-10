@@ -210,6 +210,7 @@ module "setup_backup_app" {
 module "setup_learn_language_app" {
   source                     = "./modules/setup_learn_language_app"
   environment_name           = var.environment_name
+  azure_location             = var.azure_location
   owner                      = local.owner
   k8s_host                   = module.setup_cluster.k8s_host
   k8s_cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
@@ -225,6 +226,7 @@ module "setup_learn_language_app" {
 module "setup_hello_app" {
   source                     = "./modules/setup_hello_app"
   environment_name           = var.environment_name
+  azure_location             = var.azure_location
   owner                      = local.owner
   k8s_host                   = module.setup_cluster.k8s_host
   k8s_cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
@@ -240,6 +242,7 @@ module "setup_hello_app" {
 module "setup_training_log_app" {
   source                     = "./modules/setup_training_log_app"
   environment_name           = var.environment_name
+  azure_location             = var.azure_location
   owner                      = local.owner
   k8s_host                   = module.setup_cluster.k8s_host
   k8s_cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
@@ -255,6 +258,7 @@ module "setup_training_log_app" {
 module "setup_film_app" {
   source                     = "./modules/setup_film_app"
   environment_name           = var.environment_name
+  azure_location             = var.azure_location
   owner                      = local.owner
   k8s_host                   = module.setup_cluster.k8s_host
   k8s_cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
@@ -270,6 +274,7 @@ module "setup_film_app" {
 module "setup_reading_tracker_app" {
   source                     = "./modules/setup_reading_tracker_app"
   environment_name           = var.environment_name
+  azure_location             = var.azure_location
   owner                      = local.owner
   k8s_host                   = module.setup_cluster.k8s_host
   k8s_cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate

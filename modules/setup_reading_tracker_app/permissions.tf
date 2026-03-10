@@ -11,7 +11,7 @@ resource "azuread_app_role_assignment" "allow_admin_user_to_create_reading_track
 }
 
 resource "azurerm_role_assignment" "allow_reading_tracker_api_to_read_reading_tracker_kv" {
-  scope                = data.azurerm_key_vault.reading_tracker_kv.id
+  scope                = azurerm_key_vault.reading_tracker_kv.id
   role_definition_name = "Key Vault Secrets User"
   principal_id         = module.setup_reading_tracker_api.resource_object_id
 }
