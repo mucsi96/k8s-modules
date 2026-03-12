@@ -15,3 +15,9 @@ resource "azurerm_role_assignment" "allow_reading_tracker_api_to_read_reading_tr
   role_definition_name = "Key Vault Secrets User"
   principal_id         = module.setup_reading_tracker_api.resource_object_id
 }
+
+resource "azurerm_role_assignment" "allow_owner_to_manage_reading_tracker_kv" {
+  scope                = azurerm_key_vault.reading_tracker_kv.id
+  role_definition_name = "Key Vault Secrets Officer"
+  principal_id         = var.owner
+}

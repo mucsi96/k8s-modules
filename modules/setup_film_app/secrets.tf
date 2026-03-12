@@ -3,20 +3,8 @@ resource "azurerm_key_vault" "film_kv" {
   name                = "${var.environment_name}-film"
   location            = var.azure_location
   tenant_id           = var.tenant_id
-  sku_name            = "standard"
-
-  access_policy {
-    tenant_id = var.tenant_id
-    object_id = var.owner
-
-    secret_permissions = [
-      "Get",
-      "List",
-      "Set",
-      "Delete",
-      "Purge",
-    ]
-  }
+  sku_name                   = "standard"
+  rbac_authorization_enabled = true
 
   lifecycle {
     prevent_destroy = true

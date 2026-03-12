@@ -15,3 +15,9 @@ resource "azurerm_role_assignment" "allow_hello_api_to_read_hello_kv" {
   role_definition_name = "Key Vault Secrets User"
   principal_id         = module.setup_hello_api.resource_object_id
 }
+
+resource "azurerm_role_assignment" "allow_owner_to_manage_hello_kv" {
+  scope                = azurerm_key_vault.hello_kv.id
+  role_definition_name = "Key Vault Secrets Officer"
+  principal_id         = var.owner
+}
