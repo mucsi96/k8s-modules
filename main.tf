@@ -34,6 +34,11 @@ terraform {
       source  = "cloudflare/cloudflare"
       version = "5.18.0" // Update after https://github.com/cloudflare/terraform-provider-cloudflare/issues/6308 is resolved
     }
+
+    twingate = {
+      source  = "Twingate/twingate"
+      version = ">= 3.0.0"
+    }
   }
 
   required_version = ">= 1.2"
@@ -75,6 +80,11 @@ provider "acme" {
 
 provider "cloudflare" {
   api_token = data.azurerm_key_vault_secret.cloudflare_api_token.value
+}
+
+provider "twingate" {
+  api_token = data.azurerm_key_vault_secret.twingate_api_token.value
+  network   = data.azurerm_key_vault_secret.twingate_network.value
 }
 
 data "azurerm_key_vault" "kv" {
@@ -150,6 +160,16 @@ data "azurerm_key_vault_secret" "authorized_as" {
   name         = "authorized-as"
 }
 
+data "azurerm_key_vault_secret" "twingate_api_token" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "twingate-api-token"
+}
+
+data "azurerm_key_vault_secret" "twingate_network" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "twingate-network"
+}
+
 module "setup_ingress_controller" {
   source                 = "./modules/setup_ingress_controller"
   environment_name       = var.environment_name
@@ -164,6 +184,15 @@ module "setup_ingress_controller" {
   cloudflare_team_domain = data.azurerm_key_vault_secret.cloudflare_team_domain.value
   authorized_as          = data.azurerm_key_vault_secret.authorized_as.value
   depends_on             = [module.setup_cluster]
+}
+
+module "setup_twingate" {
+  source             = "./modules/setup_twingate"
+  environment_name   = var.environment_name
+  twingate_network   = data.azurerm_key_vault_secret.twingate_network.value
+  twingate_api_token = data.azurerm_key_vault_secret.twingate_api_token.value
+  k8s_host           = data.azurerm_key_vault_secret.setup_cluster_host.value
+  depends_on         = [module.setup_cluster]
 }
 
 module "create_database_namespace" {
