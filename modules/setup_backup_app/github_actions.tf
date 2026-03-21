@@ -21,3 +21,14 @@ resource "github_actions_secret" "api_client_id" {
   secret_name     = "API_CLIENT_ID"
   plaintext_value = module.setup_backup_api.client_id
 }
+
+resource "docker_access_token" "backup" {
+  token_label = "postgres-azure-backup"
+  scopes      = ["repo:read", "repo:write"]
+}
+
+resource "github_actions_secret" "dockerhub_token" {
+  repository      = "postgres-azure-backup"
+  secret_name     = "DOCKERHUB_TOKEN"
+  plaintext_value = docker_access_token.backup.token
+}

@@ -44,6 +44,11 @@ terraform {
       source  = "integrations/github"
       version = ">= 6.0.0"
     }
+
+    docker = {
+      source  = "docker/docker"
+      version = ">= 0.2.0"
+    }
   }
 
   required_version = ">= 1.2"
@@ -96,6 +101,8 @@ provider "github" {
   owner = "mucsi96"
   token = data.azurerm_key_vault_secret.github_token.value
 }
+
+provider "docker" {}
 
 data "azurerm_key_vault" "kv" {
   resource_group_name = var.environment_name

@@ -19,5 +19,9 @@ terraform {
     github = {
       source = "integrations/github"
     }
+
+    docker = {
+      source = "docker/docker"
+    }
   }
 }
