@@ -21,3 +21,14 @@ resource "github_actions_secret" "api_client_id" {
   secret_name     = "API_CLIENT_ID"
   plaintext_value = module.setup_hello_api.client_id
 }
+
+resource "docker_access_token" "hello" {
+  token_label = "skeleton-app"
+  scopes      = ["repo:read", "repo:write"]
+}
+
+resource "github_actions_secret" "dockerhub_token" {
+  repository      = "skeleton-app"
+  secret_name     = "DOCKERHUB_TOKEN"
+  plaintext_value = docker_access_token.hello.token
+}
