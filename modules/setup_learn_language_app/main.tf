@@ -1,3 +1,7 @@
+locals {
+  app_hostname = "language.${var.hostname}"
+}
+
 module "create_learn_language_namespace" {
   source                     = "../create_app_namespace"
   environment_name           = var.environment_name
@@ -24,7 +28,7 @@ module "setup_learn_language_spa" {
   owner  = var.owner
 
   display_name  = "Learn Language SPA"
-  redirect_uris = ["https://language.${var.hostname}/", "http://localhost:4200/"]
+  redirect_uris = ["https://${local.app_hostname}/", "http://localhost:4200/"]
 
   api_id        = module.setup_learn_language_api.application_id
   api_client_id = module.setup_learn_language_api.client_id
@@ -32,12 +36,6 @@ module "setup_learn_language_spa" {
     module.setup_learn_language_api.scope_ids["readDecks"],
     module.setup_learn_language_api.scope_ids["createDeck"]
   ]
-}
-
-resource "github_actions_secret" "twingate_service_key" {
-  repository      = "learn-language"
-  secret_name     = "TWINGATE_SERVICE_KEY"
-  plaintext_value = var.twingate_service_key
 }
 
 resource "kubernetes_persistent_volume_v1" "learn_language_app_pv" {

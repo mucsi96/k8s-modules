@@ -84,7 +84,7 @@ resource "azurerm_key_vault_secret" "backup_dbs_config" {
 resource "azurerm_key_vault_secret" "backup_hostname" {
   key_vault_id = azurerm_key_vault.backup_kv.id
   name         = "hostname"
-  value        = "backup.${var.hostname}"
+  value        = local.app_hostname
 }
 
 resource "azurerm_key_vault_secret" "backup_storage_account_blob_url" {

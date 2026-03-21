@@ -1,3 +1,7 @@
+locals {
+  app_hostname = "backup.${var.hostname}"
+}
+
 module "create_backup_namespace" {
   source                     = "../create_app_namespace"
   environment_name           = var.environment_name
@@ -24,7 +28,7 @@ module "setup_backup_spa" {
   owner  = var.owner
 
   display_name  = "Backup SPA"
-  redirect_uris = ["https://backup.${var.hostname}/", "http://localhost:4200/"]
+  redirect_uris = ["https://${local.app_hostname}/", "http://localhost:4200/"]
 
   api_id        = module.setup_backup_api.application_id
   api_client_id = module.setup_backup_api.client_id
@@ -35,12 +39,6 @@ module "setup_backup_spa" {
     module.setup_backup_api.scope_ids["restoreBackup"],
     module.setup_backup_api.scope_ids["downloadBackup"]
   ]
-}
-
-resource "github_actions_secret" "twingate_service_key" {
-  repository      = "postgres-azure-backup"
-  secret_name     = "TWINGATE_SERVICE_KEY"
-  plaintext_value = var.twingate_service_key
 }
 
 data "azurerm_storage_account" "storage_account" {

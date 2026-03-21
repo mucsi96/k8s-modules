@@ -1,3 +1,7 @@
+locals {
+  app_hostname = "hello.${var.hostname}"
+}
+
 module "create_hello_namespace" {
   source                     = "../create_app_namespace"
   environment_name           = var.environment_name
@@ -24,7 +28,7 @@ module "setup_hello_spa" {
   owner  = var.owner
 
   display_name  = "Hello SPA"
-  redirect_uris = ["https://hello.${var.hostname}/", "http://localhost:4200/"]
+  redirect_uris = ["https://${local.app_hostname}/", "http://localhost:4200/"]
 
   api_id        = module.setup_hello_api.application_id
   api_client_id = module.setup_hello_api.client_id
@@ -32,12 +36,6 @@ module "setup_hello_spa" {
     module.setup_hello_api.scope_ids["readGreetings"],
     module.setup_hello_api.scope_ids["createGreeting"]
   ]
-}
-
-resource "github_actions_secret" "twingate_service_key" {
-  repository      = "skeleton-app"
-  secret_name     = "TWINGATE_SERVICE_KEY"
-  plaintext_value = var.twingate_service_key
 }
 
 resource "kubernetes_persistent_volume_v1" "hello_app_pv" {

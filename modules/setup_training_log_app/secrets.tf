@@ -44,7 +44,7 @@ resource "azurerm_key_vault_secret" "training_log_spa_client_id" {
 resource "azurerm_key_vault_secret" "training_log_hostname" {
   key_vault_id = azurerm_key_vault.training_log_kv.id
   name         = "hostname"
-  value        = "training.${var.hostname}"
+  value        = local.app_hostname
 }
 
 resource "azurerm_key_vault_secret" "training_log_db_url" {

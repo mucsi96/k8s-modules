@@ -1,3 +1,7 @@
+locals {
+  app_hostname = "training.${var.hostname}"
+}
+
 module "create_training_log_namespace" {
   source                     = "../create_app_namespace"
   environment_name           = var.environment_name
@@ -24,7 +28,7 @@ module "setup_training_log_spa" {
   owner  = var.owner
 
   display_name  = "Training Log SPA"
-  redirect_uris = ["https://training.${var.hostname}/", "http://localhost:4200/"]
+  redirect_uris = ["https://${local.app_hostname}/", "http://localhost:4200/"]
 
   api_id        = module.setup_training_log_api.application_id
   api_client_id = module.setup_training_log_api.client_id
@@ -32,12 +36,6 @@ module "setup_training_log_spa" {
     module.setup_training_log_api.scope_ids["readWorkouts"],
     module.setup_training_log_api.scope_ids["createWorkout"]
   ]
-}
-
-resource "github_actions_secret" "twingate_service_key" {
-  repository      = "training-log-pro"
-  secret_name     = "TWINGATE_SERVICE_KEY"
-  plaintext_value = var.twingate_service_key
 }
 
 resource "kubernetes_persistent_volume_v1" "training_log_app_pv" {

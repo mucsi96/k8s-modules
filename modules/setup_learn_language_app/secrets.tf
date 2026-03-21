@@ -56,7 +56,7 @@ resource "azurerm_key_vault_secret" "learn_language_spa_client_id" {
 resource "azurerm_key_vault_secret" "learn_language_hostname" {
   key_vault_id = azurerm_key_vault.learn_language_kv.id
   name         = "hostname"
-  value        = "language.${var.hostname}"
+  value        = local.app_hostname
 }
 
 resource "azurerm_key_vault_secret" "learn_language_db_url" {
