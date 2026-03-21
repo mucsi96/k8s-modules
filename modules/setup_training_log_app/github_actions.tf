@@ -13,7 +13,7 @@ resource "github_actions_secret" "k8s_config" {
 resource "github_actions_secret" "hostname" {
   repository      = "training-log-pro"
   secret_name     = "HOSTNAME"
-  plaintext_value = "training.${var.hostname}"
+  plaintext_value = local.app_hostname
 }
 
 resource "github_actions_secret" "api_client_id" {

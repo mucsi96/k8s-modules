@@ -1,3 +1,7 @@
+locals {
+  app_hostname = "language.${var.hostname}"
+}
+
 module "create_learn_language_namespace" {
   source                     = "../create_app_namespace"
   environment_name           = var.environment_name
@@ -24,7 +28,7 @@ module "setup_learn_language_spa" {
   owner  = var.owner
 
   display_name  = "Learn Language SPA"
-  redirect_uris = ["https://language.${var.hostname}/", "http://localhost:4200/"]
+  redirect_uris = ["https://${local.app_hostname}/", "http://localhost:4200/"]
 
   api_id        = module.setup_learn_language_api.application_id
   api_client_id = module.setup_learn_language_api.client_id

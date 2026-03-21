@@ -13,7 +13,7 @@ resource "github_actions_secret" "k8s_config" {
 resource "github_actions_secret" "hostname" {
   repository      = "postgres-azure-backup"
   secret_name     = "HOSTNAME"
-  plaintext_value = "backup.${var.hostname}"
+  plaintext_value = local.app_hostname
 }
 
 resource "github_actions_secret" "api_client_id" {

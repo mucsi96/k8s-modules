@@ -13,7 +13,7 @@ resource "github_actions_secret" "k8s_config" {
 resource "github_actions_secret" "hostname" {
   repository      = "learn-language"
   secret_name     = "HOSTNAME"
-  plaintext_value = "language.${var.hostname}"
+  plaintext_value = local.app_hostname
 }
 
 resource "github_actions_secret" "api_client_id" {

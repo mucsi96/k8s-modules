@@ -1,3 +1,7 @@
+locals {
+  app_hostname = "training.${var.hostname}"
+}
+
 module "create_training_log_namespace" {
   source                     = "../create_app_namespace"
   environment_name           = var.environment_name
@@ -24,7 +28,7 @@ module "setup_training_log_spa" {
   owner  = var.owner
 
   display_name  = "Training Log SPA"
-  redirect_uris = ["https://training.${var.hostname}/", "http://localhost:4200/"]
+  redirect_uris = ["https://${local.app_hostname}/", "http://localhost:4200/"]
 
   api_id        = module.setup_training_log_api.application_id
   api_client_id = module.setup_training_log_api.client_id

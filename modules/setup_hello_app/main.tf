@@ -1,3 +1,7 @@
+locals {
+  app_hostname = "hello.${var.hostname}"
+}
+
 module "create_hello_namespace" {
   source                     = "../create_app_namespace"
   environment_name           = var.environment_name
@@ -24,7 +28,7 @@ module "setup_hello_spa" {
   owner  = var.owner
 
   display_name  = "Hello SPA"
-  redirect_uris = ["https://hello.${var.hostname}/", "http://localhost:4200/"]
+  redirect_uris = ["https://${local.app_hostname}/", "http://localhost:4200/"]
 
   api_id        = module.setup_hello_api.application_id
   api_client_id = module.setup_hello_api.client_id

@@ -44,7 +44,7 @@ resource "azurerm_key_vault_secret" "hello_spa_client_id" {
 resource "azurerm_key_vault_secret" "hello_hostname" {
   key_vault_id = azurerm_key_vault.hello_kv.id
   name         = "hostname"
-  value        = "hello.${var.hostname}"
+  value        = local.app_hostname
 }
 
 resource "azurerm_key_vault_secret" "hello_db_url" {
