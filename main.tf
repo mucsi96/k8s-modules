@@ -94,6 +94,7 @@ provider "twingate" {
 
 provider "github" {
   owner = "mucsi96"
+  token = data.azurerm_key_vault_secret.github_token.value
 }
 
 data "azurerm_key_vault" "kv" {
@@ -177,6 +178,11 @@ data "azurerm_key_vault_secret" "twingate_api_token" {
 data "azurerm_key_vault_secret" "twingate_network" {
   key_vault_id = data.azurerm_key_vault.kv.id
   name         = "twingate-network"
+}
+
+data "azurerm_key_vault_secret" "github_token" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "github-token"
 }
 
 module "setup_ingress_controller" {

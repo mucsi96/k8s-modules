@@ -20,7 +20,8 @@ The following secrets must exist in the Azure Key Vault (named after the `enviro
 | `cloudflare-api-token` | Cloudflare API token for DNS and tunnel management |
 | `cloudflare-team-domain` | Cloudflare Zero Trust team domain |
 | `authorized-as` | Authorized identity/email for SSO access policies |
-| `twingate-api-token` | Twingate API token for zero-trust network access |
-| `twingate-network` | Twingate network identifier |
+| `twingate-api-token` | Twingate API token with Read, Write & Provision permissions |
+| `twingate-network` | Twingate network name (e.g. `mynetwork` from `mynetwork.twingate.com`) |
+| `github-token` | GitHub personal access token with `repo` scope for setting Actions secrets |
 
 ## Requirements
