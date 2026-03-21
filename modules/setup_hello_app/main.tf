@@ -34,6 +34,12 @@ module "setup_hello_spa" {
   ]
 }
 
+resource "github_actions_secret" "twingate_service_key" {
+  repository      = "skeleton-app"
+  secret_name     = "TWINGATE_SERVICE_KEY"
+  plaintext_value = var.twingate_service_key
+}
+
 resource "kubernetes_persistent_volume_v1" "hello_app_pv" {
   metadata {
     name = "hello-app"

@@ -34,6 +34,12 @@ module "setup_learn_language_spa" {
   ]
 }
 
+resource "github_actions_secret" "twingate_service_key" {
+  repository      = "learn-language"
+  secret_name     = "TWINGATE_SERVICE_KEY"
+  plaintext_value = var.twingate_service_key
+}
+
 resource "kubernetes_persistent_volume_v1" "learn_language_app_pv" {
   metadata {
     name = "learn-language-app"

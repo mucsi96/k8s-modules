@@ -34,6 +34,12 @@ module "setup_training_log_spa" {
   ]
 }
 
+resource "github_actions_secret" "twingate_service_key" {
+  repository      = "training-log-pro"
+  secret_name     = "TWINGATE_SERVICE_KEY"
+  plaintext_value = var.twingate_service_key
+}
+
 resource "kubernetes_persistent_volume_v1" "training_log_app_pv" {
   metadata {
     name = "training-log-app"
