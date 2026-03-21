@@ -192,6 +192,7 @@ module "setup_twingate" {
   twingate_network   = data.azurerm_key_vault_secret.twingate_network.value
   twingate_api_token = data.azurerm_key_vault_secret.twingate_api_token.value
   k8s_host           = data.azurerm_key_vault_secret.setup_cluster_host.value
+  app_names          = ["backup", "learn-language", "hello", "training-log", "film", "reading-tracker"]
   depends_on         = [module.setup_cluster]
 }
 
@@ -230,6 +231,7 @@ module "setup_backup_app" {
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   db_username                = module.create_database.username
   db_password                = module.create_database.password
+  twingate_service_key       = module.setup_twingate.service_keys["backup"]
   wait_for                   = module.setup_ingress_controller.traefik_ready
 
   azure_storage_account_resource_group_name = "ibari"
@@ -249,6 +251,7 @@ module "setup_learn_language_app" {
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password
+  twingate_service_key       = module.setup_twingate.service_keys["learn-language"]
   wait_for                   = module.setup_ingress_controller.traefik_ready
 }
 
@@ -265,6 +268,7 @@ module "setup_hello_app" {
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password
+  twingate_service_key       = module.setup_twingate.service_keys["hello"]
   wait_for                   = module.setup_ingress_controller.traefik_ready
 }
 
@@ -281,6 +285,7 @@ module "setup_training_log_app" {
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password
+  twingate_service_key       = module.setup_twingate.service_keys["training-log"]
   wait_for                   = module.setup_ingress_controller.traefik_ready
 }
 
@@ -297,6 +302,7 @@ module "setup_film_app" {
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password
+  twingate_service_key       = module.setup_twingate.service_keys["film"]
   wait_for                   = module.setup_ingress_controller.traefik_ready
 }
 
@@ -313,5 +319,6 @@ module "setup_reading_tracker_app" {
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password
+  twingate_service_key       = module.setup_twingate.service_keys["reading-tracker"]
   wait_for                   = module.setup_ingress_controller.traefik_ready
 }

@@ -64,3 +64,9 @@ resource "azurerm_key_vault_secret" "film_db_password" {
   name         = "db-password"
   value        = var.db_password
 }
+
+resource "azurerm_key_vault_secret" "film_twingate_service_key" {
+  key_vault_id = azurerm_key_vault.film_kv.id
+  name         = "twingate-service-key"
+  value        = var.twingate_service_key
+}
