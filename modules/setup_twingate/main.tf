@@ -45,15 +45,13 @@ resource "helm_release" "twingate_connector" {
   })]
 }
 
-resource "twingate_service_account" "app" {
-  for_each = toset(var.app_names)
-  name     = "${var.environment_name}-${each.key}"
+resource "twingate_service_account" "github_actions" {
+  name = "${var.environment_name}-github-actions"
 }
 
-resource "twingate_service_account_key" "app" {
-  for_each           = toset(var.app_names)
-  service_account_id = twingate_service_account.app[each.key].id
-  name               = "${var.environment_name}-${each.key}-key"
+resource "twingate_service_account_key" "github_actions" {
+  service_account_id = twingate_service_account.github_actions.id
+  name               = "${var.environment_name}-github-actions-key"
 }
 
 resource "twingate_resource" "k8s_api" {
@@ -72,10 +70,7 @@ resource "twingate_resource" "k8s_api" {
     }
   }
 
-  dynamic "access_service" {
-    for_each = toset(var.app_names)
-    content {
-      service_account_id = twingate_service_account.app[access_service.key].id
-    }
+  access_service {
+    service_account_id = twingate_service_account.github_actions.id
   }
 }

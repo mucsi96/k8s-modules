@@ -64,9 +64,3 @@ resource "azurerm_key_vault_secret" "training_log_db_password" {
   name         = "db-password"
   value        = var.db_password
 }
-
-resource "azurerm_key_vault_secret" "training_log_twingate_service_key" {
-  key_vault_id = azurerm_key_vault.training_log_kv.id
-  name         = "twingate-service-key"
-  value        = var.twingate_service_key
-}

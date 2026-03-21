@@ -61,12 +61,6 @@ variable "db_password" {
   sensitive   = true
 }
 
-variable "twingate_service_key" {
-  description = "Twingate service key for this app's GitHub Actions pipeline"
-  type        = string
-  sensitive   = true
-}
-
 variable "wait_for" {
   description = "Optional dependency to wait for before setting up app (e.g., ingress controller status)"
   type        = string

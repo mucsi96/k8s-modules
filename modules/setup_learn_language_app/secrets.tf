@@ -76,9 +76,3 @@ resource "azurerm_key_vault_secret" "learn_language_db_password" {
   name         = "db-password"
   value        = var.db_password
 }
-
-resource "azurerm_key_vault_secret" "learn_language_twingate_service_key" {
-  key_vault_id = azurerm_key_vault.learn_language_kv.id
-  name         = "twingate-service-key"
-  value        = var.twingate_service_key
-}

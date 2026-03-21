@@ -19,8 +19,3 @@ variable "k8s_host" {
   type        = string
   sensitive   = true
 }
-
-variable "app_names" {
-  description = "List of application names to create Twingate service accounts for"
-  type        = list(string)
-}

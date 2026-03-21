@@ -98,9 +98,3 @@ resource "azurerm_key_vault_secret" "backup_storage_account_container_name" {
   name         = "storage-account-container-name"
   value        = data.azurerm_storage_container.backups_storage_container.name
 }
-
-resource "azurerm_key_vault_secret" "backup_twingate_service_key" {
-  key_vault_id = azurerm_key_vault.backup_kv.id
-  name         = "twingate-service-key"
-  value        = var.twingate_service_key
-}
