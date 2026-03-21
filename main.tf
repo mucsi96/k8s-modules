@@ -39,6 +39,11 @@ terraform {
       source  = "Twingate/twingate"
       version = "4.0.2"
     }
+
+    github = {
+      source  = "integrations/github"
+      version = ">= 6.0.0"
+    }
   }
 
   required_version = ">= 1.2"
@@ -85,6 +90,10 @@ provider "cloudflare" {
 provider "twingate" {
   api_token = data.azurerm_key_vault_secret.twingate_api_token.value
   network   = data.azurerm_key_vault_secret.twingate_network.value
+}
+
+provider "github" {
+  owner = "mucsi96"
 }
 
 data "azurerm_key_vault" "kv" {
@@ -230,6 +239,7 @@ module "setup_backup_app" {
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   db_username                = module.create_database.username
   db_password                = module.create_database.password
+  twingate_service_key       = module.setup_twingate.service_key
   wait_for                   = module.setup_ingress_controller.traefik_ready
 
   azure_storage_account_resource_group_name = "ibari"
@@ -249,6 +259,7 @@ module "setup_learn_language_app" {
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password
+  twingate_service_key       = module.setup_twingate.service_key
   wait_for                   = module.setup_ingress_controller.traefik_ready
 }
 
@@ -265,6 +276,7 @@ module "setup_hello_app" {
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password
+  twingate_service_key       = module.setup_twingate.service_key
   wait_for                   = module.setup_ingress_controller.traefik_ready
 }
 
@@ -281,37 +293,6 @@ module "setup_training_log_app" {
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password
-  wait_for                   = module.setup_ingress_controller.traefik_ready
-}
-
-module "setup_film_app" {
-  source                     = "./modules/setup_film_app"
-  environment_name           = var.environment_name
-  azure_location             = var.azure_location
-  owner                      = local.owner
-  k8s_host                   = module.setup_cluster.k8s_host
-  k8s_cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
-  k8s_oidc_issuer_url        = module.setup_cluster.oidc_issuer_url
-  hostname                   = data.azurerm_key_vault_secret.dns_zone.value
-  tenant_id                  = data.azurerm_client_config.current.tenant_id
-  db_jdbc_url                = module.create_database.jdbc_url
-  db_username                = module.create_database.username
-  db_password                = module.create_database.password
-  wait_for                   = module.setup_ingress_controller.traefik_ready
-}
-
-module "setup_reading_tracker_app" {
-  source                     = "./modules/setup_reading_tracker_app"
-  environment_name           = var.environment_name
-  azure_location             = var.azure_location
-  owner                      = local.owner
-  k8s_host                   = module.setup_cluster.k8s_host
-  k8s_cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
-  k8s_oidc_issuer_url        = module.setup_cluster.oidc_issuer_url
-  hostname                   = data.azurerm_key_vault_secret.dns_zone.value
-  tenant_id                  = data.azurerm_client_config.current.tenant_id
-  db_jdbc_url                = module.create_database.jdbc_url
-  db_username                = module.create_database.username
-  db_password                = module.create_database.password
+  twingate_service_key       = module.setup_twingate.service_key
   wait_for                   = module.setup_ingress_controller.traefik_ready
 }
