@@ -32,12 +32,12 @@ terraform {
 
     cloudflare = {
       source  = "cloudflare/cloudflare"
-      version = "5.18.0" // Update after https://github.com/cloudflare/terraform-provider-cloudflare/issues/6308 is resolved
+      version = "5.18.0"
     }
 
     twingate = {
       source  = "Twingate/twingate"
-      version = ">= 3.0.0"
+      version = "4.0.2"
     }
   }
 
