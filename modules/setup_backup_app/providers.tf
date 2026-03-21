@@ -11,5 +11,9 @@ terraform {
     azuread = {
       source = "hashicorp/azuread"
     }
+
+    github = {
+      source = "integrations/github"
+    }
   }
 }

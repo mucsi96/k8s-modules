@@ -37,6 +37,12 @@ module "setup_backup_spa" {
   ]
 }
 
+resource "github_actions_secret" "twingate_service_key" {
+  repository      = "postgres-azure-backup"
+  secret_name     = "TWINGATE_SERVICE_KEY"
+  plaintext_value = var.twingate_service_key
+}
+
 data "azurerm_storage_account" "storage_account" {
   name                = var.azure_storage_account_name
   resource_group_name = var.azure_storage_account_resource_group_name

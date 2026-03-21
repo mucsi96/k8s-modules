@@ -206,6 +206,51 @@ provider "registry.terraform.io/hashicorp/tls" {
   ]
 }
 
+provider "registry.terraform.io/integrations/github" {
+  version     = "6.11.1"
+  constraints = ">= 6.0.0"
+  hashes = [
+    "h1:Hqvebe3Zc19DxRCHHLIByBvxCm+WJqGyAyYCbJDuHGE=",
+    "zh:0a5262b033a30d8a77ebf844dc3afd7e726d5f53ac1c9d4072cf9157820d1f73",
+    "zh:437236181326f92d1a7c56985b2ac3223efd73f75c528323b90f4b7d1b781090",
+    "zh:49a12c14d1d3a143a124ba81f15fbf18714af90752c993698c76e84fa85da004",
+    "zh:61eaf17b559a26ca14deb597375a6678d054d739e8b81c586ef1d0391c307916",
+    "zh:7f3f1e2c36f4787ca9a5aeb5317b8c3f6cc652368d1f8f00fb80f404109d4db1",
+    "zh:85a232f2e96e5adafa2676f38a96b8cc074e96f715caf6ee1d169431174897d2",
+    "zh:979d005af2a9003d887413195948c899e9f5aba4a79cce1eed40f3ba50301af1",
+    "zh:b8c8cd3254504d2184d2b2233ad41b5fdfda91a36fc864926cbc5c7eee1bfea3",
+    "zh:d00959e62930fb75d2b97c1d66ab0143120541d5a1b3f26d3551f24cb0361f83",
+    "zh:d0b544eed171c7563387fe87f0af3d238bb3804798159b4d0453c97927237daf",
+    "zh:ecfa19b1219aa55b1ece98d8cff5b1494dc0387329c8ae0d8f762ec3871fb75d",
+    "zh:f2c99825f38c92ac599ad36b9d093ea0c0d790fd0c02e861789e14735a605f86",
+    "zh:f33b5abe14ad5fb9978da5dbd3bc6989f69766150d4b30ed283a2c281871eda3",
+    "zh:f6c2fe9dd958c554170dc0c35ca41b60fcc6253304cde0b9941c5c872b18ac54",
+    "zh:fbd1fee2c9df3aa19cf8851ce134dea6e45ea01cb85695c1726670c285797e25",
+  ]
+}
+
+provider "registry.terraform.io/twingate/twingate" {
+  version     = "4.0.2"
+  constraints = ">= 3.0.0"
+  hashes = [
+    "h1:6+f3lJVegBbBW+SS9+XAv7Syu+kzUETs5qvRH3G7/kw=",
+    "zh:161982e6f7219d9ab050937e67bd3a75f82acca4ba225759320f2a0e4b9820e9",
+    "zh:1e78c90bac8ef74c6871bcbf1be931a2b9277c67825973f9531781a88a8d57ed",
+    "zh:3f8e8f2bc62c2da58e39f1b280adab8f59ebd642f97c3100d60f68b446d19d03",
+    "zh:46952196f5fbcda27beebf5d91b6e636b925c706e81b44c7262fa3ed6a13ffee",
+    "zh:7fba7acd86b44ebc4623f1f78bf91d5e9de5d5e8df23bfc2503c0df775478c11",
+    "zh:882ee697ed2b27f24754315c0c8bf3c3ed6e2994140c3c75bb70268acb7f2fce",
+    "zh:9a2f5a47f457ad8a1628f511678a4c101b7c441d200891ccb92b87b9b31b4e9e",
+    "zh:acf5cbf79707fbb7a5916fcbebf9d988f823aed5d7c4a947edb7137928e30dbc",
+    "zh:b3881b5a144a0a4d220d4b953f4a2dcb0fee5c1f8d2b58941e30321ff86421b9",
+    "zh:c41faab22db3802fcba483449936cb570ae4a773cc4698aa44a78b6fb52845b1",
+    "zh:d29ffd714d4bf8028b085e44415cc9547e6fb83801f3b39a6b9a5db3e06eaf0d",
+    "zh:ebbccfb8e3f5b17a6c5cccaedb3fdb57b4285bec72b6159df77e58ec8e816815",
+    "zh:f33923cce40a7d0de8726382c0804ccb4ced1ad937606cd60b5a3a5647c5e5a2",
+    "zh:ff82bd8dc7d31d938b4983cee1769825343628b99550c55e7b9d3e8756c0aaaf",
+  ]
+}
+
 provider "registry.terraform.io/vancluever/acme" {
   version     = "2.45.1"
   constraints = ">= 2.28.2"
