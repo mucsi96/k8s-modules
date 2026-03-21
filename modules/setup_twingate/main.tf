@@ -45,6 +45,15 @@ resource "helm_release" "twingate_connector" {
   })]
 }
 
+resource "twingate_service_account" "github_actions" {
+  name = "${var.environment_name}-github-actions"
+}
+
+resource "twingate_service_account_key" "github_actions" {
+  service_account_id = twingate_service_account.github_actions.id
+  name               = "${var.environment_name}-github-actions-key"
+}
+
 resource "twingate_resource" "k8s_api" {
   name              = "${var.environment_name} Kubernetes API"
   remote_network_id = twingate_remote_network.home_cluster.id
@@ -60,18 +69,8 @@ resource "twingate_resource" "k8s_api" {
       policy = "DENY_ALL"
     }
   }
-}
 
-resource "twingate_service_account" "github_actions" {
-  name = "${var.environment_name}-github-actions"
-}
-
-resource "twingate_service_account_key" "github_actions" {
-  service_account_id = twingate_service_account.github_actions.id
-  name               = "${var.environment_name}-github-actions-key"
-}
-
-resource "twingate_resource_access" "github_actions_k8s" {
-  resource_id        = twingate_resource.k8s_api.id
-  service_account_id = twingate_service_account.github_actions.id
+  access_service {
+    service_account_id = twingate_service_account.github_actions.id
+  }
 }
