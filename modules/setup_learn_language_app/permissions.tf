@@ -11,7 +11,7 @@ resource "azuread_app_role_assignment" "allow_admin_user_to_create_learn_languag
 }
 
 resource "azurerm_role_assignment" "allow_learn_language_api_to_read_learn_language_kv" {
-  scope                = azurerm_key_vault.learn_language_kv.id
+  scope                = module.app_base.key_vault_id
   role_definition_name = "Key Vault Secrets User"
   principal_id         = module.setup_learn_language_api.resource_object_id
 }

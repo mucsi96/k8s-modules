@@ -1,48 +1,17 @@
-resource "github_actions_secret" "twingate_service_key" {
-  repository      = "training-log-pro"
-  secret_name     = "TWINGATE_SERVICE_KEY"
-  plaintext_value = var.twingate_service_key
-}
+module "app_base" {
+  source = "../setup_app_base"
 
-resource "github_actions_secret" "k8s_config" {
-  repository      = "training-log-pro"
-  secret_name     = "K8S_CONFIG"
-  plaintext_value = module.create_training_log_namespace.k8s_user_config
-}
-
-resource "github_actions_secret" "hostname" {
-  repository      = "training-log-pro"
-  secret_name     = "HOSTNAME"
-  plaintext_value = local.app_hostname
-}
-
-resource "github_actions_secret" "api_client_id" {
-  repository      = "training-log-pro"
-  secret_name     = "API_CLIENT_ID"
-  plaintext_value = module.setup_training_log_api.client_id
-}
-
-data "docker_login" "current" {}
-
-resource "github_actions_secret" "dockerhub_username" {
-  repository      = "training-log-pro"
-  secret_name     = "DOCKERHUB_USERNAME"
-  plaintext_value = data.docker_login.current.username
-}
-
-resource "github_actions_secret" "azure_keyvault_endpoint" {
-  repository      = "training-log-pro"
-  secret_name     = "AZURE_KEYVAULT_ENDPOINT"
-  plaintext_value = azurerm_key_vault.training_log_kv.vault_uri
-}
-
-resource "docker_access_token" "training_log" {
-  token_label = "training-log-pro"
-  scopes      = ["repo:read", "repo:write"]
-}
-
-resource "github_actions_secret" "dockerhub_token" {
-  repository      = "training-log-pro"
-  secret_name     = "DOCKERHUB_TOKEN"
-  plaintext_value = docker_access_token.training_log.token
+  github_repository      = "training-log-pro"
+  environment_name       = var.environment_name
+  app_name               = "training-log"
+  azure_location         = var.azure_location
+  tenant_id              = var.tenant_id
+  owner                  = var.owner
+  use_rbac_authorization = true
+  twingate_service_key   = var.twingate_service_key
+  k8s_user_config        = module.create_training_log_namespace.k8s_user_config
+  app_hostname           = local.app_hostname
+  api_client_id          = module.setup_training_log_api.client_id
+  api_client_secret      = module.setup_training_log_api.client_secret
+  spa_client_id          = module.setup_training_log_spa.client_id
 }
