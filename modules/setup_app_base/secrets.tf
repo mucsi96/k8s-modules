@@ -4,27 +4,7 @@ resource "azurerm_key_vault" "app_kv" {
   location                   = var.azure_location
   tenant_id                  = var.tenant_id
   sku_name                   = "standard"
-  rbac_authorization_enabled = var.use_rbac_authorization
-
-  dynamic "access_policy" {
-    for_each = var.use_rbac_authorization ? [] : [1]
-    content {
-      tenant_id = var.tenant_id
-      object_id = var.owner
-
-      secret_permissions = [
-        "Get",
-        "List",
-        "Set",
-        "Delete",
-        "Purge",
-      ]
-    }
-  }
-
-  lifecycle {
-    prevent_destroy = true
-  }
+  rbac_authorization_enabled = true
 }
 
 resource "azurerm_key_vault_secret" "k8s_user_config" {

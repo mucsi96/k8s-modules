@@ -28,12 +28,6 @@ variable "owner" {
   type        = string
 }
 
-variable "use_rbac_authorization" {
-  description = "Whether to use RBAC authorization for the Key Vault"
-  type        = bool
-  default     = false
-}
-
 variable "k8s_host" {
   description = "The Kubernetes API server endpoint"
   type        = string
