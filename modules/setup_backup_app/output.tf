@@ -1,5 +1,5 @@
 output "k8s_user_config" {
-  value = module.create_backup_namespace.k8s_user_config
+  value = module.app_base.k8s_user_config
 }
 
 output "backup_api_client_id" {

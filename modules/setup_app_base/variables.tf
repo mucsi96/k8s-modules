@@ -34,14 +34,20 @@ variable "use_rbac_authorization" {
   default     = false
 }
 
-variable "twingate_service_key" {
-  description = "Twingate service key"
+variable "k8s_host" {
+  description = "The Kubernetes API server endpoint"
   type        = string
   sensitive   = true
 }
 
-variable "k8s_user_config" {
-  description = "The Kubernetes user config from namespace module"
+variable "k8s_cluster_ca_certificate" {
+  description = "The cluster CA certificate for the Kubernetes cluster"
+  type        = string
+  sensitive   = true
+}
+
+variable "twingate_service_key" {
+  description = "Twingate service key"
   type        = string
   sensitive   = true
 }

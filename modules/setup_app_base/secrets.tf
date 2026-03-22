@@ -30,7 +30,7 @@ resource "azurerm_key_vault" "app_kv" {
 resource "azurerm_key_vault_secret" "k8s_user_config" {
   key_vault_id = azurerm_key_vault.app_kv.id
   name         = "k8s-config"
-  value        = var.k8s_user_config
+  value        = module.create_namespace.k8s_user_config
 }
 
 resource "azurerm_key_vault_secret" "tenant_id" {
