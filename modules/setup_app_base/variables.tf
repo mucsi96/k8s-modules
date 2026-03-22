@@ -66,3 +66,8 @@ variable "spa_client_id" {
   description = "The SPA application client ID"
   type        = string
 }
+
+variable "api_resource_object_id" {
+  description = "The API application service principal object ID for Key Vault access"
+  type        = string
+}

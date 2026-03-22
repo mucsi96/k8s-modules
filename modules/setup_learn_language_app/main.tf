@@ -17,7 +17,8 @@ module "app_base" {
   app_hostname         = local.app_hostname
   api_client_id        = module.setup_learn_language_api.client_id
   api_client_secret    = module.setup_learn_language_api.client_secret
-  spa_client_id        = module.setup_learn_language_spa.client_id
+  spa_client_id            = module.setup_learn_language_spa.client_id
+  api_resource_object_id   = module.setup_learn_language_api.resource_object_id
 }
 
 module "setup_learn_language_api" {
