@@ -68,3 +68,10 @@ resource "azuread_application_federated_identity_credential" "federated_identity
 resource "azuread_application_password" "api_password" {
   application_id = azuread_application.api.id
 }
+
+resource "azuread_app_role_assignment" "allow_admin_user" {
+  for_each            = toset(var.roles)
+  app_role_id         = random_uuid.role_id[each.value].result
+  principal_object_id = var.owner
+  resource_object_id  = azuread_service_principal.service_principal.object_id
+}

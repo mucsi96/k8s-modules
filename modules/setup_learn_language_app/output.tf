@@ -1,5 +1,5 @@
 output "k8s_user_config" {
-  value = module.create_learn_language_namespace.k8s_user_config
+  value = module.app_base.k8s_user_config
 }
 
 output "learn_language_api_client_id" {

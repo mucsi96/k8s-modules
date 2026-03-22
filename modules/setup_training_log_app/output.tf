@@ -1,5 +1,5 @@
 output "k8s_user_config" {
-  value = module.create_training_log_namespace.k8s_user_config
+  value = module.app_base.k8s_user_config
 }
 
 output "training_log_api_client_id" {
