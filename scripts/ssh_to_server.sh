@@ -57,20 +57,9 @@ fi
 # scp \
 #   -i "$ssh_key_path" \
 #   -P "$ssh_port" \
-#   ~/test/A1_SD1_Wortliste_02.pdf \
-#   "$ssh_user@$ssh_host:/var/snap/microk8s/common/default-storage/learn-language-learn-language-learn-language-pvc-xx/sources/"
-
-# scp \
-#   -i "$ssh_key_path" \
-#   -P "$ssh_port" \
-#   ~/test/Goethe-Zertifikat_A2_Wortliste.pdf \
-#   "$ssh_user@$ssh_host:/var/snap/microk8s/common/default-storage/learn-language-learn-language-learn-language-pvc-xx/sources/"
-
-# scp \
-#   -i "$ssh_key_path" \
-#   -P "$ssh_port" \
-#   ~/test/Goethe-Zertifikat_B1_Wortliste.pdf \
-#   "$ssh_user@$ssh_host:/var/snap/microk8s/common/default-storage/learn-language-learn-language-learn-language-pvc-xx/sources/"
+#   -r \
+#   sources \
+#   "$ssh_user@$ssh_host:~/"
 
 ssh \
   -i "$ssh_key_path" \
