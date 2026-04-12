@@ -61,6 +61,20 @@ fi
 #   sources \
 #   "$ssh_user@$ssh_host:~/"
 
+# echo "Copy file from the server..."
+# scp \
+#   -i "$ssh_key_path" \
+#   -P "$ssh_port" \
+#   "$ssh_user@$ssh_host:~/e7fc892d-2ddf-440e-bd7b-ba0771931d4a.webp" \
+#   .
+# scp \
+#   -i "$ssh_key_path" \
+#   -P "$ssh_port" \
+#   "$ssh_user@$ssh_host:~/df2a457a-7d49-4cc4-b1ea-3e5f9186cab0.webp" \
+#   .
+
+
+
 ssh \
   -i "$ssh_key_path" \
   -p "$ssh_port" \
