@@ -39,7 +39,7 @@ module "setup_training_log_spa" {
   owner  = var.owner
 
   display_name  = "Training Log SPA"
-  redirect_uris = ["https://${local.app_hostname}/", "http://localhost:4200/"]
+  redirect_uris = ["https://${local.app_hostname}/", "http://localhost:4203/"]
 
   api_id        = module.setup_training_log_api.application_id
   api_client_id = module.setup_training_log_api.client_id
