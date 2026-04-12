@@ -39,7 +39,7 @@ module "setup_learn_language_spa" {
   owner  = var.owner
 
   display_name  = "Learn Language SPA"
-  redirect_uris = ["https://${local.app_hostname}/", "http://localhost:4200/"]
+  redirect_uris = ["https://${local.app_hostname}/", "http://localhost:4201/"]
 
   api_id        = module.setup_learn_language_api.application_id
   api_client_id = module.setup_learn_language_api.client_id
