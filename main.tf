@@ -307,5 +307,13 @@ module "setup_training_log_app" {
   db_username                = module.create_database.username
   db_password                = module.create_database.password
   twingate_service_key       = module.setup_twingate.service_key
+  playwright_server_url      = "ws://playwright-server.training-log:3000"
   wait_for                   = module.setup_ingress_controller.traefik_ready
+}
+
+module "setup_playwright_server" {
+  source             = "./modules/setup_playwright_server"
+  k8s_namespace      = "training-log"
+  playwright_version = "1.52.0"
+  depends_on         = [module.setup_training_log_app]
 }
