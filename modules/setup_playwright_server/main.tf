@@ -1,12 +1,22 @@
 locals {
-  app_name = "playwright-server"
-  port     = 3000
+  app_name      = "playwright-server"
+  k8s_namespace = "playwright"
+  port          = 3000
+}
+
+module "create_namespace" {
+  source                     = "../create_app_namespace"
+  environment_name           = var.environment_name
+  k8s_namespace              = local.k8s_namespace
+  k8s_host                   = var.k8s_host
+  k8s_cluster_ca_certificate = var.k8s_cluster_ca_certificate
+  wait_for                   = var.wait_for
 }
 
 resource "kubernetes_deployment_v1" "playwright_server" {
   metadata {
     name      = local.app_name
-    namespace = var.k8s_namespace
+    namespace = module.create_namespace.k8s_namespace
   }
 
   spec {
@@ -44,7 +54,7 @@ resource "kubernetes_deployment_v1" "playwright_server" {
 resource "kubernetes_service_v1" "playwright_server" {
   metadata {
     name      = local.app_name
-    namespace = var.k8s_namespace
+    namespace = module.create_namespace.k8s_namespace
   }
 
   spec {

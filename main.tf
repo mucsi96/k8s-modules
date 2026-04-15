@@ -293,6 +293,15 @@ module "setup_hello_app" {
   wait_for                   = module.setup_ingress_controller.traefik_ready
 }
 
+module "setup_playwright_server" {
+  source                     = "./modules/setup_playwright_server"
+  environment_name           = var.environment_name
+  k8s_host                   = module.setup_cluster.k8s_host
+  k8s_cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
+  playwright_version         = "1.52.0"
+  wait_for                   = module.setup_ingress_controller.traefik_ready
+}
+
 module "setup_training_log_app" {
   source                     = "./modules/setup_training_log_app"
   environment_name           = var.environment_name
@@ -307,13 +316,6 @@ module "setup_training_log_app" {
   db_username                = module.create_database.username
   db_password                = module.create_database.password
   twingate_service_key       = module.setup_twingate.service_key
-  playwright_server_url      = "ws://playwright-server.training-log:3000"
+  playwright_server_url      = module.setup_playwright_server.url
   wait_for                   = module.setup_ingress_controller.traefik_ready
-}
-
-module "setup_playwright_server" {
-  source             = "./modules/setup_playwright_server"
-  k8s_namespace      = "training-log"
-  playwright_version = "1.52.0"
-  depends_on         = [module.setup_training_log_app]
 }

@@ -1,3 +1,3 @@
 output "url" {
-  value = "ws://${local.app_name}.${var.k8s_namespace}:${local.port}"
+  value = "ws://${local.app_name}.${local.k8s_namespace}:${local.port}"
 }
