@@ -19,5 +19,9 @@ terraform {
     docker = {
       source = "docker/docker"
     }
+
+    kubernetes = {
+      source = "hashicorp/kubernetes"
+    }
   }
 }

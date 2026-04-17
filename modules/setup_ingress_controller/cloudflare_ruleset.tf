@@ -1,4 +1,5 @@
 resource "cloudflare_ruleset" "firewall_rules" {
+  count   = var.manage_shared_resources ? 1 : 0
   zone_id = var.cloudflare_zone_id
   kind    = "zone"
   name    = "Firewall Rules"
@@ -27,6 +28,7 @@ resource "cloudflare_ruleset" "firewall_rules" {
 }
 
 resource "cloudflare_ruleset" "rate_limiting" {
+  count       = var.manage_shared_resources ? 1 : 0
   zone_id     = var.cloudflare_zone_id
   name        = "Rate Limiting Rules"
   description = "Rate limiting rules for protecting against abuse and DDoS"

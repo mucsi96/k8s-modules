@@ -45,3 +45,8 @@ variable "azure_tenant_id" {
   description = "Azure tenant ID used by the workload identity webhook."
   type        = string
 }
+
+variable "cluster_name" {
+  description = "Logical name for this cluster instance, used to namespace Key Vault secrets and OIDC paths."
+  type        = string
+}

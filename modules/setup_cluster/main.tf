@@ -114,6 +114,7 @@ resource "ansible_playbook" "install_microk8s" {
     ansible_ssh_private_key_file = local_sensitive_file.user_private_key.filename
     azure_key_vault_name         = var.azure_key_vault_name
     azure_subscription_id        = var.azure_subscription_id
+    cluster_name                 = var.cluster_name
   }
 
   depends_on = [terraform_data.wait_for_system]
@@ -136,7 +137,8 @@ resource "ansible_playbook" "publish_microk8s_oidc" {
     ansible_ssh_private_key_file = local_sensitive_file.user_private_key.filename
     resource_group               = var.environment_name
     storage_account_name         = var.storage_account_name
-    issuer                       = data.azurerm_storage_account.oidc.primary_web_endpoint
+    issuer                       = "${data.azurerm_storage_account.oidc.primary_web_endpoint}${var.cluster_name}/"
+    cluster_name                 = var.cluster_name
     azwi_version                 = "v1.5.1"
   }
 
@@ -153,7 +155,7 @@ resource "ansible_playbook" "configure_microk8s_oidc" {
     ansible_user                 = var.username
     ansible_become_password      = random_password.user_password.result
     ansible_ssh_private_key_file = local_sensitive_file.user_private_key.filename
-    issuer                       = data.azurerm_storage_account.oidc.primary_web_endpoint
+    issuer                       = "${data.azurerm_storage_account.oidc.primary_web_endpoint}${var.cluster_name}/"
   }
 
   depends_on = [ansible_playbook.publish_microk8s_oidc]

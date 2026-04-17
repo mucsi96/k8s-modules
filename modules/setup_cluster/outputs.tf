@@ -27,31 +27,31 @@ data "azurerm_key_vault" "kv" {
 
 data "azurerm_key_vault_secret" "k8s_config" {
   key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "k8s-config"
+  name         = "${var.cluster_name}-k8s-config"
   depends_on   = [ansible_playbook.install_microk8s]
 }
 
 data "azurerm_key_vault_secret" "k8s_host" {
   key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "k8s-host"
+  name         = "${var.cluster_name}-k8s-host"
   depends_on   = [ansible_playbook.install_microk8s]
 }
 
 data "azurerm_key_vault_secret" "k8s_client_certificate" {
   key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "k8s-client-certificate"
+  name         = "${var.cluster_name}-k8s-client-certificate"
   depends_on   = [ansible_playbook.install_microk8s]
 }
 
 data "azurerm_key_vault_secret" "k8s_client_key" {
   key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "k8s-client-key"
+  name         = "${var.cluster_name}-k8s-client-key"
   depends_on   = [ansible_playbook.install_microk8s]
 }
 
 data "azurerm_key_vault_secret" "k8s_cluster_ca_certificate" {
   key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "k8s-cluster-ca-certificate"
+  name         = "${var.cluster_name}-k8s-cluster-ca-certificate"
   depends_on   = [ansible_playbook.install_microk8s]
 }
 
@@ -86,6 +86,6 @@ output "k8s_cluster_ca_certificate" {
 
 output "oidc_issuer_url" {
   description = "Public issuer URL exposing the MicroK8s OIDC discovery document."
-  value       = data.azurerm_storage_account.oidc.primary_web_endpoint
+  value       = "${data.azurerm_storage_account.oidc.primary_web_endpoint}${var.cluster_name}/"
   depends_on  = [ansible_playbook.publish_microk8s_oidc]
 }
