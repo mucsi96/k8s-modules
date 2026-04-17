@@ -49,6 +49,11 @@ terraform {
       source  = "docker/docker"
       version = ">= 0.2.0"
     }
+
+    hcloud = {
+      source  = "hetznercloud/hcloud"
+      version = ">= 1.49.0"
+    }
   }
 
   required_version = ">= 1.2"
@@ -104,37 +109,71 @@ provider "github" {
 
 provider "docker" {}
 
+variable "use_hetzner" {
+  description = "Provision a Hetzner Cloud server instead of using the local server."
+  type        = bool
+  default     = false
+}
+
+data "azurerm_key_vault_secret" "hetzner_api_token" {
+  count        = var.use_hetzner ? 1 : 0
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "hetzner-api-token"
+}
+
+provider "hcloud" {
+  token = one(data.azurerm_key_vault_secret.hetzner_api_token[*].value)
+}
+
 data "azurerm_key_vault" "kv" {
   resource_group_name = var.environment_name
   name                = var.environment_name
 }
 
 data "azurerm_key_vault_secret" "setup_cluster_host" {
+  count        = var.use_hetzner ? 0 : 1
   key_vault_id = data.azurerm_key_vault.kv.id
   name         = "host"
 }
 
 data "azurerm_key_vault_secret" "setup_cluster_username" {
+  count        = var.use_hetzner ? 0 : 1
   key_vault_id = data.azurerm_key_vault.kv.id
   name         = "ssh-user-name"
 }
 
 data "azurerm_key_vault_secret" "setup_cluster_initial_password" {
+  count        = var.use_hetzner ? 0 : 1
   key_vault_id = data.azurerm_key_vault.kv.id
   name         = "ssh-initial-password"
 }
 
 data "azurerm_key_vault_secret" "setup_cluster_initial_port" {
+  count        = var.use_hetzner ? 0 : 1
   key_vault_id = data.azurerm_key_vault.kv.id
   name         = "ssh-initial-port"
 }
 
+module "hetzner_server" {
+  count    = var.use_hetzner ? 1 : 0
+  source   = "./modules/hetzner_server"
+  name     = "${var.environment_name}-k8s"
+  username = "k8s"
+}
+
+locals {
+  cluster_host             = var.use_hetzner ? one(module.hetzner_server[*].host) : one(data.azurerm_key_vault_secret.setup_cluster_host[*].value)
+  cluster_initial_port     = var.use_hetzner ? 22 : tonumber(one(data.azurerm_key_vault_secret.setup_cluster_initial_port[*].value))
+  cluster_username         = var.use_hetzner ? one(module.hetzner_server[*].username) : one(data.azurerm_key_vault_secret.setup_cluster_username[*].value)
+  cluster_initial_password = var.use_hetzner ? one(module.hetzner_server[*].initial_password) : one(data.azurerm_key_vault_secret.setup_cluster_initial_password[*].value)
+}
+
 module "setup_cluster" {
   source                = "./modules/setup_cluster"
-  host                  = data.azurerm_key_vault_secret.setup_cluster_host.value
-  initial_port          = tonumber(data.azurerm_key_vault_secret.setup_cluster_initial_port.value)
-  username              = data.azurerm_key_vault_secret.setup_cluster_username.value
-  initial_password      = data.azurerm_key_vault_secret.setup_cluster_initial_password.value
+  host                  = local.cluster_host
+  initial_port          = local.cluster_initial_port
+  username              = local.cluster_username
+  initial_password      = local.cluster_initial_password
   azure_key_vault_name  = data.azurerm_key_vault.kv.name
   environment_name      = var.environment_name
   azure_subscription_id = var.azure_subscription_id
@@ -213,7 +252,7 @@ module "setup_twingate" {
   environment_name   = var.environment_name
   twingate_network   = data.azurerm_key_vault_secret.twingate_network.value
   twingate_api_token = data.azurerm_key_vault_secret.twingate_api_token.value
-  k8s_host           = data.azurerm_key_vault_secret.setup_cluster_host.value
+  k8s_host           = local.cluster_host
   depends_on         = [module.setup_cluster]
 }
 

@@ -4,6 +4,11 @@ set -euo pipefail
 
 source .venv/bin/activate
 
+if terraform state list 2>/dev/null | grep -q 'module.hetzner_server'; then
+  terraform destroy
+  exit 0
+fi
+
 terraform destroy -target=module.setup_cluster.ansible_playbook.secure_private_server
 
 ssh_host=$(az keyvault secret show --vault-name p06 --name "host" --query value --output tsv)
