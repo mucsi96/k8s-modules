@@ -56,3 +56,21 @@ variable "authorized_as" {
   type        = string
   sensitive   = true
 }
+
+variable "cluster_name" {
+  description = "Logical cluster name, used to give tunnels unique names."
+  type        = string
+  default     = ""
+}
+
+variable "manage_shared_resources" {
+  description = "Whether this instance manages shared Cloudflare resources (SSO, rulesets, access policies). Only one instance should set this to true."
+  type        = bool
+  default     = true
+}
+
+variable "manage_dns_record" {
+  description = "Whether to create the wildcard DNS CNAME. Set to false when DNS is managed at root level for active tunnel switching."
+  type        = bool
+  default     = true
+}

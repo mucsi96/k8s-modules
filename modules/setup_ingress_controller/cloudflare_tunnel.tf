@@ -6,7 +6,7 @@ resource "kubernetes_namespace_v1" "cloudflare" {
 
 resource "cloudflare_zero_trust_tunnel_cloudflared" "traefik_tunnel" {
   account_id = var.cloudflare_account_id
-  name       = "${var.environment_name} tunnel"
+  name       = var.cluster_name != "" ? "${var.environment_name} ${var.cluster_name} tunnel" : "${var.environment_name} tunnel"
   config_src = "cloudflare"
 }
 
@@ -16,6 +16,7 @@ data "cloudflare_zero_trust_tunnel_cloudflared_token" "traefik_tunnel_token" {
 }
 
 resource "cloudflare_dns_record" "cname_record" {
+  count   = var.manage_dns_record ? 1 : 0
   zone_id = var.cloudflare_zone_id
   name    = "*"
   content = "${cloudflare_zero_trust_tunnel_cloudflared.traefik_tunnel.id}.cfargotunnel.com"

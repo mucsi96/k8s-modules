@@ -90,7 +90,7 @@
         resource_group: "{{ resource_group }}"
         storage_account_name: "{{ storage_account_name }}"
         container: "$web"
-        blob: ".well-known/openid-configuration"
+        blob: "{{ cluster_name }}/.well-known/openid-configuration"
         src: "{{ discovery_tmp.path }}"
         content_type: application/json
         force: true
@@ -104,7 +104,7 @@
         resource_group: "{{ resource_group }}"
         storage_account_name: "{{ storage_account_name }}"
         container: "$web"
-        blob: "openid/v1/jwks"
+        blob: "{{ cluster_name }}/openid/v1/jwks"
         src: "{{ jwks_tmp.path }}"
         content_type: application/json
         force: true
