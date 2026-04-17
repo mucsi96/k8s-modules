@@ -56,3 +56,9 @@ variable "authorized_as" {
   type        = string
   sensitive   = true
 }
+
+variable "manage_wildcard_dns_record" {
+  description = "Whether this environment owns the wildcard CNAME record in Cloudflare. Set to false on secondary environments so the primary keeps ownership and traffic can be switched by editing a single DNS record."
+  type        = bool
+  default     = true
+}
