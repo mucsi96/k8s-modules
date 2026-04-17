@@ -16,6 +16,7 @@ data "cloudflare_zero_trust_tunnel_cloudflared_token" "traefik_tunnel_token" {
 }
 
 resource "cloudflare_dns_record" "cname_record" {
+  count   = var.manage_wildcard_dns_record ? 1 : 0
   zone_id = var.cloudflare_zone_id
   name    = "*"
   content = "${cloudflare_zero_trust_tunnel_cloudflared.traefik_tunnel.id}.cfargotunnel.com"
