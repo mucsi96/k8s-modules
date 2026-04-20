@@ -7,7 +7,7 @@ terraform {
 
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = ">=2.35.0"
+      version = ">= 2.35.0"
     }
 
     helm = {
@@ -37,7 +37,7 @@ terraform {
 
     twingate = {
       source  = "Twingate/twingate"
-      version = "4.0.2"
+      version = "4.1.1"
     }
 
     github = {
