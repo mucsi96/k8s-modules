@@ -25,3 +25,9 @@ The following secrets must exist in the Azure Key Vault (named after the `enviro
 | `github-token` | GitHub personal access token with `repo` scope for setting Actions secrets |
 
 ## Requirements
+
+## Alternative target: Hetzner
+
+To deploy the same stack on Hetzner, use the dedicated Terraform root in `environments/hetzner`.
+
+This keeps Terraform state separate from the local-machine target and enables running both deployments in parallel.
