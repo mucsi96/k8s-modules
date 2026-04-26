@@ -197,8 +197,8 @@ module "setup_ingress_controller" {
   environment_name       = var.environment_name
   subscription_id        = var.azure_subscription_id
   dns_zone               = data.azurerm_key_vault_secret.dns_zone.value
-  traefik_chart_version  = "37.1.2" #https://github.com/traefik/traefik-helm-chart/releases
-  traefik_version        = "v3.5.3" #https://github.com/traefik/traefik/releases
+  traefik_chart_version  = "39.0.8" #https://github.com/traefik/traefik-helm-chart/releases
+  traefik_version        = "v3.6.14" #https://github.com/traefik/traefik/releases
   letsencrypt_email      = data.azurerm_key_vault_secret.letsencrypt_email.value
   cloudflare_api_token   = data.azurerm_key_vault_secret.cloudflare_api_token.value
   cloudflare_account_id  = data.azurerm_key_vault_secret.cloudflare_account_id.value
