@@ -44,6 +44,11 @@ resource "helm_release" "traefik" {
           default = true
         }
       }
+      web = {
+        forwardedHeaders = {
+          insecure = true
+        }
+      }
     }
   })]
 }
