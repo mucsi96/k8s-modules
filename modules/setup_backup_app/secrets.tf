@@ -23,6 +23,24 @@ resource "azurerm_key_vault_secret" "backup_dbs_config" {
         "unhealthy_cards",
         "api_tokens"
       ]
+    },
+    {
+      name            = "Training log"
+      host            = "postgres1.db"
+      port            = 5432
+      database        = "postgres1"
+      schema          = "training_log"
+      username        = var.db_username
+      password        = var.db_password
+      createPlainDump = true
+      folderBackups = [
+        {
+          path = "/app/storage/training-log"
+        }
+      ]
+      excludeTables = [
+        "oauth2_authorized_client"
+      ]
     }
   ])
 }
