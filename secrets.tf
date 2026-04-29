@@ -59,3 +59,31 @@ resource "azurerm_key_vault_secret" "twingate_service_key" {
   value        = module.setup_twingate.service_key
 }
 
+resource "azurerm_key_vault_secret" "hetzner_host" {
+  count        = var.provision_with_hetzner ? 1 : 0
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "host"
+  value        = module.provision_hetzner_server[0].ipv4_address
+}
+
+resource "azurerm_key_vault_secret" "hetzner_ssh_user_name" {
+  count        = var.provision_with_hetzner ? 1 : 0
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "ssh-user-name"
+  value        = module.provision_hetzner_server[0].username
+}
+
+resource "azurerm_key_vault_secret" "hetzner_ssh_initial_port" {
+  count        = var.provision_with_hetzner ? 1 : 0
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "ssh-initial-port"
+  value        = tostring(module.provision_hetzner_server[0].ssh_port)
+}
+
+resource "azurerm_key_vault_secret" "hetzner_ssh_initial_password" {
+  count        = var.provision_with_hetzner ? 1 : 0
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "ssh-initial-password"
+  value        = module.provision_hetzner_server[0].initial_password
+}
+

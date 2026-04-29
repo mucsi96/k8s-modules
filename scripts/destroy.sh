@@ -4,15 +4,25 @@ set -euo pipefail
 
 source .venv/bin/activate
 
+VAULT_NAME=${AZURE_KEYVAULT_NAME:-p06}
+PROVISION_WITH_HETZNER=${PROVISION_WITH_HETZNER:-false}
+
+if [ "$PROVISION_WITH_HETZNER" = "true" ]; then
+  # Hetzner-provisioned servers are torn down by Terraform itself,
+  # so the Ansible-based revert step is not required.
+  terraform destroy
+  exit 0
+fi
+
 terraform destroy -target=module.setup_cluster.ansible_playbook.secure_private_server
 
-ssh_host=$(az keyvault secret show --vault-name p06 --name "host" --query value --output tsv)
-ssh_user=$(az keyvault secret show --vault-name p06 --name "ssh-user-name" --query value --output tsv)
-ssh_port=$(az keyvault secret show --vault-name p06 --name "ssh-port" --query value --output tsv)
+ssh_host=$(az keyvault secret show --vault-name "$VAULT_NAME" --name "host" --query value --output tsv)
+ssh_user=$(az keyvault secret show --vault-name "$VAULT_NAME" --name "ssh-user-name" --query value --output tsv)
+ssh_port=$(az keyvault secret show --vault-name "$VAULT_NAME" --name "ssh-port" --query value --output tsv)
 ssh_key_path="modules/setup_cluster/.generated/${ssh_host}-id_ed25519"
-user_password=$(az keyvault secret show --vault-name p06 --name "user-password" --query value --output tsv)
-initial_password=$(az keyvault secret show --vault-name p06 --name "ssh-initial-password" --query value --output tsv)
-initial_port=$(az keyvault secret show --vault-name p06 --name "ssh-initial-port" --query value --output tsv)
+user_password=$(az keyvault secret show --vault-name "$VAULT_NAME" --name "user-password" --query value --output tsv)
+initial_password=$(az keyvault secret show --vault-name "$VAULT_NAME" --name "ssh-initial-password" --query value --output tsv)
+initial_port=$(az keyvault secret show --vault-name "$VAULT_NAME" --name "ssh-initial-port" --query value --output tsv)
 
 ansible-playbook \
   -i "$ssh_host," \

@@ -4,5 +4,6 @@ tfplan
 .terraform/
 .kube/
 backend.tf
+*.auto.tfvars
 .generated/
 .venv/

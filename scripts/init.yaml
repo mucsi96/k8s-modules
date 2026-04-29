@@ -144,6 +144,20 @@
         content: "{{ backend_config_text }}"
         mode: "0644"
 
+    - name: Write terraform.auto.tfvars to enable Hetzner provisioning
+      ansible.builtin.copy:
+        dest: "{{ playbook_dir ~ '/../terraform.auto.tfvars' }}"
+        content: |
+          provision_with_hetzner = true
+        mode: "0644"
+      when: provision_with_hetzner | default('false') | bool
+
+    - name: Remove terraform.auto.tfvars when Hetzner provisioning is disabled
+      ansible.builtin.file:
+        path: "{{ playbook_dir ~ '/../terraform.auto.tfvars' }}"
+        state: absent
+      when: not (provision_with_hetzner | default('false') | bool)
+
 
     - name: Create Key Vault for backup application
       azure.azcollection.azure_rm_keyvault:

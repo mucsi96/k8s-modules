@@ -58,9 +58,10 @@ fi
 
 # Check if backend.tf exists
 if [ ! -f backend.tf ]; then
-    echo "Fetching backend configuration from Key Vault..."
+    VAULT_NAME=${AZURE_KEYVAULT_NAME:-p06}
+    echo "Fetching backend configuration from Key Vault '$VAULT_NAME'..."
     az keyvault secret show \
-      --vault-name p06 \
+      --vault-name "$VAULT_NAME" \
       --name remote-backend-config \
       --query value \
       --output tsv > backend.tf
