@@ -1,0 +1,20 @@
+#cloud-config
+users:
+  - name: ${username}
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: 'ALL=(ALL) ALL'
+    lock_passwd: false
+chpasswd:
+  expire: false
+  users:
+    - name: ${username}
+      password: ${jsonencode(password)}
+      type: text
+ssh_pwauth: true
+package_update: true
+package_upgrade: false
+runcmd:
+  - install -d -m 755 /etc/ssh/sshd_config.d
+  - printf 'PasswordAuthentication yes\nPermitRootLogin yes\nKbdInteractiveAuthentication yes\n' > /etc/ssh/sshd_config.d/00-cloud-init-bootstrap.conf
+  - systemctl restart ssh || systemctl restart sshd

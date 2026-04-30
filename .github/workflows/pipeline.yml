@@ -1,0 +1,58 @@
+name: Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-validate-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - name: terraform fmt -check
+        run: terraform fmt -check -diff -recursive modules
+      - name: terraform validate (per module)
+        run: |
+          set -euo pipefail
+          for dir in modules/*/; do
+            echo "::group::$dir"
+            terraform -chdir="$dir" init -backend=false
+            terraform -chdir="$dir" validate
+            echo "::endgroup::"
+          done
+
+  release:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-release-${{ github.ref }}
+      cancel-in-progress: true
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Get next version
+        id: get_next_version
+        uses: mucsi96/get-next-version@main
+        with:
+          prefix: v
+          src: modules
+
+      - name: Create release
+        if: steps.get_next_version.outputs.hasNextVersion == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_next_version.outputs.tag }}
+          generate_release_notes: true
