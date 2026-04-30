@@ -1,4 +1,5 @@
 resource "github_actions_secret" "twingate_service_key" {
+  count           = var.twingate_service_key == null ? 0 : 1
   repository      = var.github_repository
   secret_name     = "TWINGATE_SERVICE_KEY"
   plaintext_value = var.twingate_service_key

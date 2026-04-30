@@ -41,9 +41,10 @@ variable "k8s_cluster_ca_certificate" {
 }
 
 variable "twingate_service_key" {
-  description = "Twingate service key"
+  description = "Twingate service key. Required only for local clusters reachable via Twingate; leave null for cloud-hosted clusters."
   type        = string
   sensitive   = true
+  default     = null
 }
 
 variable "app_hostname" {
