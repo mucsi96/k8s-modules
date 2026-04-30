@@ -1,0 +1,17 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: traefik-dashboard-redirect-root-to-dashboard
+  namespace: {{ .Release.Namespace }}
+spec:
+  entryPoints:
+    - traefik
+  routes:
+    - match: {{ .Values.dashboardMatch | squote }}
+      kind: Rule
+      middlewares:
+        - name: redirect-root-to-dashboard
+          namespace: {{ .Release.Namespace }}
+      services:
+        - kind: TraefikService
+          name: api@internal
