@@ -117,6 +117,10 @@ resource "ansible_playbook" "install_microk8s" {
     local_python_interpreter     = var.local_python_interpreter
   }
 
+  lifecycle {
+    ignore_changes = [extra_vars["local_python_interpreter"]]
+  }
+
   depends_on = [terraform_data.wait_for_system]
 }
 
@@ -140,6 +144,10 @@ resource "ansible_playbook" "publish_microk8s_oidc" {
     issuer                       = data.azurerm_storage_account.oidc.primary_web_endpoint
     azwi_version                 = "v1.5.1"
     local_python_interpreter     = var.local_python_interpreter
+  }
+
+  lifecycle {
+    ignore_changes = [extra_vars["local_python_interpreter"]]
   }
 
   depends_on = [ansible_playbook.install_microk8s]
