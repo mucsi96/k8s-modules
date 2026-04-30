@@ -18,19 +18,21 @@ jobs:
         with:
           terraform_wrapper: false
       - name: terraform fmt -check
-        working-directory: modules/provision_hetzner_server
-        run: terraform fmt -check -recursive
-      - name: terraform init (no backend)
-        working-directory: modules/provision_hetzner_server
-        run: terraform init -backend=false
-      - name: terraform validate
-        working-directory: modules/provision_hetzner_server
-        run: terraform validate
+        run: terraform fmt -check -recursive modules
+      - name: terraform validate (per module)
+        run: |
+          set -euo pipefail
+          for dir in modules/*/; do
+            echo "::group::$dir"
+            terraform -chdir="$dir" init -backend=false
+            terraform -chdir="$dir" validate
+            echo "::endgroup::"
+          done
 
-  release-provision-hetzner-server:
+  release:
     runs-on: ubuntu-latest
     concurrency:
-      group: ${{ github.workflow }}-release-provision-hetzner-server-${{ github.ref }}
+      group: ${{ github.workflow }}-release-${{ github.ref }}
       cancel-in-progress: true
     needs: validate
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -45,8 +47,8 @@ jobs:
         id: get_next_version
         uses: mucsi96/get-next-version@main
         with:
-          prefix: provision_hetzner_server
-          src: modules/provision_hetzner_server
+          prefix: v
+          src: modules
 
       - name: Create release
         if: steps.get_next_version.outputs.hasNextVersion == 'true'
