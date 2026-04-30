@@ -62,11 +62,6 @@ variable "twingate_service_key" {
   sensitive   = true
 }
 
-variable "playwright_server_url" {
-  description = "The URL of the Playwright server"
-  type        = string
-}
-
 variable "wait_for" {
   description = "Optional dependency to wait for before setting up app (e.g., ingress controller status)"
   type        = string

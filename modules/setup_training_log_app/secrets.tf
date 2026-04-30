@@ -15,9 +15,3 @@ resource "azurerm_key_vault_secret" "training_log_db_password" {
   name         = "db-password"
   value        = var.db_password
 }
-
-resource "azurerm_key_vault_secret" "playwright_server_url" {
-  key_vault_id = module.app_base.key_vault_id
-  name         = "playwright-server-url"
-  value        = var.playwright_server_url
-}
