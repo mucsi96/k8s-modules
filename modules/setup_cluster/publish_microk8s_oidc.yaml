@@ -4,7 +4,6 @@
 
   vars:
     ansible_python_interpreter: /usr/bin/python3
-    local_python_interpreter: "{{ playbook_dir ~ '/../../.venv/bin/python' }}"
 
   tasks:
     - name: Create a temporary file for public key

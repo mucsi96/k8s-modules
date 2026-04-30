@@ -130,16 +130,17 @@ data "azurerm_key_vault_secret" "setup_cluster_initial_port" {
 }
 
 module "setup_cluster" {
-  source                = "./modules/setup_cluster"
-  host                  = data.azurerm_key_vault_secret.setup_cluster_host.value
-  initial_port          = tonumber(data.azurerm_key_vault_secret.setup_cluster_initial_port.value)
-  username              = data.azurerm_key_vault_secret.setup_cluster_username.value
-  initial_password      = data.azurerm_key_vault_secret.setup_cluster_initial_password.value
-  azure_key_vault_name  = data.azurerm_key_vault.kv.name
-  environment_name      = var.environment_name
-  azure_subscription_id = var.azure_subscription_id
-  storage_account_name  = var.storage_account_name
-  azure_tenant_id       = data.azurerm_client_config.current.tenant_id
+  source                   = "./modules/setup_cluster"
+  host                     = data.azurerm_key_vault_secret.setup_cluster_host.value
+  initial_port             = tonumber(data.azurerm_key_vault_secret.setup_cluster_initial_port.value)
+  username                 = data.azurerm_key_vault_secret.setup_cluster_username.value
+  initial_password         = data.azurerm_key_vault_secret.setup_cluster_initial_password.value
+  azure_key_vault_name     = data.azurerm_key_vault.kv.name
+  environment_name         = var.environment_name
+  azure_subscription_id    = var.azure_subscription_id
+  storage_account_name     = var.storage_account_name
+  azure_tenant_id          = data.azurerm_client_config.current.tenant_id
+  local_python_interpreter = var.local_python_interpreter
 }
 
 data "azurerm_key_vault_secret" "dns_zone" {
