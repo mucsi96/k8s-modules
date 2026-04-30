@@ -136,6 +136,7 @@
         keyvault_uri: "https://{{ resource_group_name }}.vault.azure.net/"
         secret_name: remote-backend-config
         secret_value: "{{ backend_config_text }}"
+        auth_source: cli
       register: secret_set
 
     - name: Write backend.tf locally
