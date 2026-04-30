@@ -1,0 +1,10 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-root-to-dashboard
+  namespace: {{ .Release.Namespace }}
+spec:
+  redirectRegex:
+    regex: {{ .Values.dashboardRegex | squote }}
+    replacement: {{ .Values.dashboardReplacement | squote }}
+    permanent: true
