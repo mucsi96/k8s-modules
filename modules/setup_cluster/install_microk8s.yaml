@@ -73,6 +73,7 @@
         secret_value: "{{ microk8s_config.stdout }}"
         keyvault_uri: "https://{{ azure_key_vault_name }}.vault.azure.net"
         subscription_id: "{{ azure_subscription_id }}"
+        auth_source: cli
       delegate_to: localhost
       become: false
       vars:
@@ -84,6 +85,7 @@
         secret_value: "{{ kubeconfig_data.clusters[0].cluster.server }}"
         keyvault_uri: "https://{{ azure_key_vault_name }}.vault.azure.net"
         subscription_id: "{{ azure_subscription_id }}"
+        auth_source: cli
       delegate_to: localhost
       become: false
       vars:
@@ -95,6 +97,7 @@
         secret_value: "{{ kubeconfig_data.users[0].user['client-certificate-data'] | ansible.builtin.b64decode }}"
         keyvault_uri: "https://{{ azure_key_vault_name }}.vault.azure.net"
         subscription_id: "{{ azure_subscription_id }}"
+        auth_source: cli
       delegate_to: localhost
       become: false
       vars:
@@ -106,6 +109,7 @@
         secret_value: "{{ kubeconfig_data.users[0].user['client-key-data'] | ansible.builtin.b64decode }}"
         keyvault_uri: "https://{{ azure_key_vault_name }}.vault.azure.net"
         subscription_id: "{{ azure_subscription_id }}"
+        auth_source: cli
       delegate_to: localhost
       become: false
       vars:
@@ -117,6 +121,7 @@
         secret_value: "{{ kubeconfig_data.clusters[0].cluster['certificate-authority-data'] | ansible.builtin.b64decode }}"
         keyvault_uri: "https://{{ azure_key_vault_name }}.vault.azure.net"
         subscription_id: "{{ azure_subscription_id }}"
+        auth_source: cli
       delegate_to: localhost
       become: false
       vars:
