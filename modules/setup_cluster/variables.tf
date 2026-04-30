@@ -45,3 +45,8 @@ variable "azure_tenant_id" {
   description = "Azure tenant ID used by the workload identity webhook."
   type        = string
 }
+
+variable "local_python_interpreter" {
+  description = "Absolute path to the Python interpreter on the Ansible controller (localhost) that has the azure.azcollection requirements installed."
+  type        = string
+}
