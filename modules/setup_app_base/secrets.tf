@@ -62,6 +62,7 @@ resource "azurerm_key_vault_secret" "hostname" {
 }
 
 resource "azurerm_key_vault_secret" "twingate_service_key" {
+  count        = var.twingate_service_key == null ? 0 : 1
   key_vault_id = azurerm_key_vault.app_kv.id
   name         = "twingate-service-key"
   value        = var.twingate_service_key
