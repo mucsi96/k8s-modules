@@ -1,0 +1,56 @@
+name: Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-validate-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - name: terraform fmt -check
+        working-directory: modules/provision_hetzner_server
+        run: terraform fmt -check -recursive
+      - name: terraform init (no backend)
+        working-directory: modules/provision_hetzner_server
+        run: terraform init -backend=false
+      - name: terraform validate
+        working-directory: modules/provision_hetzner_server
+        run: terraform validate
+
+  release-provision-hetzner-server:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-release-provision-hetzner-server-${{ github.ref }}
+      cancel-in-progress: true
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Get next version
+        id: get_next_version
+        uses: mucsi96/get-next-version@main
+        with:
+          prefix: provision_hetzner_server
+          src: modules/provision_hetzner_server
+
+      - name: Create release
+        if: steps.get_next_version.outputs.hasNextVersion == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_next_version.outputs.tag }}
+          generate_release_notes: true
