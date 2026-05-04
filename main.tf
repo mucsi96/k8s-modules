@@ -200,12 +200,14 @@ module "setup_ingress_controller" {
 }
 
 module "setup_sso" {
-  source            = "./modules/setup_sso"
-  environment_name  = var.environment_name
-  dns_zone          = data.azurerm_key_vault_secret.dns_zone.value
-  owner             = local.owner
-  tenant_id         = data.azurerm_client_config.current.tenant_id
-  wait_for          = module.setup_ingress_controller.traefik_ready
+  source                     = "./modules/setup_sso"
+  environment_name           = var.environment_name
+  dns_zone                   = data.azurerm_key_vault_secret.dns_zone.value
+  owner                      = local.owner
+  tenant_id                  = data.azurerm_client_config.current.tenant_id
+  oauth2_proxy_chart_version = "7.12.6"  #https://github.com/oauth2-proxy/manifests/releases
+  oauth2_proxy_image_version = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
+  wait_for                   = module.setup_ingress_controller.traefik_ready
 }
 
 module "setup_twingate" {

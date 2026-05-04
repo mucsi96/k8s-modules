@@ -22,7 +22,11 @@ variable "tenant_id" {
 variable "oauth2_proxy_chart_version" {
   description = "The version of the oauth2-proxy Helm chart to deploy"
   type        = string
-  default     = "7.7.20" # https://github.com/oauth2-proxy/manifests/releases
+}
+
+variable "oauth2_proxy_image_version" {
+  description = "The oauth2-proxy container image tag to deploy"
+  type        = string
 }
 
 variable "wait_for" {

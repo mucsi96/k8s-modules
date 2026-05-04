@@ -20,6 +20,9 @@ resource "helm_release" "oauth2_proxy" {
 
   #https://github.com/oauth2-proxy/manifests/blob/main/helm/oauth2-proxy/values.yaml
   values = [yamlencode({
+    image = {
+      tag = var.oauth2_proxy_image_version
+    }
     config = {
       clientID     = azuread_application.oauth2_proxy.client_id
       clientSecret = azuread_application_password.oauth2_proxy.value
