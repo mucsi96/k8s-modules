@@ -42,6 +42,10 @@ resource "helm_release" "traefik_dashboard_oauth2_proxy" {
             id: entra
             oidcConfig:
               issuerURL: https://login.microsoftonline.com/${var.tenant_id}/v2.0
+              audienceClaims:
+                - aud
+              emailClaim: email
+              insecureAllowUnverifiedEmail: true
             provider: oidc
             scope: openid email profile User.Read
         upstreamConfig:
