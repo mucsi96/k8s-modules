@@ -5,7 +5,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   forwardAuth:
-    address: http://{{ .Values.oauth2ProxyServiceName }}.{{ .Values.oauth2ProxyNamespace }}.svc.cluster.local:{{ .Values.oauth2ProxyServicePort }}/oauth2/auth
+    address: http://{{ .Values.ssoServiceName }}.{{ .Values.ssoNamespace }}.svc.cluster.local:{{ .Values.ssoServicePort }}/oauth2/auth
     trustForwardHeader: true
     authResponseHeaders:
       - X-Auth-Request-User

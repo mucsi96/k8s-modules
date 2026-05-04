@@ -1,0 +1,16 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: sso
+  namespace: {{ .Release.Namespace }}
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`{{ .Values.ssoAuthHostname }}`)
+      kind: Rule
+      services:
+        - kind: Service
+          name: {{ .Values.ssoServiceName }}
+          namespace: {{ .Values.ssoNamespace }}
+          port: {{ .Values.ssoServicePort }}

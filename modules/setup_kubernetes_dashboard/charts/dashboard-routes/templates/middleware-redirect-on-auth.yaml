@@ -8,7 +8,7 @@ spec:
     status:
       - "401"
     service:
-      name: {{ .Values.oauth2ProxyServiceName }}
-      namespace: {{ .Values.oauth2ProxyNamespace }}
-      port: {{ .Values.oauth2ProxyServicePort }}
-    query: "/oauth2/sign_in?rd={scheme}://{host}{url}"
+      name: {{ .Values.ssoServiceName }}
+      namespace: {{ .Values.ssoNamespace }}
+      port: {{ .Values.ssoServicePort }}
+    query: "/oauth2/sign_in?rd=https://{host}{url}"

@@ -46,17 +46,22 @@ variable "authorized_as" {
   sensitive   = true
 }
 
-variable "oauth2_proxy_namespace" {
-  description = "Namespace where the oauth2-proxy that protects the Traefik dashboard runs"
+variable "sso_namespace" {
+  description = "Namespace where the shared SSO (oauth2-proxy) runs"
   type        = string
 }
 
-variable "oauth2_proxy_service_name" {
-  description = "Service name of the oauth2-proxy that protects the Traefik dashboard"
+variable "sso_service_name" {
+  description = "Service name of the shared SSO (oauth2-proxy)"
   type        = string
 }
 
-variable "oauth2_proxy_service_port" {
-  description = "Service port of the oauth2-proxy that protects the Traefik dashboard"
+variable "sso_service_port" {
+  description = "Service port of the shared SSO (oauth2-proxy)"
   type        = number
+}
+
+variable "sso_auth_hostname" {
+  description = "Public hostname where the shared SSO is exposed (e.g. auth.example.com)"
+  type        = string
 }

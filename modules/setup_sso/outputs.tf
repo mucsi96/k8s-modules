@@ -12,8 +12,3 @@ output "service_port" {
   description = "Service port of the oauth2-proxy"
   value       = 80
 }
-
-output "client_id" {
-  description = "Entra ID client ID used by oauth2-proxy"
-  value       = module.oauth_app.client_id
-}

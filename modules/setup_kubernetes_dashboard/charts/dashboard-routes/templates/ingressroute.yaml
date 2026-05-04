@@ -7,13 +7,6 @@ spec:
   entryPoints:
     - web
   routes:
-    - match: Host(`{{ .Values.host }}`) && PathPrefix(`/oauth2`)
-      kind: Rule
-      services:
-        - kind: Service
-          name: {{ .Values.oauth2ProxyServiceName }}
-          namespace: {{ .Values.oauth2ProxyNamespace }}
-          port: {{ .Values.oauth2ProxyServicePort }}
     - match: Host(`{{ .Values.host }}`)
       kind: Rule
       middlewares:

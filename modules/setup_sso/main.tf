@@ -1,5 +1,4 @@
 locals {
-  redirect_url = "https://${var.app_hostname}/oauth2/callback"
   release_name = "oauth2-proxy"
 }
 
@@ -7,15 +6,6 @@ resource "kubernetes_namespace_v1" "this" {
   metadata {
     name = var.namespace
   }
-}
-
-module "oauth_app" {
-  source = "../register_web_app"
-
-  display_name             = var.display_name
-  owner                    = var.owner
-  redirect_uris            = [local.redirect_url]
-  msgraph_delegated_scopes = ["openid", "email", "profile", "User.Read"]
 }
 
 resource "random_password" "cookie_secret" {
@@ -35,19 +25,19 @@ resource "helm_release" "oauth2_proxy" {
   # https://github.com/oauth2-proxy/manifests/blob/main/helm/oauth2-proxy/values.yaml
   values = [yamlencode({
     config = {
-      clientID     = module.oauth_app.client_id
-      clientSecret = module.oauth_app.client_secret
+      clientID     = var.client_id
+      clientSecret = var.client_secret
       cookieSecret = random_password.cookie_secret.result
       configFile = join("\n", [
         "provider = \"oidc\"",
         "oidc_issuer_url = \"https://login.microsoftonline.com/${var.tenant_id}/v2.0\"",
-        "redirect_url = \"${local.redirect_url}\"",
+        "redirect_url = \"${var.redirect_url}\"",
         "upstreams = [\"static://202\"]",
         "email_domains = [\"*\"]",
         "scope = \"openid email profile\"",
         "cookie_secure = true",
-        "cookie_domains = [\"${var.app_hostname}\"]",
-        "whitelist_domains = [\"${var.app_hostname}\"]",
+        "cookie_domains = [\"${var.cookie_domain}\"]",
+        "whitelist_domains = ${jsonencode(var.whitelist_domains)}",
         "set_xauthrequest = true",
         "skip_provider_button = true",
         "reverse_proxy = true",

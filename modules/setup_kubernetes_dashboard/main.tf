@@ -47,16 +47,6 @@ resource "kubernetes_secret_v1" "dashboard_user_token" {
   wait_for_service_account_token = true
 }
 
-module "oauth2_proxy" {
-  source = "../setup_oauth2_proxy"
-
-  namespace    = "kubernetes-dashboard-oauth2-proxy"
-  display_name = "Kubernetes Dashboard - ${var.environment_name}"
-  app_hostname = local.app_hostname
-  owner        = var.owner
-  tenant_id    = var.tenant_id
-}
-
 resource "helm_release" "kubernetes_dashboard" {
   name       = "kubernetes-dashboard"
   repository = "https://kubernetes.github.io/dashboard/"
@@ -89,11 +79,11 @@ resource "helm_release" "kubernetes_dashboard_routes" {
   namespace = kubernetes_namespace_v1.kubernetes_dashboard.metadata[0].name
 
   values = [yamlencode({
-    host                   = local.app_hostname
-    oauth2ProxyNamespace   = module.oauth2_proxy.namespace
-    oauth2ProxyServiceName = module.oauth2_proxy.service_name
-    oauth2ProxyServicePort = module.oauth2_proxy.service_port
-    serviceAccountToken    = kubernetes_secret_v1.dashboard_user_token.data["token"]
+    host                = local.app_hostname
+    ssoNamespace        = var.sso_namespace
+    ssoServiceName      = var.sso_service_name
+    ssoServicePort      = var.sso_service_port
+    serviceAccountToken = kubernetes_secret_v1.dashboard_user_token.data["token"]
   })]
 
   depends_on = [helm_release.kubernetes_dashboard]

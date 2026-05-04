@@ -4,10 +4,6 @@ terraform {
       source = "hashicorp/random"
     }
 
-    azuread = {
-      source = "hashicorp/azuread"
-    }
-
     kubernetes = {
       source = "hashicorp/kubernetes"
     }

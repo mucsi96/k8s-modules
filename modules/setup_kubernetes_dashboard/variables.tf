@@ -1,18 +1,3 @@
-variable "environment_name" {
-  description = "The name of the environment"
-  type        = string
-}
-
-variable "owner" {
-  description = "The owner object ID for the Entra ID application"
-  type        = string
-}
-
-variable "tenant_id" {
-  description = "The Azure AD tenant ID"
-  type        = string
-}
-
 variable "hostname" {
   description = "The DNS zone hostname (e.g., example.com)"
   type        = string
@@ -34,6 +19,21 @@ variable "dashboard_chart_version" {
   description = "The version of the kubernetes-dashboard Helm chart"
   type        = string
   default     = "7.10.0" # https://github.com/kubernetes/dashboard/releases
+}
+
+variable "sso_namespace" {
+  description = "Namespace where the shared SSO (oauth2-proxy) runs"
+  type        = string
+}
+
+variable "sso_service_name" {
+  description = "Service name of the shared SSO (oauth2-proxy)"
+  type        = string
+}
+
+variable "sso_service_port" {
+  description = "Service port of the shared SSO (oauth2-proxy)"
+  type        = number
 }
 
 variable "wait_for" {

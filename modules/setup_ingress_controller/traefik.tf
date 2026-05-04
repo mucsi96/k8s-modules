@@ -58,10 +58,11 @@ resource "helm_release" "traefik_routes" {
   namespace = kubernetes_namespace_v1.traefik.metadata[0].name
 
   values = [yamlencode({
-    host                   = local.traefik_dashboard_host
-    oauth2ProxyNamespace   = var.oauth2_proxy_namespace
-    oauth2ProxyServiceName = var.oauth2_proxy_service_name
-    oauth2ProxyServicePort = var.oauth2_proxy_service_port
+    host             = local.traefik_dashboard_host
+    ssoAuthHostname  = var.sso_auth_hostname
+    ssoNamespace     = var.sso_namespace
+    ssoServiceName   = var.sso_service_name
+    ssoServicePort   = var.sso_service_port
   })]
 
   depends_on = [helm_release.traefik]
