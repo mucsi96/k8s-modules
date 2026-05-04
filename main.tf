@@ -148,11 +148,6 @@ data "azurerm_key_vault_secret" "dns_zone" {
   name         = "dns-zone"
 }
 
-data "azurerm_key_vault_secret" "letsencrypt_email" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "letsencrypt-email"
-}
-
 data "azurerm_key_vault_secret" "cloudflare_zone_id" {
   key_vault_id = data.azurerm_key_vault.kv.id
   name         = "cloudflare-zone-id"
@@ -166,11 +161,6 @@ data "azurerm_key_vault_secret" "cloudflare_account_id" {
 data "azurerm_key_vault_secret" "cloudflare_api_token" {
   key_vault_id = data.azurerm_key_vault.kv.id
   name         = "cloudflare-api-token"
-}
-
-data "azurerm_key_vault_secret" "cloudflare_team_domain" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "cloudflare-team-domain"
 }
 
 data "azurerm_key_vault_secret" "authorized_as" {
@@ -193,20 +183,33 @@ data "azurerm_key_vault_secret" "github_token" {
   name         = "github-token"
 }
 
+module "setup_traefik_oauth2_proxy" {
+  source = "./modules/setup_oauth2_proxy"
+
+  namespace    = "traefik-oauth2-proxy"
+  display_name = "Traefik Dashboard - ${var.environment_name}"
+  app_hostname = "traefik.${data.azurerm_key_vault_secret.dns_zone.value}"
+  owner        = data.azurerm_client_config.current.object_id
+  tenant_id    = data.azurerm_client_config.current.tenant_id
+
+  depends_on = [module.setup_cluster]
+}
+
 module "setup_ingress_controller" {
-  source                 = "./modules/setup_ingress_controller"
-  environment_name       = var.environment_name
-  subscription_id        = var.azure_subscription_id
-  dns_zone               = data.azurerm_key_vault_secret.dns_zone.value
-  traefik_chart_version  = "39.0.8" #https://github.com/traefik/traefik-helm-chart/releases
-  traefik_version        = "v3.6.14" #https://github.com/traefik/traefik/releases
-  letsencrypt_email      = data.azurerm_key_vault_secret.letsencrypt_email.value
-  cloudflare_api_token   = data.azurerm_key_vault_secret.cloudflare_api_token.value
-  cloudflare_account_id  = data.azurerm_key_vault_secret.cloudflare_account_id.value
-  cloudflare_zone_id     = data.azurerm_key_vault_secret.cloudflare_zone_id.value
-  cloudflare_team_domain = data.azurerm_key_vault_secret.cloudflare_team_domain.value
-  authorized_as          = data.azurerm_key_vault_secret.authorized_as.value
-  depends_on             = [module.setup_cluster]
+  source                    = "./modules/setup_ingress_controller"
+  environment_name          = var.environment_name
+  subscription_id           = var.azure_subscription_id
+  dns_zone                  = data.azurerm_key_vault_secret.dns_zone.value
+  traefik_chart_version     = "39.0.8"  #https://github.com/traefik/traefik-helm-chart/releases
+  traefik_version           = "v3.6.14" #https://github.com/traefik/traefik/releases
+  cloudflare_api_token      = data.azurerm_key_vault_secret.cloudflare_api_token.value
+  cloudflare_account_id     = data.azurerm_key_vault_secret.cloudflare_account_id.value
+  cloudflare_zone_id        = data.azurerm_key_vault_secret.cloudflare_zone_id.value
+  authorized_as             = data.azurerm_key_vault_secret.authorized_as.value
+  oauth2_proxy_namespace    = module.setup_traefik_oauth2_proxy.namespace
+  oauth2_proxy_service_name = module.setup_traefik_oauth2_proxy.service_name
+  oauth2_proxy_service_port = module.setup_traefik_oauth2_proxy.service_port
+  depends_on                = [module.setup_cluster]
 }
 
 module "setup_twingate" {

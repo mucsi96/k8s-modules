@@ -36,12 +36,6 @@ variable "dashboard_chart_version" {
   default     = "7.10.0" # https://github.com/kubernetes/dashboard/releases
 }
 
-variable "oauth2_proxy_chart_version" {
-  description = "The version of the oauth2-proxy Helm chart"
-  type        = string
-  default     = "7.7.31" # https://github.com/oauth2-proxy/manifests/releases
-}
-
 variable "wait_for" {
   description = "Optional dependency to wait for before deploying the dashboard"
   type        = string

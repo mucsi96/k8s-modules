@@ -5,8 +5,7 @@ resource "kubernetes_namespace_v1" "traefik" {
 }
 
 locals {
-  traefik_dashboard_host       = "traefik.${var.dns_zone}"
-  traefik_dashboard_host_regex = replace(local.traefik_dashboard_host, ".", "\\.")
+  traefik_dashboard_host = "traefik.${var.dns_zone}"
 }
 
 resource "helm_release" "traefik" {
@@ -28,9 +27,14 @@ resource "helm_release" "traefik" {
         enabled = true
       }
     }
+    providers = {
+      kubernetesCRD = {
+        allowCrossNamespace = true
+      }
+    }
     ingressRoute = {
       dashboard = {
-        enabled = true
+        enabled = false
       }
     }
     service = {
@@ -39,11 +43,6 @@ resource "helm_release" "traefik" {
       }
     }
     ports = {
-      traefik = {
-        expose = {
-          default = true
-        }
-      }
       web = {
         forwardedHeaders = {
           insecure = true
@@ -59,9 +58,10 @@ resource "helm_release" "traefik_routes" {
   namespace = kubernetes_namespace_v1.traefik.metadata[0].name
 
   values = [yamlencode({
-    dashboardRegex       = "^https?://${local.traefik_dashboard_host_regex}/?$"
-    dashboardReplacement = "https://${local.traefik_dashboard_host}/dashboard/"
-    dashboardMatch       = "Host(`${local.traefik_dashboard_host}`) && Path(`/`)"
+    host                   = local.traefik_dashboard_host
+    oauth2ProxyNamespace   = var.oauth2_proxy_namespace
+    oauth2ProxyServiceName = var.oauth2_proxy_service_name
+    oauth2ProxyServicePort = var.oauth2_proxy_service_port
   })]
 
   depends_on = [helm_release.traefik]

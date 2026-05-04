@@ -12,6 +12,7 @@ spec:
       services:
         - kind: Service
           name: {{ .Values.oauth2ProxyServiceName }}
+          namespace: {{ .Values.oauth2ProxyNamespace }}
           port: {{ .Values.oauth2ProxyServicePort }}
     - match: Host(`{{ .Values.host }}`)
       kind: Rule

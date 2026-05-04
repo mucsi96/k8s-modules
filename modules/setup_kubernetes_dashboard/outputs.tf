@@ -5,5 +5,5 @@ output "dashboard_url" {
 
 output "client_id" {
   description = "Entra ID application client ID used by oauth2-proxy"
-  value       = module.oauth_app.client_id
+  value       = module.oauth2_proxy.client_id
 }

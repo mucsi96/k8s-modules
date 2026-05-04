@@ -1,16 +1,37 @@
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
-  name: traefik-dashboard-redirect-root-to-dashboard
+  name: traefik-dashboard
   namespace: {{ .Release.Namespace }}
 spec:
   entryPoints:
-    - traefik
+    - web
   routes:
-    - match: {{ .Values.dashboardMatch | squote }}
+    - match: Host(`{{ .Values.host }}`) && PathPrefix(`/oauth2`)
+      kind: Rule
+      services:
+        - kind: Service
+          name: {{ .Values.oauth2ProxyServiceName }}
+          namespace: {{ .Values.oauth2ProxyNamespace }}
+          port: {{ .Values.oauth2ProxyServicePort }}
+    - match: Host(`{{ .Values.host }}`) && Path(`/`)
       kind: Rule
       middlewares:
-        - name: redirect-root-to-dashboard
+        - name: traefik-dashboard-errors-redirect
+          namespace: {{ .Release.Namespace }}
+        - name: traefik-dashboard-forward-auth
+          namespace: {{ .Release.Namespace }}
+        - name: traefik-dashboard-redirect-root
+          namespace: {{ .Release.Namespace }}
+      services:
+        - kind: TraefikService
+          name: api@internal
+    - match: Host(`{{ .Values.host }}`)
+      kind: Rule
+      middlewares:
+        - name: traefik-dashboard-errors-redirect
+          namespace: {{ .Release.Namespace }}
+        - name: traefik-dashboard-forward-auth
           namespace: {{ .Release.Namespace }}
       services:
         - kind: TraefikService

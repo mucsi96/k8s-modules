@@ -1,7 +1,6 @@
 locals {
   app_namespace = "kubernetes-dashboard"
   app_hostname  = "k8s-dashboard.${var.hostname}"
-  redirect_url  = "https://${local.app_hostname}/oauth2/callback"
 }
 
 resource "kubernetes_namespace_v1" "kubernetes_dashboard" {
@@ -48,18 +47,14 @@ resource "kubernetes_secret_v1" "dashboard_user_token" {
   wait_for_service_account_token = true
 }
 
-module "oauth_app" {
-  source = "../register_web_app"
+module "oauth2_proxy" {
+  source = "../setup_oauth2_proxy"
 
-  display_name             = "Kubernetes Dashboard - ${var.environment_name}"
-  owner                    = var.owner
-  redirect_uris            = [local.redirect_url]
-  msgraph_delegated_scopes = ["openid", "email", "profile", "User.Read"]
-}
-
-resource "random_password" "oauth2_cookie_secret" {
-  length  = 32
-  special = false
+  namespace    = "kubernetes-dashboard-oauth2-proxy"
+  display_name = "Kubernetes Dashboard - ${var.environment_name}"
+  app_hostname = local.app_hostname
+  owner        = var.owner
+  tenant_id    = var.tenant_id
 }
 
 resource "helm_release" "kubernetes_dashboard" {
@@ -88,42 +83,6 @@ resource "helm_release" "kubernetes_dashboard" {
   })]
 }
 
-resource "helm_release" "oauth2_proxy" {
-  name       = "oauth2-proxy"
-  repository = "https://oauth2-proxy.github.io/manifests"
-  chart      = "oauth2-proxy"
-  version    = var.oauth2_proxy_chart_version
-  namespace  = kubernetes_namespace_v1.kubernetes_dashboard.metadata[0].name
-  wait       = true
-  timeout    = 600
-
-  # https://github.com/oauth2-proxy/manifests/blob/main/helm/oauth2-proxy/values.yaml
-  values = [yamlencode({
-    config = {
-      clientID     = module.oauth_app.client_id
-      clientSecret = module.oauth_app.client_secret
-      cookieSecret = random_password.oauth2_cookie_secret.result
-      configFile = join("\n", [
-        "provider = \"oidc\"",
-        "oidc_issuer_url = \"https://login.microsoftonline.com/${var.tenant_id}/v2.0\"",
-        "redirect_url = \"${local.redirect_url}\"",
-        "upstreams = [\"static://202\"]",
-        "email_domains = [\"*\"]",
-        "scope = \"openid email profile\"",
-        "cookie_secure = true",
-        "cookie_domains = [\"${local.app_hostname}\"]",
-        "whitelist_domains = [\"${local.app_hostname}\"]",
-        "set_xauthrequest = true",
-        "skip_provider_button = true",
-        "reverse_proxy = true",
-      ])
-    }
-    service = {
-      portNumber = 80
-    }
-  })]
-}
-
 resource "helm_release" "kubernetes_dashboard_routes" {
   name      = "kubernetes-dashboard-routes"
   chart     = "${path.module}/charts/dashboard-routes"
@@ -131,10 +90,11 @@ resource "helm_release" "kubernetes_dashboard_routes" {
 
   values = [yamlencode({
     host                   = local.app_hostname
-    oauth2ProxyServiceName = "oauth2-proxy"
-    oauth2ProxyServicePort = 80
+    oauth2ProxyNamespace   = module.oauth2_proxy.namespace
+    oauth2ProxyServiceName = module.oauth2_proxy.service_name
+    oauth2ProxyServicePort = module.oauth2_proxy.service_port
     serviceAccountToken    = kubernetes_secret_v1.dashboard_user_token.data["token"]
   })]
 
-  depends_on = [helm_release.oauth2_proxy]
+  depends_on = [helm_release.kubernetes_dashboard]
 }
