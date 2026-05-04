@@ -32,10 +32,6 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "traefik_tunnel_confi
   config = {
     ingress = [
       {
-        hostname = "traefik.${var.dns_zone}"
-        service  = "http://traefik.${kubernetes_namespace_v1.traefik.metadata[0].name}.svc.cluster.local:8080"
-      },
-      {
         hostname = "*.${var.dns_zone}"
         service  = "http://traefik.${kubernetes_namespace_v1.traefik.metadata[0].name}.svc.cluster.local:80"
       },
