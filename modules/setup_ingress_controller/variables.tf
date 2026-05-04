@@ -45,3 +45,13 @@ variable "authorized_as" {
   type        = string
   sensitive   = true
 }
+
+variable "auth_middleware_name" {
+  description = "Name of the Traefik middleware used to protect the Traefik dashboard"
+  type        = string
+}
+
+variable "auth_middleware_namespace" {
+  description = "Namespace of the Traefik middleware used to protect the Traefik dashboard"
+  type        = string
+}

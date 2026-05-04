@@ -184,17 +184,19 @@ data "azurerm_key_vault_secret" "github_token" {
 }
 
 module "setup_ingress_controller" {
-  source                = "./modules/setup_ingress_controller"
-  environment_name      = var.environment_name
-  subscription_id       = var.azure_subscription_id
-  dns_zone              = data.azurerm_key_vault_secret.dns_zone.value
-  traefik_chart_version = "39.0.8"  #https://github.com/traefik/traefik-helm-chart/releases
-  traefik_version       = "v3.6.14" #https://github.com/traefik/traefik/releases
-  cloudflare_api_token  = data.azurerm_key_vault_secret.cloudflare_api_token.value
-  cloudflare_account_id = data.azurerm_key_vault_secret.cloudflare_account_id.value
-  cloudflare_zone_id    = data.azurerm_key_vault_secret.cloudflare_zone_id.value
-  authorized_as         = data.azurerm_key_vault_secret.authorized_as.value
-  depends_on            = [module.setup_cluster]
+  source                    = "./modules/setup_ingress_controller"
+  environment_name          = var.environment_name
+  subscription_id           = var.azure_subscription_id
+  dns_zone                  = data.azurerm_key_vault_secret.dns_zone.value
+  traefik_chart_version     = "39.0.8"  #https://github.com/traefik/traefik-helm-chart/releases
+  traefik_version           = "v3.6.14" #https://github.com/traefik/traefik/releases
+  cloudflare_api_token      = data.azurerm_key_vault_secret.cloudflare_api_token.value
+  cloudflare_account_id     = data.azurerm_key_vault_secret.cloudflare_account_id.value
+  cloudflare_zone_id        = data.azurerm_key_vault_secret.cloudflare_zone_id.value
+  authorized_as             = data.azurerm_key_vault_secret.authorized_as.value
+  auth_middleware_name      = "auth"
+  auth_middleware_namespace = "auth"
+  depends_on                = [module.setup_cluster]
 }
 
 module "setup_sso" {
@@ -203,7 +205,6 @@ module "setup_sso" {
   dns_zone          = data.azurerm_key_vault_secret.dns_zone.value
   owner             = local.owner
   tenant_id         = data.azurerm_client_config.current.tenant_id
-  traefik_namespace = module.setup_ingress_controller.traefik_namespace
   wait_for          = module.setup_ingress_controller.traefik_ready
 }
 

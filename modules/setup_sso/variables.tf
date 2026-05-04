@@ -19,11 +19,6 @@ variable "tenant_id" {
   type        = string
 }
 
-variable "traefik_namespace" {
-  description = "Namespace where Traefik is deployed"
-  type        = string
-}
-
 variable "oauth2_proxy_chart_version" {
   description = "The version of the oauth2-proxy Helm chart to deploy"
   type        = string

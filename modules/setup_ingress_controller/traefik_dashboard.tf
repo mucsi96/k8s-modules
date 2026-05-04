@@ -9,7 +9,7 @@ resource "kubernetes_manifest" "traefik_dashboard_redirect_root" {
     kind       = "Middleware"
     metadata = {
       name      = "traefik-dashboard-redirect-root"
-      namespace = var.traefik_namespace
+      namespace = kubernetes_namespace_v1.traefik.metadata[0].name
     }
     spec = {
       redirectRegex = {
@@ -19,6 +19,8 @@ resource "kubernetes_manifest" "traefik_dashboard_redirect_root" {
       }
     }
   }
+
+  depends_on = [helm_release.traefik]
 }
 
 resource "kubernetes_manifest" "traefik_dashboard_ingressroute" {
@@ -27,7 +29,7 @@ resource "kubernetes_manifest" "traefik_dashboard_ingressroute" {
     kind       = "IngressRoute"
     metadata = {
       name      = "traefik-dashboard"
-      namespace = var.traefik_namespace
+      namespace = kubernetes_namespace_v1.traefik.metadata[0].name
     }
     spec = {
       entryPoints = ["web"]
@@ -38,7 +40,7 @@ resource "kubernetes_manifest" "traefik_dashboard_ingressroute" {
           middlewares = [
             {
               name      = "traefik-dashboard-redirect-root"
-              namespace = var.traefik_namespace
+              namespace = kubernetes_namespace_v1.traefik.metadata[0].name
             },
           ]
           services = [{
@@ -51,8 +53,8 @@ resource "kubernetes_manifest" "traefik_dashboard_ingressroute" {
           kind  = "Rule"
           middlewares = [
             {
-              name      = "auth"
-              namespace = kubernetes_namespace_v1.auth.metadata[0].name
+              name      = var.auth_middleware_name
+              namespace = var.auth_middleware_namespace
             },
           ]
           services = [{
@@ -64,8 +66,5 @@ resource "kubernetes_manifest" "traefik_dashboard_ingressroute" {
     }
   }
 
-  depends_on = [
-    kubernetes_manifest.auth_chain,
-    kubernetes_manifest.traefik_dashboard_redirect_root,
-  ]
+  depends_on = [helm_release.traefik]
 }
