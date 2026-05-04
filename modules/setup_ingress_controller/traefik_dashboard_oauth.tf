@@ -36,11 +36,6 @@ resource "helm_release" "traefik_dashboard_oauth2_proxy" {
     alphaConfig = {
       enabled = true
       configFile = <<-EOT
-        injectRequestHeaders:
-          - name: Authorization
-            values:
-              - claim: access_token
-                prefix: 'Bearer '
         providers:
           - clientID: ${module.register_traefik_dashboard.client_id}
             clientSecret: ${module.register_traefik_dashboard.client_secret}
