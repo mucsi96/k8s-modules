@@ -1,0 +1,9 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: kubernetes-dashboard-auth-header
+  namespace: {{ .Release.Namespace }}
+spec:
+  headers:
+    customRequestHeaders:
+      Authorization: {{ printf "Bearer %s" .Values.bearerToken | quote }}

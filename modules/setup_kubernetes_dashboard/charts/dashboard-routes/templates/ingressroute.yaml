@@ -1,0 +1,20 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: kubernetes-dashboard
+  namespace: {{ .Release.Namespace }}
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`{{ .Values.dashboardHost }}`)
+      kind: Rule
+      middlewares:
+        - name: kubernetes-dashboard-auth-header
+          namespace: {{ .Release.Namespace }}
+      services:
+        - name: {{ .Values.dashboardService }}
+          namespace: {{ .Values.dashboardNamespace }}
+          port: {{ .Values.dashboardPort }}
+          scheme: https
+          serversTransport: kubernetes-dashboard-transport
