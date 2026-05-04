@@ -9,31 +9,6 @@ module "cloudflare_sso_app" {
   msgraph_delegated_scopes = ["email", "offline_access", "openid", "User.Read"]
 }
 
-moved {
-  from = azuread_service_principal.msgraph
-  to   = module.cloudflare_sso_app.azuread_service_principal.msgraph
-}
-
-moved {
-  from = azuread_application.cloudflare_sso
-  to   = module.cloudflare_sso_app.azuread_application.this
-}
-
-moved {
-  from = azuread_service_principal.cloudflare_sso
-  to   = module.cloudflare_sso_app.azuread_service_principal.this
-}
-
-moved {
-  from = azuread_service_principal_delegated_permission_grant.allow_cloudflare_sso_to_access_msgraph_user_profile
-  to   = module.cloudflare_sso_app.azuread_service_principal_delegated_permission_grant.msgraph
-}
-
-moved {
-  from = azuread_application_password.cloudflare_sso
-  to   = module.cloudflare_sso_app.azuread_application_password.this
-}
-
 resource "cloudflare_zero_trust_access_identity_provider" "entra_id" {
   account_id = var.cloudflare_account_id
   name       = "Microsoft Entra ID - ${var.environment_name}"
