@@ -218,6 +218,18 @@ module "setup_twingate" {
   depends_on         = [module.setup_cluster]
 }
 
+module "setup_kubernetes_dashboard" {
+  source                                 = "./modules/setup_kubernetes_dashboard"
+  environment_name                       = var.environment_name
+  dns_zone                               = data.azurerm_key_vault_secret.dns_zone.value
+  kubernetes_dashboard_chart_version     = "7.13.0" # https://github.com/kubernetes/dashboard/releases
+  cloudflare_account_id                  = data.azurerm_key_vault_secret.cloudflare_account_id.value
+  cloudflare_access_identity_provider_id = module.setup_ingress_controller.cloudflare_access_identity_provider_id
+  cloudflare_access_policy_id            = module.setup_ingress_controller.cloudflare_access_policy_id
+  traefik_namespace                      = module.setup_ingress_controller.traefik_namespace
+  wait_for                               = module.setup_ingress_controller.traefik_ready
+}
+
 module "create_database_namespace" {
   source           = "./modules/create_app_namespace"
   environment_name = var.environment_name

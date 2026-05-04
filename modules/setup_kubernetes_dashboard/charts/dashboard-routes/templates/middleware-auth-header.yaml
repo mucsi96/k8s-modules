@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kubernetes-dashboard-admin-token
+  namespace: {{ .Release.Namespace }}
+type: Opaque
+stringData:
+  token: {{ .Values.adminToken | quote }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: kubernetes-dashboard-auth-header
+  namespace: {{ .Release.Namespace }}
+spec:
+  headers:
+    customRequestHeaders:
+      Authorization: {{ printf "Bearer %s" .Values.adminToken | quote }}
