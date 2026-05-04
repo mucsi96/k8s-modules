@@ -148,11 +148,6 @@ data "azurerm_key_vault_secret" "dns_zone" {
   name         = "dns-zone"
 }
 
-data "azurerm_key_vault_secret" "letsencrypt_email" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "letsencrypt-email"
-}
-
 data "azurerm_key_vault_secret" "cloudflare_zone_id" {
   key_vault_id = data.azurerm_key_vault.kv.id
   name         = "cloudflare-zone-id"
@@ -166,11 +161,6 @@ data "azurerm_key_vault_secret" "cloudflare_account_id" {
 data "azurerm_key_vault_secret" "cloudflare_api_token" {
   key_vault_id = data.azurerm_key_vault.kv.id
   name         = "cloudflare-api-token"
-}
-
-data "azurerm_key_vault_secret" "cloudflare_team_domain" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "cloudflare-team-domain"
 }
 
 data "azurerm_key_vault_secret" "authorized_as" {
@@ -193,20 +183,49 @@ data "azurerm_key_vault_secret" "github_token" {
   name         = "github-token"
 }
 
+locals {
+  sso_auth_hostname = "auth.${data.azurerm_key_vault_secret.dns_zone.value}"
+  sso_redirect_url  = "https://${local.sso_auth_hostname}/oauth2/callback"
+}
+
+module "register_sso_app" {
+  source = "./modules/register_web_app"
+
+  display_name             = "SSO - ${var.environment_name}"
+  owner                    = data.azurerm_client_config.current.object_id
+  redirect_uris            = [local.sso_redirect_url]
+  msgraph_delegated_scopes = ["openid", "email", "profile", "User.Read"]
+}
+
+module "setup_sso" {
+  source = "./modules/setup_sso"
+
+  client_id         = module.register_sso_app.client_id
+  client_secret     = module.register_sso_app.client_secret
+  tenant_id         = data.azurerm_client_config.current.tenant_id
+  redirect_url      = local.sso_redirect_url
+  cookie_domain     = ".${data.azurerm_key_vault_secret.dns_zone.value}"
+  whitelist_domains = [".${data.azurerm_key_vault_secret.dns_zone.value}"]
+
+  depends_on = [module.setup_cluster]
+}
+
 module "setup_ingress_controller" {
-  source                 = "./modules/setup_ingress_controller"
-  environment_name       = var.environment_name
-  subscription_id        = var.azure_subscription_id
-  dns_zone               = data.azurerm_key_vault_secret.dns_zone.value
-  traefik_chart_version  = "39.0.8" #https://github.com/traefik/traefik-helm-chart/releases
-  traefik_version        = "v3.6.14" #https://github.com/traefik/traefik/releases
-  letsencrypt_email      = data.azurerm_key_vault_secret.letsencrypt_email.value
-  cloudflare_api_token   = data.azurerm_key_vault_secret.cloudflare_api_token.value
-  cloudflare_account_id  = data.azurerm_key_vault_secret.cloudflare_account_id.value
-  cloudflare_zone_id     = data.azurerm_key_vault_secret.cloudflare_zone_id.value
-  cloudflare_team_domain = data.azurerm_key_vault_secret.cloudflare_team_domain.value
-  authorized_as          = data.azurerm_key_vault_secret.authorized_as.value
-  depends_on             = [module.setup_cluster]
+  source                = "./modules/setup_ingress_controller"
+  environment_name      = var.environment_name
+  subscription_id       = var.azure_subscription_id
+  dns_zone              = data.azurerm_key_vault_secret.dns_zone.value
+  traefik_chart_version = "39.0.8"  #https://github.com/traefik/traefik-helm-chart/releases
+  traefik_version       = "v3.6.14" #https://github.com/traefik/traefik/releases
+  cloudflare_api_token  = data.azurerm_key_vault_secret.cloudflare_api_token.value
+  cloudflare_account_id = data.azurerm_key_vault_secret.cloudflare_account_id.value
+  cloudflare_zone_id    = data.azurerm_key_vault_secret.cloudflare_zone_id.value
+  authorized_as         = data.azurerm_key_vault_secret.authorized_as.value
+  sso_namespace         = module.setup_sso.namespace
+  sso_service_name      = module.setup_sso.service_name
+  sso_service_port      = module.setup_sso.service_port
+  sso_auth_hostname     = local.sso_auth_hostname
+  depends_on            = [module.setup_cluster]
 }
 
 module "setup_twingate" {
@@ -308,5 +327,16 @@ module "setup_training_log_app" {
   db_username                = module.create_database.username
   db_password                = module.create_database.password
   twingate_service_key       = module.setup_twingate.service_key
+  wait_for                   = module.setup_ingress_controller.traefik_ready
+}
+
+module "setup_kubernetes_dashboard" {
+  source                     = "./modules/setup_kubernetes_dashboard"
+  hostname                   = data.azurerm_key_vault_secret.dns_zone.value
+  k8s_host                   = module.setup_cluster.k8s_host
+  k8s_cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
+  sso_namespace              = module.setup_sso.namespace
+  sso_service_name           = module.setup_sso.service_name
+  sso_service_port           = module.setup_sso.service_port
   wait_for                   = module.setup_ingress_controller.traefik_ready
 }

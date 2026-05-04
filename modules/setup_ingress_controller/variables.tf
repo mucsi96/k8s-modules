@@ -24,12 +24,6 @@ variable "traefik_version" {
   type        = string
 }
 
-variable "letsencrypt_email" {
-  description = "The email address to use for Let's Encrypt"
-  type        = string
-  sensitive   = true
-}
-
 variable "cloudflare_zone_id" {
   description = "Cloudflare Zone ID for the domain to manage"
   type        = string
@@ -46,13 +40,28 @@ variable "cloudflare_api_token" {
   sensitive   = true
 }
 
-variable "cloudflare_team_domain" {
-  description = "Cloudflare Team Domain (e.g., example.cloudflareaccess.com)"
-  type        = string
-}
-
 variable "authorized_as" {
   description = "Authorized AS number for firewall rules"
   type        = string
   sensitive   = true
+}
+
+variable "sso_namespace" {
+  description = "Namespace where the shared SSO (oauth2-proxy) runs"
+  type        = string
+}
+
+variable "sso_service_name" {
+  description = "Service name of the shared SSO (oauth2-proxy)"
+  type        = string
+}
+
+variable "sso_service_port" {
+  description = "Service port of the shared SSO (oauth2-proxy)"
+  type        = number
+}
+
+variable "sso_auth_hostname" {
+  description = "Public hostname where the shared SSO is exposed (e.g. auth.example.com)"
+  type        = string
 }

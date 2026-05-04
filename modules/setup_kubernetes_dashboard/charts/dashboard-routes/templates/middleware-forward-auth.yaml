@@ -1,0 +1,13 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: dashboard-forward-auth
+  namespace: {{ .Release.Namespace }}
+spec:
+  forwardAuth:
+    address: http://{{ .Values.ssoServiceName }}.{{ .Values.ssoNamespace }}.svc.cluster.local:{{ .Values.ssoServicePort }}/oauth2/auth
+    trustForwardHeader: true
+    authResponseHeaders:
+      - X-Auth-Request-User
+      - X-Auth-Request-Email
+      - X-Auth-Request-Preferred-Username
