@@ -115,6 +115,9 @@ resource "kubernetes_manifest" "oauth2_proxy_sign_in_redirect" {
           port = 80
         }
         query = "/oauth2/sign_in?rd={url}"
+        statusRewrites = {
+          "401" = 302
+        }
       }
     }
   }

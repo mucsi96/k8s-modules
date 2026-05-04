@@ -219,6 +219,15 @@ module "setup_twingate" {
   depends_on         = [module.setup_cluster]
 }
 
+module "setup_k8s_dashboard" {
+  source                    = "./modules/setup_k8s_dashboard"
+  dns_zone                  = data.azurerm_key_vault_secret.dns_zone.value
+  headlamp_chart_version    = "0.41.0" #https://github.com/headlamp-k8s/headlamp/releases
+  auth_middleware_name      = module.setup_sso.auth_middleware_name
+  auth_middleware_namespace = module.setup_sso.auth_namespace
+  wait_for                  = module.setup_sso.auth_namespace
+}
+
 module "create_database_namespace" {
   source           = "./modules/create_app_namespace"
   environment_name = var.environment_name
