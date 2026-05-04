@@ -73,3 +73,10 @@ variable "wait_for" {
   type        = string
   default     = null
 }
+
+variable "additional_dbs" {
+  description = "Additional database backup configs to merge into the dbs-config secret (e.g. monitoring stack schemas)."
+  type        = any
+  default     = []
+  sensitive   = true
+}

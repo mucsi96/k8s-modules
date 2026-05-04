@@ -12,3 +12,11 @@ output "password" {
 output "jdbc_url" {
   value = "jdbc:postgresql://${var.k8s_name}.${var.k8s_namespace}:5432/${var.db_name}"
 }
+
+output "k8s_name" {
+  value = var.k8s_name
+}
+
+output "db_name" {
+  value = var.db_name
+}

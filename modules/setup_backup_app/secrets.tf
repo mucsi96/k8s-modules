@@ -1,7 +1,5 @@
-resource "azurerm_key_vault_secret" "backup_dbs_config" {
-  key_vault_id = module.app_base.key_vault_id
-  name         = "dbs-config"
-  value = jsonencode([
+locals {
+  default_dbs_config = [
     {
       name            = "Learn language"
       host            = "postgres1.db"
@@ -42,7 +40,13 @@ resource "azurerm_key_vault_secret" "backup_dbs_config" {
         "oauth2_authorized_client"
       ]
     }
-  ])
+  ]
+}
+
+resource "azurerm_key_vault_secret" "backup_dbs_config" {
+  key_vault_id = module.app_base.key_vault_id
+  name         = "dbs-config"
+  value        = jsonencode(concat(local.default_dbs_config, var.additional_dbs))
 }
 
 resource "azurerm_key_vault_secret" "backup_storage_account_blob_url" {

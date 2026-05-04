@@ -1,0 +1,64 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: dashboard-redirect-root
+  namespace: {{ .Release.Namespace }}
+spec:
+  redirectRegex:
+    regex: {{ printf "^https?://%s/?$" .Values.dashboardHost | squote }}
+    replacement: {{ printf "https://%s/#/workloads?namespace=_all" .Values.dashboardHost | squote }}
+    permanent: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: dashboard-bearer-token
+  namespace: {{ .Release.Namespace }}
+spec:
+  headers:
+    customRequestHeaders:
+      Authorization: {{ printf "Bearer %s" .Values.dashboardBearerToken | squote }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: kubernetes-dashboard-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  entryPoints:
+    - web
+  routes:
+    - kind: Rule
+      match: {{ printf "Host(`%s`) && Path(`/`)" .Values.dashboardHost | squote }}
+      middlewares:
+        - name: dashboard-redirect-root
+          namespace: {{ .Release.Namespace }}
+        - name: dashboard-bearer-token
+          namespace: {{ .Release.Namespace }}
+      services:
+        - kind: Service
+          name: kubernetes-dashboard-kong-proxy
+          namespace: {{ .Release.Namespace }}
+          port: 443
+          scheme: https
+          serversTransport: dashboard-insecure-tls
+    - kind: Rule
+      match: {{ printf "Host(`%s`)" .Values.dashboardHost | squote }}
+      middlewares:
+        - name: dashboard-bearer-token
+          namespace: {{ .Release.Namespace }}
+      services:
+        - kind: Service
+          name: kubernetes-dashboard-kong-proxy
+          namespace: {{ .Release.Namespace }}
+          port: 443
+          scheme: https
+          serversTransport: dashboard-insecure-tls
+---
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: dashboard-insecure-tls
+  namespace: {{ .Release.Namespace }}
+spec:
+  insecureSkipVerify: true

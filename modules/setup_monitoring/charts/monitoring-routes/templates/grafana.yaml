@@ -1,0 +1,50 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: grafana-redirect-root
+  namespace: {{ .Release.Namespace }}
+spec:
+  redirectRegex:
+    regex: {{ printf "^https?://%s/?$" .Values.grafanaHost | squote }}
+    replacement: {{ printf "https://%s/login" .Values.grafanaHost | squote }}
+    permanent: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: grafana-auth-header
+  namespace: {{ .Release.Namespace }}
+spec:
+  headers:
+    customRequestHeaders:
+      X-WEBAUTH-USER: admin
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grafana-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  entryPoints:
+    - web
+  routes:
+    - kind: Rule
+      match: {{ printf "Host(`%s`) && Path(`/`)" .Values.grafanaHost | squote }}
+      middlewares:
+        - name: grafana-redirect-root
+          namespace: {{ .Release.Namespace }}
+      services:
+        - kind: Service
+          name: kube-prometheus-stack-grafana
+          namespace: {{ .Release.Namespace }}
+          port: 80
+    - kind: Rule
+      match: {{ printf "Host(`%s`)" .Values.grafanaHost | squote }}
+      middlewares:
+        - name: grafana-auth-header
+          namespace: {{ .Release.Namespace }}
+      services:
+        - kind: Service
+          name: kube-prometheus-stack-grafana
+          namespace: {{ .Release.Namespace }}
+          port: 80

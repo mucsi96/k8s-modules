@@ -241,6 +241,21 @@ locals {
   owner = data.azurerm_client_config.current.object_id
 }
 
+module "setup_monitoring" {
+  source                              = "./modules/setup_monitoring"
+  environment_name                    = var.environment_name
+  dns_zone                            = data.azurerm_key_vault_secret.dns_zone.value
+  postgres_host                       = "${module.create_database.k8s_name}.${module.create_database_namespace.k8s_namespace}"
+  postgres_database                   = module.create_database.db_name
+  postgres_username                   = module.create_database.username
+  postgres_password                   = module.create_database.password
+  cloudflare_account_id               = data.azurerm_key_vault_secret.cloudflare_account_id.value
+  cloudflare_access_policy_id         = module.setup_ingress_controller.cloudflare_access_policy_id
+  cloudflare_identity_provider_id     = module.setup_ingress_controller.cloudflare_identity_provider_id
+  wait_for                            = module.setup_ingress_controller.traefik_ready
+  depends_on                          = [module.create_database]
+}
+
 module "setup_backup_app" {
   source                     = "./modules/setup_backup_app"
   environment_name           = var.environment_name
@@ -255,6 +270,7 @@ module "setup_backup_app" {
   db_password                = module.create_database.password
   twingate_service_key       = module.setup_twingate.service_key
   wait_for                   = module.setup_ingress_controller.traefik_ready
+  additional_dbs             = [module.setup_monitoring.grafana_backup_config]
 
   azure_storage_account_resource_group_name = "ibari"
   azure_storage_account_name                = "ibari"
