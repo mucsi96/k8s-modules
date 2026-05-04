@@ -11,4 +11,5 @@ output "auth_middleware_name" {
 output "auth_hostname" {
   value       = local.auth_hostname
   description = "Hostname where oauth2-proxy is exposed"
+  sensitive   = true
 }
