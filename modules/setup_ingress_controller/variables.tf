@@ -24,12 +24,6 @@ variable "traefik_version" {
   type        = string
 }
 
-variable "letsencrypt_email" {
-  description = "The email address to use for Let's Encrypt"
-  type        = string
-  sensitive   = true
-}
-
 variable "cloudflare_zone_id" {
   description = "Cloudflare Zone ID for the domain to manage"
   type        = string
@@ -44,11 +38,6 @@ variable "cloudflare_api_token" {
   description = "Cloudflare API token with Zone:Edit permissions"
   type        = string
   sensitive   = true
-}
-
-variable "cloudflare_team_domain" {
-  description = "Cloudflare Team Domain (e.g., example.cloudflareaccess.com)"
-  type        = string
 }
 
 variable "authorized_as" {
