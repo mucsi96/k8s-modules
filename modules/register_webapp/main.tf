@@ -23,6 +23,11 @@ resource "azuread_application" "webapp" {
     resource_app_id = data.azuread_application_published_app_ids.well_known.result.MicrosoftGraph
 
     resource_access {
+      id   = azuread_service_principal.msgraph.oauth2_permission_scope_ids["email"]
+      type = "Scope"
+    }
+
+    resource_access {
       id   = azuread_service_principal.msgraph.oauth2_permission_scope_ids["openid"]
       type = "Scope"
     }
@@ -33,7 +38,7 @@ resource "azuread_application" "webapp" {
     }
 
     resource_access {
-      id   = azuread_service_principal.msgraph.oauth2_permission_scope_ids["email"]
+      id   = azuread_service_principal.msgraph.oauth2_permission_scope_ids["User.Read"]
       type = "Scope"
     }
   }
@@ -49,7 +54,7 @@ resource "azuread_service_principal" "webapp_service_principal" {
 resource "azuread_service_principal_delegated_permission_grant" "allow_webapp_to_access_msgraph_user_profile" {
   service_principal_object_id          = azuread_service_principal.webapp_service_principal.object_id
   resource_service_principal_object_id = azuread_service_principal.msgraph.object_id
-  claim_values                         = ["openid", "profile", "email"]
+  claim_values                         = ["email", "openid", "profile", "User.Read"]
 }
 
 resource "azuread_app_role_assignment" "allow_owner" {
