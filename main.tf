@@ -210,6 +210,15 @@ module "setup_sso" {
   wait_for                   = module.setup_ingress_controller.traefik_ready
 }
 
+module "setup_k8s_dashboard" {
+  source                    = "./modules/setup_k8s_dashboard"
+  dns_zone                  = data.azurerm_key_vault_secret.dns_zone.value
+  dashboard_chart_version   = "7.13.0" #https://github.com/kubernetes/dashboard/releases
+  auth_middleware_name      = module.setup_sso.auth_middleware_name
+  auth_middleware_namespace = module.setup_sso.auth_namespace
+  wait_for                  = module.setup_ingress_controller.traefik_ready
+}
+
 module "setup_twingate" {
   source             = "./modules/setup_twingate"
   environment_name   = var.environment_name
