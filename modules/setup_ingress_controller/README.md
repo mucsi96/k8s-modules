@@ -48,8 +48,6 @@ Before using this module, you need to perform these manual steps in the Cloudfla
    | Resource Type | Permission | Access Level |
    |---------------|------------|--------------|
    | Account | Cloudflare Tunnel | Edit |
-   | Account | Access: Organizations, Identity Providers, and Groups | Edit |
-   | Account | Access: Apps and Policies | Edit |
    | Zone | DNS | Edit |
    | Account | Account Rulesets | Edit |
 
@@ -63,4 +61,3 @@ Before using this module, you need to perform these manual steps in the Cloudfla
    - `cloudflare-account-id` - Your Account ID from step 3
    - `cloudflare-api-token` - The API token you just created
    - `dns-zone` - Your domain name (e.g., example.com)
-   - `letsencrypt-email` - Email address for Let's Encrypt certificates
