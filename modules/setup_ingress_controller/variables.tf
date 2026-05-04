@@ -46,12 +46,22 @@ variable "authorized_as" {
   sensitive   = true
 }
 
-variable "auth_middleware_name" {
-  description = "Name of the Traefik middleware used to protect the Traefik dashboard"
+variable "tenant_id" {
+  description = "Azure AD tenant ID used as the OIDC issuer for the Traefik dashboard"
   type        = string
 }
 
-variable "auth_middleware_namespace" {
-  description = "Namespace of the Traefik middleware used to protect the Traefik dashboard"
+variable "owner" {
+  description = "Object ID of the principal allowed to sign in to the Traefik dashboard"
+  type        = string
+}
+
+variable "oauth2_proxy_chart_version" {
+  description = "The version of the oauth2-proxy Helm chart to deploy in front of the Traefik dashboard"
+  type        = string
+}
+
+variable "oauth2_proxy_image_version" {
+  description = "The oauth2-proxy container image tag to deploy in front of the Traefik dashboard"
   type        = string
 }
