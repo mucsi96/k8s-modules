@@ -20,57 +20,59 @@ resource "helm_release" "kubernetes_dashboard" {
         enabled = false
       }
     }
-    api = {
-      containers = {
-        args = [
-          "--enable-skip-login",
-          "--token-ttl=0",
-        ]
-      }
-    }
-    auth = {
-      containers = {
-        args = [
-          "--enable-skip-login",
-        ]
-      }
-    }
   })]
 
   depends_on = [var.wait_for]
 }
 
-resource "kubernetes_service_account_v1" "dashboard_admin" {
+resource "kubernetes_service_account_v1" "dashboard_viewer" {
   metadata {
-    name      = "dashboard-admin"
+    name      = "dashboard-viewer"
     namespace = kubernetes_namespace_v1.kubernetes_dashboard.metadata[0].name
   }
 }
 
-resource "kubernetes_cluster_role_binding_v1" "dashboard_admin" {
+resource "kubernetes_cluster_role_v1" "dashboard_viewer" {
   metadata {
-    name = "dashboard-admin"
+    name = "dashboard-viewer"
+  }
+
+  rule {
+    api_groups = ["*"]
+    resources  = ["*"]
+    verbs      = ["get", "list", "watch"]
+  }
+
+  rule {
+    non_resource_urls = ["*"]
+    verbs             = ["get"]
+  }
+}
+
+resource "kubernetes_cluster_role_binding_v1" "dashboard_viewer" {
+  metadata {
+    name = "dashboard-viewer"
   }
 
   role_ref {
     api_group = "rbac.authorization.k8s.io"
     kind      = "ClusterRole"
-    name      = "cluster-admin"
+    name      = kubernetes_cluster_role_v1.dashboard_viewer.metadata[0].name
   }
 
   subject {
     kind      = "ServiceAccount"
-    name      = kubernetes_service_account_v1.dashboard_admin.metadata[0].name
+    name      = kubernetes_service_account_v1.dashboard_viewer.metadata[0].name
     namespace = kubernetes_namespace_v1.kubernetes_dashboard.metadata[0].name
   }
 }
 
-resource "kubernetes_secret_v1" "dashboard_admin_token" {
+resource "kubernetes_secret_v1" "dashboard_viewer_token" {
   metadata {
-    name      = "dashboard-admin-token"
+    name      = "dashboard-viewer-token"
     namespace = kubernetes_namespace_v1.kubernetes_dashboard.metadata[0].name
     annotations = {
-      "kubernetes.io/service-account.name" = kubernetes_service_account_v1.dashboard_admin.metadata[0].name
+      "kubernetes.io/service-account.name" = kubernetes_service_account_v1.dashboard_viewer.metadata[0].name
     }
   }
 

@@ -12,7 +12,7 @@ resource "helm_release" "dashboard_routes" {
     dashboardNamespace = kubernetes_namespace_v1.kubernetes_dashboard.metadata[0].name
     dashboardService   = "kubernetes-dashboard-kong-proxy"
     dashboardPort      = 443
-    adminToken         = kubernetes_secret_v1.dashboard_admin_token.data.token
+    bearerToken        = kubernetes_secret_v1.dashboard_viewer_token.data.token
   })]
 
   depends_on = [helm_release.kubernetes_dashboard]

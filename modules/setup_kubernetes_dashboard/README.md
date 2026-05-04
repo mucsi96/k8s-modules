@@ -5,7 +5,7 @@ Deploys the [Kubernetes Dashboard](https://github.com/kubernetes/dashboard) to m
 ## How it works
 
 - The official `kubernetes-dashboard` Helm chart is installed in the `kubernetes-dashboard` namespace.
-- The dashboard's built-in login screen is bypassed: a `dashboard-admin` ServiceAccount with `cluster-admin` rights is provisioned, a long-lived token is generated, and a Traefik `Middleware` injects an `Authorization: Bearer <token>` header on every incoming request.
+- The dashboard's built-in login screen is skipped automatically: a `dashboard-viewer` ServiceAccount bound to a custom read-only ClusterRole (`get`/`list`/`watch` on every resource) is provisioned, a long-lived token is generated, and a Traefik `Middleware` injects an `Authorization: Bearer <token>` header on every incoming request — the dashboard treats the user as authenticated and renders directly.
 - The dashboard is exposed under `dashboard.<dns_zone>` through the same Cloudflare Tunnel used by Traefik (the existing wildcard tunnel route covers it).
 - A Cloudflare Zero Trust Access application protects the dashboard with the same Entra ID SSO identity provider and policy as the Traefik dashboard.
 
