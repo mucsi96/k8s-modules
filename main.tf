@@ -310,3 +310,14 @@ module "setup_training_log_app" {
   twingate_service_key       = module.setup_twingate.service_key
   wait_for                   = module.setup_ingress_controller.traefik_ready
 }
+
+module "setup_kubernetes_dashboard" {
+  source                     = "./modules/setup_kubernetes_dashboard"
+  environment_name           = var.environment_name
+  owner                      = local.owner
+  tenant_id                  = data.azurerm_client_config.current.tenant_id
+  hostname                   = data.azurerm_key_vault_secret.dns_zone.value
+  k8s_host                   = module.setup_cluster.k8s_host
+  k8s_cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
+  wait_for                   = module.setup_ingress_controller.traefik_ready
+}

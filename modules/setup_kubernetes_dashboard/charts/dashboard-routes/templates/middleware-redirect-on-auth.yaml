@@ -1,0 +1,13 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: dashboard-errors-redirect
+  namespace: {{ .Release.Namespace }}
+spec:
+  errors:
+    status:
+      - "401"
+    service:
+      name: {{ .Values.oauth2ProxyServiceName }}
+      port: {{ .Values.oauth2ProxyServicePort }}
+    query: "/oauth2/sign_in?rd={scheme}://{host}{url}"
