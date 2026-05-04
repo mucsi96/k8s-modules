@@ -48,68 +48,13 @@ resource "kubernetes_secret_v1" "dashboard_user_token" {
   wait_for_service_account_token = true
 }
 
-data "azuread_application_published_app_ids" "well_known" {}
+module "oauth_app" {
+  source = "../register_web_app"
 
-resource "azuread_service_principal" "msgraph" {
-  client_id    = data.azuread_application_published_app_ids.well_known.result.MicrosoftGraph
-  use_existing = true
-}
-
-resource "azuread_application" "kubernetes_dashboard" {
-  display_name     = "Kubernetes Dashboard - ${var.environment_name}"
-  sign_in_audience = "AzureADMyOrg"
-  owners           = [var.owner]
-
-  web {
-    redirect_uris = [local.redirect_url]
-
-    implicit_grant {
-      access_token_issuance_enabled = false
-      id_token_issuance_enabled     = true
-    }
-  }
-
-  required_resource_access {
-    resource_app_id = data.azuread_application_published_app_ids.well_known.result.MicrosoftGraph
-
-    resource_access {
-      id   = azuread_service_principal.msgraph.oauth2_permission_scope_ids["openid"]
-      type = "Scope"
-    }
-
-    resource_access {
-      id   = azuread_service_principal.msgraph.oauth2_permission_scope_ids["email"]
-      type = "Scope"
-    }
-
-    resource_access {
-      id   = azuread_service_principal.msgraph.oauth2_permission_scope_ids["profile"]
-      type = "Scope"
-    }
-
-    resource_access {
-      id   = azuread_service_principal.msgraph.oauth2_permission_scope_ids["User.Read"]
-      type = "Scope"
-    }
-  }
-}
-
-resource "azuread_service_principal" "kubernetes_dashboard" {
-  client_id                    = azuread_application.kubernetes_dashboard.client_id
-  owners                       = [var.owner]
-  tags                         = ["WindowsAzureActiveDirectoryIntegratedApp"]
-  app_role_assignment_required = false
-}
-
-resource "azuread_service_principal_delegated_permission_grant" "msgraph" {
-  service_principal_object_id          = azuread_service_principal.kubernetes_dashboard.object_id
-  resource_service_principal_object_id = azuread_service_principal.msgraph.object_id
-  claim_values                         = ["openid", "email", "profile", "User.Read"]
-}
-
-resource "azuread_application_password" "kubernetes_dashboard" {
-  application_id = azuread_application.kubernetes_dashboard.id
-  display_name   = "Kubernetes Dashboard - ${var.environment_name}"
+  display_name             = "Kubernetes Dashboard - ${var.environment_name}"
+  owner                    = var.owner
+  redirect_uris            = [local.redirect_url]
+  msgraph_delegated_scopes = ["openid", "email", "profile", "User.Read"]
 }
 
 resource "random_password" "oauth2_cookie_secret" {
@@ -155,8 +100,8 @@ resource "helm_release" "oauth2_proxy" {
   # https://github.com/oauth2-proxy/manifests/blob/main/helm/oauth2-proxy/values.yaml
   values = [yamlencode({
     config = {
-      clientID     = azuread_application.kubernetes_dashboard.client_id
-      clientSecret = azuread_application_password.kubernetes_dashboard.value
+      clientID     = module.oauth_app.client_id
+      clientSecret = module.oauth_app.client_secret
       cookieSecret = random_password.oauth2_cookie_secret.result
       configFile = join("\n", [
         "provider = \"oidc\"",

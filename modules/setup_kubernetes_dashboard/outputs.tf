@@ -5,5 +5,5 @@ output "dashboard_url" {
 
 output "client_id" {
   description = "Entra ID application client ID used by oauth2-proxy"
-  value       = azuread_application.kubernetes_dashboard.client_id
+  value       = module.oauth_app.client_id
 }

@@ -1,69 +1,37 @@
 data "azuread_client_config" "current" {}
 
-data "azuread_application_published_app_ids" "well_known" {}
+module "cloudflare_sso_app" {
+  source = "../register_web_app"
 
-resource "azuread_service_principal" "msgraph" {
-  client_id    = data.azuread_application_published_app_ids.well_known.result.MicrosoftGraph
-  use_existing = true
+  display_name             = "Cloudflare SSO - ${var.environment_name}"
+  owner                    = data.azuread_client_config.current.object_id
+  redirect_uris            = ["https://${var.cloudflare_team_domain}/cdn-cgi/access/callback"]
+  msgraph_delegated_scopes = ["email", "offline_access", "openid", "User.Read"]
 }
 
-resource "azuread_application" "cloudflare_sso" {
-  display_name     = "Cloudflare SSO - ${var.environment_name}"
-  sign_in_audience = "AzureADMyOrg"
-  owners           = [data.azuread_client_config.current.object_id]
-
-  web {
-    redirect_uris = [
-      "https://${var.cloudflare_team_domain}/cdn-cgi/access/callback"
-    ]
-
-    implicit_grant {
-      access_token_issuance_enabled = false
-      id_token_issuance_enabled     = true
-    }
-  }
-
-  required_resource_access {
-    resource_app_id = data.azuread_application_published_app_ids.well_known.result.MicrosoftGraph
-
-    resource_access {
-      id   = azuread_service_principal.msgraph.oauth2_permission_scope_ids["email"]
-      type = "Scope"
-    }
-
-    resource_access {
-      id   = azuread_service_principal.msgraph.oauth2_permission_scope_ids["offline_access"]
-      type = "Scope"
-    }
-
-    resource_access {
-      id   = azuread_service_principal.msgraph.oauth2_permission_scope_ids["openid"]
-      type = "Scope"
-    }
-
-    resource_access {
-      id   = azuread_service_principal.msgraph.oauth2_permission_scope_ids["User.Read"]
-      type = "Scope"
-    }
-  }
+moved {
+  from = azuread_service_principal.msgraph
+  to   = module.cloudflare_sso_app.azuread_service_principal.msgraph
 }
 
-resource "azuread_service_principal" "cloudflare_sso" {
-  client_id                    = azuread_application.cloudflare_sso.client_id
-  owners                       = [data.azuread_client_config.current.object_id]
-  tags                         = ["WindowsAzureActiveDirectoryIntegratedApp"]
-  app_role_assignment_required = false
+moved {
+  from = azuread_application.cloudflare_sso
+  to   = module.cloudflare_sso_app.azuread_application.this
 }
 
-resource "azuread_service_principal_delegated_permission_grant" "allow_cloudflare_sso_to_access_msgraph_user_profile" {
-  service_principal_object_id          = azuread_service_principal.cloudflare_sso.object_id
-  resource_service_principal_object_id = azuread_service_principal.msgraph.object_id
-  claim_values                         = ["email", "offline_access", "openid", "User.Read"]
+moved {
+  from = azuread_service_principal.cloudflare_sso
+  to   = module.cloudflare_sso_app.azuread_service_principal.this
 }
 
-resource "azuread_application_password" "cloudflare_sso" {
-  application_id = azuread_application.cloudflare_sso.id
-  display_name   = "Cloudflare SSO - ${var.environment_name}"
+moved {
+  from = azuread_service_principal_delegated_permission_grant.allow_cloudflare_sso_to_access_msgraph_user_profile
+  to   = module.cloudflare_sso_app.azuread_service_principal_delegated_permission_grant.msgraph
+}
+
+moved {
+  from = azuread_application_password.cloudflare_sso
+  to   = module.cloudflare_sso_app.azuread_application_password.this
 }
 
 resource "cloudflare_zero_trust_access_identity_provider" "entra_id" {
@@ -72,8 +40,8 @@ resource "cloudflare_zero_trust_access_identity_provider" "entra_id" {
   type       = "azureAD"
 
   config = {
-    client_id     = azuread_application.cloudflare_sso.client_id
-    client_secret = azuread_application_password.cloudflare_sso.value
+    client_id     = module.cloudflare_sso_app.client_id
+    client_secret = module.cloudflare_sso_app.client_secret
     directory_id  = data.azuread_client_config.current.tenant_id
   }
 }
