@@ -1,3 +1,23 @@
+resource "kubernetes_manifest" "dashboard_bearer_token" {
+  manifest = {
+    apiVersion = "traefik.io/v1alpha1"
+    kind       = "Middleware"
+    metadata = {
+      name      = "kubernetes-dashboard-bearer-token"
+      namespace = kubernetes_namespace_v1.dashboard.metadata[0].name
+    }
+    spec = {
+      headers = {
+        customRequestHeaders = {
+          Authorization = "Bearer ${var.bearer_token}"
+        }
+      }
+    }
+  }
+
+  depends_on = [helm_release.kubernetes_dashboard]
+}
+
 resource "kubernetes_manifest" "dashboard_ingressroute" {
   manifest = {
     apiVersion = "traefik.io/v1alpha1"
@@ -16,6 +36,10 @@ resource "kubernetes_manifest" "dashboard_ingressroute" {
             name      = var.auth_middleware_name
             namespace = var.auth_middleware_namespace
           },
+          {
+            name      = "kubernetes-dashboard-bearer-token"
+            namespace = kubernetes_namespace_v1.dashboard.metadata[0].name
+          },
         ]
         services = [{
           name = "kubernetes-dashboard-kong-proxy"
@@ -25,5 +49,8 @@ resource "kubernetes_manifest" "dashboard_ingressroute" {
     }
   }
 
-  depends_on = [helm_release.kubernetes_dashboard]
+  depends_on = [
+    helm_release.kubernetes_dashboard,
+    kubernetes_manifest.dashboard_bearer_token,
+  ]
 }

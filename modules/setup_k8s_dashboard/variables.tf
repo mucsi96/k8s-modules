@@ -19,6 +19,12 @@ variable "auth_middleware_namespace" {
   type        = string
 }
 
+variable "bearer_token" {
+  description = "Bearer token injected into the Authorization header so the dashboard skips its login screen"
+  type        = string
+  sensitive   = true
+}
+
 variable "wait_for" {
   description = "Used to ensure this module waits for upstream dependencies"
   type        = any

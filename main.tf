@@ -216,6 +216,7 @@ module "setup_k8s_dashboard" {
   dashboard_chart_version   = "7.13.0" #https://github.com/kubernetes/dashboard/releases
   auth_middleware_name      = module.setup_sso.auth_middleware_name
   auth_middleware_namespace = module.setup_sso.auth_namespace
+  bearer_token              = module.setup_sso.cluster_admin_token
   wait_for                  = module.setup_ingress_controller.traefik_ready
 }
 
