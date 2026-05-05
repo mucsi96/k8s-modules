@@ -38,15 +38,13 @@ locals {
 }
 
 resource "helm_release" "oauth2_proxy" {
-  name             = "${var.name}-oauth2-proxy"
-  repository       = "https://oauth2-proxy.github.io/manifests"
-  chart            = "oauth2-proxy"
-  version          = var.oauth2_proxy_chart_version
-  namespace        = var.namespace
-  wait             = true
-  atomic           = true
-  cleanup_on_fail  = true
-  timeout          = 300
+  name       = "${var.name}-oauth2-proxy"
+  repository = "https://oauth2-proxy.github.io/manifests"
+  chart      = "oauth2-proxy"
+  version    = var.oauth2_proxy_chart_version
+  namespace  = var.namespace
+  wait       = true
+  timeout    = 600
 
   values = [yamlencode({
     image = {
@@ -94,8 +92,22 @@ resource "helm_release" "oauth2_proxy" {
         password = local.redis_password
       }
     }
+    # Give the wait-for-redis init container enough budget to outlast a
+    # cold image pull on first install; the chart default is 180 s which
+    # is shorter than the parent helm_release timeout and used to fail
+    # before Redis even came up.
+    initContainers = {
+      waitForRedis = {
+        timeout = 540
+      }
+    }
     redis = {
       enabled = var.session_store == "redis"
+      # A single Redis pod is plenty for a sessions cache. The chart's
+      # default 'replication' architecture spins up master + 3 replicas
+      # which all need to become ready inside the init container's
+      # timeout, dramatically slowing down the first install.
+      architecture = "standalone"
       global = {
         redis = {
           password = local.redis_password
