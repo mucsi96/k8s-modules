@@ -3,20 +3,6 @@ resource "random_password" "cookie_secret" {
   special = false
 }
 
-# Per https://github.com/oauth2-proxy/manifests/issues/225 the Bitnami Redis
-# subchart and oauth2-proxy each read the password from a different place:
-# the subchart wants global.redis.password (it's what its pre-upgrade hook
-# checks against the password baked into the existing PVC), and oauth2-proxy
-# itself wants sessionStorage.redis.password to authenticate the connection.
-# Generating it once in Terraform and feeding both keys keeps helm upgrades
-# idempotent.
-resource "random_password" "redis_password" {
-  count = var.session_store == "redis" ? 1 : 0
-
-  length  = 32
-  special = false
-}
-
 locals {
   base_config_lines = [
     "email_domains = [\"*\"]",
@@ -34,7 +20,17 @@ locals {
     length(var.inject_request_headers) == 0 ? ["session_cookie_minimal = true"] : [],
   ))
 
-  redis_password = try(random_password.redis_password[0].result, "")
+  session_storage = var.session_redis == null ? {
+    type = "cookie"
+    } : {
+    type = "redis"
+    redis = {
+      password = var.session_redis.password
+      standalone = {
+        connectionUrl = var.session_redis.connection_url
+      }
+    }
+  }
 }
 
 resource "helm_release" "oauth2_proxy" {
@@ -86,50 +82,6 @@ resource "helm_release" "oauth2_proxy" {
     ingress = {
       enabled = false
     }
-    sessionStorage = {
-      type = var.session_store
-      redis = {
-        password = local.redis_password
-      }
-    }
-    # Give the wait-for-redis init container enough budget to outlast a
-    # cold image pull on first install; the chart default is 180 s which
-    # is shorter than the parent helm_release timeout and used to fail
-    # before Redis even came up.
-    initContainers = {
-      waitForRedis = {
-        timeout = 540
-      }
-    }
-    redis = {
-      enabled = var.session_store == "redis"
-      # A single Redis pod is plenty for a sessions cache. The chart's
-      # default 'replication' architecture spins up master + 3 replicas
-      # which all need to become ready inside the init container's
-      # timeout, dramatically slowing down the first install.
-      architecture = "standalone"
-      # Bitnami removed all versioned bitnami/* tags from the free
-      # Docker Hub repo in their Aug 2025 catalog change and moved the
-      # historical images to docker.io/bitnamilegacy/*. The chart
-      # still hard-codes the old path, so kubelet hits ErrImagePull
-      # ('NotFound: failed to pull bitnami/redis:7.4.2-debian-12-r4')
-      # unless we redirect it.
-      image = {
-        repository = "bitnamilegacy/redis"
-      }
-      global = {
-        # The chart's image-verification hook rejects anything that
-        # isn't on its hard-coded allow-list, including Bitnami's own
-        # legacy mirror. allowInsecureImages skips that check; the
-        # bits are byte-identical to the old bitnami/redis tag.
-        # See https://github.com/bitnami/charts/issues/30850.
-        security = {
-          allowInsecureImages = true
-        }
-        redis = {
-          password = local.redis_password
-        }
-      }
-    }
+    sessionStorage = local.session_storage
   })]
 }

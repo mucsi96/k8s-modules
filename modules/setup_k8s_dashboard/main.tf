@@ -45,6 +45,13 @@ resource "helm_release" "headlamp" {
   })]
 }
 
+module "headlamp_session_redis" {
+  source = "../setup_redis"
+
+  name      = "headlamp"
+  namespace = kubernetes_namespace_v1.k8s_dashboard.metadata[0].name
+}
+
 module "headlamp_oauth2_proxy" {
   source = "../setup_oauth2_proxy"
 
@@ -57,7 +64,12 @@ module "headlamp_oauth2_proxy" {
   oauth2_proxy_chart_version = var.oauth2_proxy_chart_version
   oauth2_proxy_image_version = var.oauth2_proxy_image_version
   upstream_uri               = "http://${helm_release.headlamp.name}.${kubernetes_namespace_v1.k8s_dashboard.metadata[0].name}.svc.cluster.local:${local.headlamp_port}"
-  session_store              = "redis"
+
+  session_redis = {
+    connection_url = module.headlamp_session_redis.connection_url
+    password       = module.headlamp_session_redis.password
+  }
+
   inject_request_headers = [{
     name = "Authorization"
     values = [{
