@@ -118,6 +118,14 @@ resource "helm_release" "oauth2_proxy" {
         repository = "bitnamilegacy/redis"
       }
       global = {
+        # The chart's image-verification hook rejects anything that
+        # isn't on its hard-coded allow-list, including Bitnami's own
+        # legacy mirror. allowInsecureImages skips that check; the
+        # bits are byte-identical to the old bitnami/redis tag.
+        # See https://github.com/bitnami/charts/issues/30850.
+        security = {
+          allowInsecureImages = true
+        }
         redis = {
           password = local.redis_password
         }
