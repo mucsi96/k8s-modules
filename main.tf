@@ -260,7 +260,7 @@ module "create_redis_namespace" {
   wait_for                   = module.setup_ingress_controller.traefik_ready
 }
 
-module "headlamp_session_redis" {
+module "create_redis" {
   source        = "./modules/setup_redis"
   k8s_name      = "headlamp-session"
   k8s_namespace = module.create_redis_namespace.k8s_namespace
@@ -337,8 +337,8 @@ module "setup_k8s_dashboard" {
   oauth2_proxy_chart_version = "7.12.6"  #https://github.com/oauth2-proxy/manifests/releases
   oauth2_proxy_image_version = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
   session_redis = {
-    connection_url = module.headlamp_session_redis.connection_url
-    password       = module.headlamp_session_redis.password
+    connection_url = module.create_redis.connection_url
+    password       = module.create_redis.password
   }
   wait_for = module.setup_ingress_controller.traefik_ready
 }
