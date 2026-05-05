@@ -316,7 +316,8 @@ module "setup_k8s_dashboard" {
   client_id                  = module.register_headlamp_dashboard.client_id
   client_secret              = module.register_headlamp_dashboard.client_secret
   valid_email                = data.azurerm_key_vault_secret.letsencrypt_email.value
-  headlamp_chart_version     = "0.41.0" #https://github.com/headlamp-k8s/headlamp/releases
+  headlamp_chart_version     = "0.41.0"  #https://github.com/headlamp-k8s/headlamp/releases
+  headlamp_image_version     = "v0.41.0" #https://github.com/headlamp-k8s/headlamp/releases
   oauth2_proxy_chart_version = "7.12.6" #https://github.com/oauth2-proxy/manifests/releases
   oauth2_proxy_image_version = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
   wait_for                   = module.setup_ingress_controller.traefik_ready

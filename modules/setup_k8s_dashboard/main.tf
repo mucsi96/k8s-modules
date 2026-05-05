@@ -26,6 +26,9 @@ resource "helm_release" "headlamp" {
   timeout    = 600
 
   values = [yamlencode({
+    image = {
+      tag = var.headlamp_image_version
+    }
     serviceAccount = {
       create = true
     }

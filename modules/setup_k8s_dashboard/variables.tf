@@ -31,6 +31,11 @@ variable "headlamp_chart_version" {
   type        = string
 }
 
+variable "headlamp_image_version" {
+  description = "Container image tag for Headlamp"
+  type        = string
+}
+
 variable "oauth2_proxy_chart_version" {
   description = "Helm chart version for oauth2-proxy"
   type        = string
