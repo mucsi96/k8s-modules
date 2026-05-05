@@ -4,6 +4,15 @@ variable "hostname" {
   sensitive   = true
 }
 
+variable "session_redis" {
+  description = "Redis backend for oauth2-proxy session storage. Pass connection_url and password from a setup_redis module instance."
+  type = object({
+    connection_url = string
+    password       = string
+  })
+  sensitive = true
+}
+
 variable "tenant_id" {
   description = "Azure AD tenant ID used as the OIDC issuer for oauth2-proxy"
   type        = string

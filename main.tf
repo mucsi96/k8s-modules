@@ -250,6 +250,22 @@ module "create_database" {
   db_name       = "postgres1"
 }
 
+module "create_redis_namespace" {
+  source           = "./modules/create_app_namespace"
+  environment_name = var.environment_name
+  k8s_namespace    = "redis"
+
+  k8s_host                   = module.setup_cluster.k8s_host
+  k8s_cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
+  wait_for                   = module.setup_ingress_controller.traefik_ready
+}
+
+module "headlamp_session_redis" {
+  source        = "./modules/setup_redis"
+  k8s_name      = "headlamp-session"
+  k8s_namespace = module.create_redis_namespace.k8s_namespace
+}
+
 data "azurerm_client_config" "current" {}
 
 locals {
@@ -318,9 +334,13 @@ module "setup_k8s_dashboard" {
   valid_email                = data.azurerm_key_vault_secret.letsencrypt_email.value
   headlamp_chart_version     = "0.41.0"  #https://github.com/headlamp-k8s/headlamp/releases
   headlamp_image_version     = "v0.41.0" #https://github.com/headlamp-k8s/headlamp/releases
-  oauth2_proxy_chart_version = "7.12.6" #https://github.com/oauth2-proxy/manifests/releases
+  oauth2_proxy_chart_version = "7.12.6"  #https://github.com/oauth2-proxy/manifests/releases
   oauth2_proxy_image_version = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
-  wait_for                   = module.setup_ingress_controller.traefik_ready
+  session_redis = {
+    connection_url = module.headlamp_session_redis.connection_url
+    password       = module.headlamp_session_redis.password
+  }
+  wait_for = module.setup_ingress_controller.traefik_ready
 }
 
 module "setup_training_log_app" {

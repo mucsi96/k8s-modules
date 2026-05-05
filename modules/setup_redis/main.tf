@@ -1,10 +1,9 @@
 locals {
-  release_name = "${var.name}-redis"
-  port         = 6379
+  port = 6379
 
   selector_labels = {
-    "app.kubernetes.io/name"     = "redis"
-    "app.kubernetes.io/instance" = var.name
+    "app.kubernetes.io/name"      = var.k8s_name
+    "app.kubernetes.io/component" = "redis"
   }
 }
 
@@ -15,8 +14,8 @@ resource "random_password" "password" {
 
 resource "kubernetes_secret_v1" "auth" {
   metadata {
-    name      = "${local.release_name}-auth"
-    namespace = var.namespace
+    name      = "${var.k8s_name}-auth"
+    namespace = var.k8s_namespace
   }
 
   data = {
@@ -28,8 +27,8 @@ resource "kubernetes_secret_v1" "auth" {
 
 resource "kubernetes_deployment_v1" "redis" {
   metadata {
-    name      = local.release_name
-    namespace = var.namespace
+    name      = var.k8s_name
+    namespace = var.k8s_namespace
     labels    = local.selector_labels
   }
 
@@ -108,8 +107,8 @@ resource "kubernetes_deployment_v1" "redis" {
 
 resource "kubernetes_service_v1" "redis" {
   metadata {
-    name      = local.release_name
-    namespace = var.namespace
+    name      = var.k8s_name
+    namespace = var.k8s_namespace
     labels    = local.selector_labels
   }
 
