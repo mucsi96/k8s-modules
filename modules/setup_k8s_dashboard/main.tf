@@ -88,6 +88,44 @@ resource "kubernetes_cluster_role_binding_v1" "headlamp_user" {
   }
 }
 
+# Read-only cluster-scoped extras Headlamp needs (cluster overview, metrics,
+# CRD discovery, storage). The aggregation label causes the kube-controller-
+# manager to merge these rules into the built-in `view` ClusterRole, so the
+# `headlamp-user` binding above gains them automatically without needing a
+# second binding.
+resource "kubernetes_cluster_role_v1" "headlamp_view_extras" {
+  metadata {
+    name = "headlamp-view-extras"
+    labels = {
+      "rbac.authorization.k8s.io/aggregate-to-view" = "true"
+    }
+  }
+
+  rule {
+    api_groups = [""]
+    resources  = ["nodes", "persistentvolumes"]
+    verbs      = ["get", "list", "watch"]
+  }
+
+  rule {
+    api_groups = ["apiextensions.k8s.io"]
+    resources  = ["customresourcedefinitions"]
+    verbs      = ["get", "list", "watch"]
+  }
+
+  rule {
+    api_groups = ["metrics.k8s.io"]
+    resources  = ["nodes", "pods"]
+    verbs      = ["get", "list", "watch"]
+  }
+
+  rule {
+    api_groups = ["storage.k8s.io"]
+    resources  = ["storageclasses", "csidrivers", "csinodes", "volumeattachments"]
+    verbs      = ["get", "list", "watch"]
+  }
+}
+
 resource "kubernetes_manifest" "headlamp_ingressroute" {
   manifest = {
     apiVersion = "traefik.io/v1alpha1"

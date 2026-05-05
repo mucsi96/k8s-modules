@@ -6,6 +6,7 @@ resource "random_password" "cookie_secret" {
 locals {
   base_config_lines = [
     "email_domains = [\"*\"]",
+    "cookie_name = \"_${var.name}\"",
     "cookie_secure = true",
     "reverse_proxy = true",
     "skip_provider_button = true",

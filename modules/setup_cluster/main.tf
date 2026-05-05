@@ -174,7 +174,7 @@ resource "ansible_playbook" "configure_microk8s_apiserver_oidc" {
 
   name       = var.host
   playbook   = "${path.module}/configure_microk8s_apiserver_oidc.yaml"
-  replayable = false
+  replayable = true
 
   extra_vars = {
     ansible_port                 = tostring(random_integer.ssh_port.result)
