@@ -71,3 +71,12 @@ variable "valid_email" {
   type        = string
   sensitive   = true
 }
+
+variable "session_redis" {
+  description = "Redis backend for oauth2-proxy session storage in front of the Traefik dashboard. Pass connection_url and password from a setup_redis module instance."
+  type = object({
+    connection_url = string
+    password       = string
+  })
+  sensitive = true
+}

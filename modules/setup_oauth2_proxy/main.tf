@@ -20,17 +20,15 @@ locals {
     length(var.inject_request_headers) == 0 ? ["session_cookie_minimal = true"] : [],
   ))
 
-  session_storage = merge(
-    { type = var.session_redis == null ? "cookie" : "redis" },
-    var.session_redis == null ? {} : {
-      redis = {
-        password = var.session_redis.password
-        standalone = {
-          connectionUrl = var.session_redis.connection_url
-        }
+  session_storage = {
+    type = "redis"
+    redis = {
+      password = var.session_redis.password
+      standalone = {
+        connectionUrl = var.session_redis.connection_url
       }
-    },
-  )
+    }
+  }
 }
 
 resource "helm_release" "oauth2_proxy" {
