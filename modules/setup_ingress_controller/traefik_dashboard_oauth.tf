@@ -11,6 +11,17 @@ resource "random_password" "traefik_dashboard_cookie_secret" {
   special = false
 }
 
+data "kubernetes_service_v1" "traefik" {
+  metadata {
+    name      = helm_release.traefik.name
+    namespace = kubernetes_namespace_v1.traefik.metadata[0].name
+  }
+}
+
+locals {
+  traefik_admin_port = one([for p in data.kubernetes_service_v1.traefik.spec[0].port : p.port if p.name == "traefik"])
+}
+
 resource "helm_release" "traefik_dashboard_oauth2_proxy" {
   name       = "traefik-dashboard-oauth2-proxy"
   repository = "https://oauth2-proxy.github.io/manifests"
@@ -58,7 +69,7 @@ resource "helm_release" "traefik_dashboard_oauth2_proxy" {
           upstreams = [{
             id   = "traefik-dashboard"
             path = "/"
-            uri  = "http://traefik.${kubernetes_namespace_v1.traefik.metadata[0].name}.svc.cluster.local:9000"
+            uri  = "http://${helm_release.traefik.name}.${kubernetes_namespace_v1.traefik.metadata[0].name}.svc.cluster.local:${local.traefik_admin_port}"
           }]
         }
       })
