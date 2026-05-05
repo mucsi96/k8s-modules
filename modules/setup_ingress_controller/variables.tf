@@ -66,8 +66,8 @@ variable "oauth2_proxy_image_version" {
   type        = string
 }
 
-variable "letsencrypt_email" {
-  description = "Email address used for the Let's Encrypt account; also the only email allowed to sign in to the Traefik dashboard"
+variable "valid_email" {
+  description = "The only email address allowed to sign in to the Traefik dashboard"
   type        = string
   sensitive   = true
 }

@@ -203,7 +203,7 @@ module "setup_ingress_controller" {
   owner                      = local.owner
   oauth2_proxy_chart_version = "7.12.6"  #https://github.com/oauth2-proxy/manifests/releases
   oauth2_proxy_image_version = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
-  letsencrypt_email          = data.azurerm_key_vault_secret.letsencrypt_email.value
+  valid_email                = data.azurerm_key_vault_secret.letsencrypt_email.value
   depends_on                 = [module.setup_cluster]
 }
 

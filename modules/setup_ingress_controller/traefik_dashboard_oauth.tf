@@ -35,7 +35,7 @@ resource "helm_release" "traefik_dashboard_oauth2_proxy" {
     }
     authenticatedEmailsFile = {
       enabled           = true
-      restricted_access = "${var.letsencrypt_email}\n"
+      restricted_access = "${var.valid_email}\n"
     }
     alphaConfig = {
       enabled = true
