@@ -169,6 +169,27 @@ resource "ansible_playbook" "configure_microk8s_oidc" {
   depends_on = [ansible_playbook.publish_microk8s_oidc]
 }
 
+resource "ansible_playbook" "configure_microk8s_apiserver_oidc" {
+  count = var.apiserver_oidc == null ? 0 : 1
+
+  name       = var.host
+  playbook   = "${path.module}/configure_microk8s_apiserver_oidc.yaml"
+  replayable = false
+
+  extra_vars = {
+    ansible_port                 = tostring(random_integer.ssh_port.result)
+    ansible_user                 = var.username
+    ansible_become_password      = random_password.user_password.result
+    ansible_ssh_private_key_file = local_sensitive_file.user_private_key.filename
+    oidc_issuer_url              = var.apiserver_oidc.issuer_url
+    oidc_client_id               = var.apiserver_oidc.client_id
+    oidc_username_claim          = var.apiserver_oidc.username_claim
+    oidc_groups_claim            = coalesce(var.apiserver_oidc.groups_claim, "")
+  }
+
+  depends_on = [ansible_playbook.configure_microk8s_oidc]
+}
+
 resource "helm_release" "workload_identity_webhook" {
   name             = "workload-identity-webhook"
   repository       = "https://azure.github.io/azure-workload-identity/charts"
@@ -180,5 +201,8 @@ resource "helm_release" "workload_identity_webhook" {
     azureTenantID = var.azure_tenant_id
   })]
 
-  depends_on = [ansible_playbook.configure_microk8s_oidc]
+  depends_on = [
+    ansible_playbook.configure_microk8s_oidc,
+    ansible_playbook.configure_microk8s_apiserver_oidc,
+  ]
 }

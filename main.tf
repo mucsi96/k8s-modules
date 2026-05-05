@@ -141,6 +141,23 @@ module "setup_cluster" {
   storage_account_name     = var.storage_account_name
   azure_tenant_id          = data.azurerm_client_config.current.tenant_id
   local_python_interpreter = var.local_python_interpreter
+
+  apiserver_oidc = {
+    issuer_url = "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/v2.0"
+    client_id  = module.register_headlamp_dashboard.client_id
+  }
+}
+
+locals {
+  k8s_dashboard_hostname = "k8s.${data.azurerm_key_vault_secret.dns_zone.value}"
+}
+
+module "register_headlamp_dashboard" {
+  source = "./modules/register_webapp"
+
+  display_name  = "Headlamp - ${var.environment_name}"
+  owner         = local.owner
+  redirect_uris = ["https://${local.k8s_dashboard_hostname}/oauth2/callback"]
 }
 
 data "azurerm_key_vault_secret" "dns_zone" {
@@ -294,10 +311,10 @@ module "setup_hello_app" {
 
 module "setup_k8s_dashboard" {
   source                     = "./modules/setup_k8s_dashboard"
-  environment_name           = var.environment_name
   dns_zone                   = data.azurerm_key_vault_secret.dns_zone.value
   tenant_id                  = data.azurerm_client_config.current.tenant_id
-  owner                      = local.owner
+  client_id                  = module.register_headlamp_dashboard.client_id
+  client_secret              = module.register_headlamp_dashboard.client_secret
   valid_email                = data.azurerm_key_vault_secret.letsencrypt_email.value
   headlamp_chart_version     = "0.41.0" #https://github.com/headlamp-k8s/headlamp/releases
   oauth2_proxy_chart_version = "7.12.6" #https://github.com/oauth2-proxy/manifests/releases

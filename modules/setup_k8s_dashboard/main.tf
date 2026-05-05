@@ -43,21 +43,13 @@ resource "helm_release" "headlamp" {
   })]
 }
 
-module "register_headlamp" {
-  source = "../register_webapp"
-
-  display_name  = "Headlamp - ${var.environment_name}"
-  owner         = var.owner
-  redirect_uris = ["https://${local.hostname}/oauth2/callback"]
-}
-
 module "headlamp_oauth2_proxy" {
   source = "../setup_oauth2_proxy"
 
   name                       = "headlamp"
   namespace                  = kubernetes_namespace_v1.k8s_dashboard.metadata[0].name
-  client_id                  = module.register_headlamp.client_id
-  client_secret              = module.register_headlamp.client_secret
+  client_id                  = var.client_id
+  client_secret              = var.client_secret
   tenant_id                  = var.tenant_id
   valid_email                = var.valid_email
   oauth2_proxy_chart_version = var.oauth2_proxy_chart_version
@@ -66,12 +58,30 @@ module "headlamp_oauth2_proxy" {
   inject_request_headers = [{
     name = "Authorization"
     values = [{
-      claim  = "access_token"
+      claim  = "id_token"
       prefix = "Bearer "
     }]
   }]
 
   depends_on = [helm_release.headlamp]
+}
+
+resource "kubernetes_cluster_role_binding_v1" "headlamp_user" {
+  metadata {
+    name = "headlamp-user"
+  }
+
+  subject {
+    kind      = "User"
+    name      = var.valid_email
+    api_group = "rbac.authorization.k8s.io"
+  }
+
+  role_ref {
+    kind      = "ClusterRole"
+    name      = "cluster-admin"
+    api_group = "rbac.authorization.k8s.io"
+  }
 }
 
 resource "kubernetes_manifest" "headlamp_ingressroute" {

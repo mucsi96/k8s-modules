@@ -1,8 +1,3 @@
-variable "environment_name" {
-  description = "The name of the environment, used in the Entra application display name"
-  type        = string
-}
-
 variable "dns_zone" {
   description = "DNS zone used to expose the Headlamp dashboard (e.g. example.com -> k8s.example.com)"
   type        = string
@@ -14,9 +9,15 @@ variable "tenant_id" {
   type        = string
 }
 
-variable "owner" {
-  description = "Object ID of the Entra principal that owns the registered application"
+variable "client_id" {
+  description = "OIDC client ID of the Entra application used by oauth2-proxy and the kube-apiserver"
   type        = string
+}
+
+variable "client_secret" {
+  description = "OIDC client secret of the Entra application used by oauth2-proxy"
+  type        = string
+  sensitive   = true
 }
 
 variable "valid_email" {
