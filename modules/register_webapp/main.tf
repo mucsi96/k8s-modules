@@ -1,5 +1,3 @@
-data "azuread_client_config" "current" {}
-
 data "azuread_application_published_app_ids" "well_known" {}
 
 resource "azuread_service_principal" "msgraph" {
@@ -7,19 +5,13 @@ resource "azuread_service_principal" "msgraph" {
   use_existing = true
 }
 
-locals {
-  auth_hostname = "auth.${var.dns_zone}"
-}
-
-resource "azuread_application" "oauth2_proxy" {
-  display_name     = "OAuth2 Proxy - ${var.environment_name}"
+resource "azuread_application" "webapp" {
+  display_name     = var.display_name
   sign_in_audience = "AzureADMyOrg"
   owners           = [var.owner]
 
   web {
-    redirect_uris = [
-      "https://${local.auth_hostname}/oauth2/callback"
-    ]
+    redirect_uris = var.redirect_uris
 
     implicit_grant {
       access_token_issuance_enabled = false
@@ -52,15 +44,15 @@ resource "azuread_application" "oauth2_proxy" {
   }
 }
 
-resource "azuread_service_principal" "oauth2_proxy" {
-  client_id                    = azuread_application.oauth2_proxy.client_id
+resource "azuread_service_principal" "webapp_service_principal" {
+  client_id                    = azuread_application.webapp.client_id
   owners                       = [var.owner]
   tags                         = ["WindowsAzureActiveDirectoryIntegratedApp"]
   app_role_assignment_required = true
 }
 
-resource "azuread_service_principal_delegated_permission_grant" "oauth2_proxy_msgraph" {
-  service_principal_object_id          = azuread_service_principal.oauth2_proxy.object_id
+resource "azuread_service_principal_delegated_permission_grant" "allow_webapp_to_access_msgraph_user_profile" {
+  service_principal_object_id          = azuread_service_principal.webapp_service_principal.object_id
   resource_service_principal_object_id = azuread_service_principal.msgraph.object_id
   claim_values                         = ["email", "openid", "profile", "User.Read"]
 }
@@ -68,10 +60,10 @@ resource "azuread_service_principal_delegated_permission_grant" "oauth2_proxy_ms
 resource "azuread_app_role_assignment" "allow_owner" {
   app_role_id         = "00000000-0000-0000-0000-000000000000"
   principal_object_id = var.owner
-  resource_object_id  = azuread_service_principal.oauth2_proxy.object_id
+  resource_object_id  = azuread_service_principal.webapp_service_principal.object_id
 }
 
-resource "azuread_application_password" "oauth2_proxy" {
-  application_id = azuread_application.oauth2_proxy.id
-  display_name   = "OAuth2 Proxy - ${var.environment_name}"
+resource "azuread_application_password" "webapp_password" {
+  application_id = azuread_application.webapp.id
+  display_name   = var.display_name
 }

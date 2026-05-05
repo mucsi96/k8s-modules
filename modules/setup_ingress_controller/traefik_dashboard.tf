@@ -44,27 +44,24 @@ resource "kubernetes_manifest" "traefik_dashboard_ingressroute" {
             },
           ]
           services = [{
-            kind = "TraefikService"
-            name = "api@internal"
+            name = "traefik-dashboard-oauth2-proxy"
+            port = 80
           }]
         },
         {
-          match = "Host(`${local.traefik_dashboard_host}`) && (PathPrefix(`/dashboard`) || PathPrefix(`/api`))"
+          match = "Host(`${local.traefik_dashboard_host}`)"
           kind  = "Rule"
-          middlewares = [
-            {
-              name      = var.auth_middleware_name
-              namespace = var.auth_middleware_namespace
-            },
-          ]
           services = [{
-            kind = "TraefikService"
-            name = "api@internal"
+            name = "traefik-dashboard-oauth2-proxy"
+            port = 80
           }]
         },
       ]
     }
   }
 
-  depends_on = [helm_release.traefik]
+  depends_on = [
+    helm_release.traefik_dashboard_oauth2_proxy,
+    kubernetes_manifest.traefik_dashboard_redirect_root,
+  ]
 }

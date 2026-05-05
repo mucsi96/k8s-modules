@@ -44,6 +44,11 @@ resource "helm_release" "traefik" {
           insecure = true
         }
       }
+      traefik = {
+        expose = {
+          default = true
+        }
+      }
     }
   })]
 }
