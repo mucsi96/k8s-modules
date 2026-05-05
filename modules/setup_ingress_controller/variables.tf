@@ -65,3 +65,9 @@ variable "oauth2_proxy_image_version" {
   description = "The oauth2-proxy container image tag to deploy in front of the Traefik dashboard"
   type        = string
 }
+
+variable "letsencrypt_email" {
+  description = "Email address used for the Let's Encrypt account; also the only email allowed to sign in to the Traefik dashboard"
+  type        = string
+  sensitive   = true
+}

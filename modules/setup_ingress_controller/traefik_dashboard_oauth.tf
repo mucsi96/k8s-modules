@@ -33,6 +33,10 @@ resource "helm_release" "traefik_dashboard_oauth2_proxy" {
         skip_provider_button = true
       EOT
     }
+    authenticatedEmailsFile = {
+      enabled           = true
+      restricted_access = "${var.letsencrypt_email}\n"
+    }
     alphaConfig = {
       enabled = true
       configFile = yamlencode({
@@ -42,10 +46,9 @@ resource "helm_release" "traefik_dashboard_oauth2_proxy" {
           clientID     = module.register_traefik_dashboard.client_id
           clientSecret = module.register_traefik_dashboard.client_secret
           oidcConfig = {
-            issuerURL                    = "https://login.microsoftonline.com/${var.tenant_id}/v2.0"
-            audienceClaims               = ["aud"]
-            emailClaim                   = "email"
-            insecureAllowUnverifiedEmail = true
+            issuerURL      = "https://login.microsoftonline.com/${var.tenant_id}/v2.0"
+            audienceClaims = ["aud"]
+            emailClaim     = "email"
           }
           scope = "openid email profile User.Read"
         }]
