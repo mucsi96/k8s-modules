@@ -1,5 +1,6 @@
 locals {
-  host = "${kubernetes_service_v1.redis.metadata[0].name}.${kubernetes_service_v1.redis.metadata[0].namespace}.svc.cluster.local"
+  port = 6379
+  host = "${helm_release.redis.name}.${helm_release.redis.namespace}.svc.cluster.local"
 }
 
 output "host" {
@@ -24,6 +25,6 @@ output "password" {
 }
 
 output "auth_secret_name" {
-  description = "Name of the Kubernetes Secret holding the password under key 'redis-password'"
-  value       = kubernetes_secret_v1.auth.metadata[0].name
+  description = "Name of the Kubernetes Secret holding the password under key 'password'"
+  value       = helm_release.redis.name
 }
