@@ -69,7 +69,7 @@ resource "helm_release" "traefik_dashboard_oauth2_proxy" {
           upstreams = [{
             id   = "traefik-dashboard"
             path = "/"
-            uri  = "http://${data.kubernetes_service_v1.traefik.metadata[0].name}.${kubernetes_namespace_v1.traefik.metadata[0].name}.svc.cluster.local:${local.traefik_admin_port}"
+            uri  = "http://${helm_release.traefik.name}.${kubernetes_namespace_v1.traefik.metadata[0].name}.svc.cluster.local:${local.traefik_admin_port}"
           }]
         }
       })
