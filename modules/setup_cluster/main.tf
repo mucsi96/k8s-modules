@@ -124,21 +124,6 @@ resource "ansible_playbook" "install_microk8s" {
   depends_on = [terraform_data.wait_for_system]
 }
 
-resource "ansible_playbook" "configure_microk8s_apiserver_authz" {
-  name       = var.host
-  playbook   = "${path.module}/configure_microk8s_apiserver_authz.yaml"
-  replayable = true
-
-  extra_vars = {
-    ansible_port                 = tostring(random_integer.ssh_port.result)
-    ansible_user                 = var.username
-    ansible_become_password      = random_password.user_password.result
-    ansible_ssh_private_key_file = local_sensitive_file.user_private_key.filename
-  }
-
-  depends_on = [ansible_playbook.install_microk8s]
-}
-
 data "azurerm_storage_account" "oidc" {
   name                = var.storage_account_name
   resource_group_name = var.environment_name
