@@ -25,9 +25,9 @@ resource "helm_release" "traefik_dashboard_oauth2_proxy" {
       tag = var.oauth2_proxy_image_version
     }
     config = {
-      configFile = <<-EOT
+      cookieSecret = base64encode(substr(random_password.traefik_dashboard_cookie_secret.result, 0, 32))
+      configFile   = <<-EOT
         email_domains = ["*"]
-        cookie_secret = "${base64encode(substr(random_password.traefik_dashboard_cookie_secret.result, 0, 32))}"
         cookie_secure = true
         reverse_proxy = true
         skip_provider_button = true
@@ -35,25 +35,28 @@ resource "helm_release" "traefik_dashboard_oauth2_proxy" {
     }
     alphaConfig = {
       enabled = true
-      configFile = <<-EOT
-        providers:
-          - clientID: ${module.register_traefik_dashboard.client_id}
-            clientSecret: ${module.register_traefik_dashboard.client_secret}
-            id: entra
-            oidcConfig:
-              issuerURL: https://login.microsoftonline.com/${var.tenant_id}/v2.0
-              audienceClaims:
-                - aud
-              emailClaim: email
-              insecureAllowUnverifiedEmail: true
-            provider: oidc
-            scope: openid email profile User.Read
-        upstreamConfig:
-          upstreams:
-            - id: traefik-dashboard
-              path: /
-              uri: http://traefik.${kubernetes_namespace_v1.traefik.metadata[0].name}.svc.cluster.local:9000
-      EOT
+      configFile = yamlencode({
+        providers = [{
+          id           = "entra"
+          provider     = "oidc"
+          clientID     = module.register_traefik_dashboard.client_id
+          clientSecret = module.register_traefik_dashboard.client_secret
+          oidcConfig = {
+            issuerURL                    = "https://login.microsoftonline.com/${var.tenant_id}/v2.0"
+            audienceClaims               = ["aud"]
+            emailClaim                   = "email"
+            insecureAllowUnverifiedEmail = true
+          }
+          scope = "openid email profile User.Read"
+        }]
+        upstreamConfig = {
+          upstreams = [{
+            id   = "traefik-dashboard"
+            path = "/"
+            uri  = "http://traefik.${kubernetes_namespace_v1.traefik.metadata[0].name}.svc.cluster.local:9000"
+          }]
+        }
+      })
     }
     ingress = {
       enabled = false
