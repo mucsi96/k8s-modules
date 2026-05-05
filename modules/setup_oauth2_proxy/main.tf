@@ -108,6 +108,15 @@ resource "helm_release" "oauth2_proxy" {
       # which all need to become ready inside the init container's
       # timeout, dramatically slowing down the first install.
       architecture = "standalone"
+      # Bitnami removed all versioned bitnami/* tags from the free
+      # Docker Hub repo in their Aug 2025 catalog change and moved the
+      # historical images to docker.io/bitnamilegacy/*. The chart
+      # still hard-codes the old path, so kubelet hits ErrImagePull
+      # ('NotFound: failed to pull bitnami/redis:7.4.2-debian-12-r4')
+      # unless we redirect it.
+      image = {
+        repository = "bitnamilegacy/redis"
+      }
       global = {
         redis = {
           password = local.redis_password
