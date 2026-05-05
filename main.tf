@@ -292,6 +292,19 @@ module "setup_hello_app" {
   wait_for                   = module.setup_ingress_controller.traefik_ready
 }
 
+module "setup_k8s_dashboard" {
+  source                     = "./modules/setup_k8s_dashboard"
+  environment_name           = var.environment_name
+  dns_zone                   = data.azurerm_key_vault_secret.dns_zone.value
+  tenant_id                  = data.azurerm_client_config.current.tenant_id
+  owner                      = local.owner
+  valid_email                = data.azurerm_key_vault_secret.letsencrypt_email.value
+  headlamp_chart_version     = "0.41.0" #https://github.com/headlamp-k8s/headlamp/releases
+  oauth2_proxy_chart_version = "7.12.6" #https://github.com/oauth2-proxy/manifests/releases
+  oauth2_proxy_image_version = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
+  wait_for                   = module.setup_ingress_controller.traefik_ready
+}
+
 module "setup_training_log_app" {
   source                     = "./modules/setup_training_log_app"
   environment_name           = var.environment_name
