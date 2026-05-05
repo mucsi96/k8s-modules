@@ -30,7 +30,7 @@ resource "helm_release" "traefik" {
     }
     ingressRoute = {
       dashboard = {
-        enabled = false
+        enabled = true
       }
     }
     service = {
