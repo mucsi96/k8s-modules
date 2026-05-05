@@ -4,10 +4,16 @@ locals {
   headlamp_port = 80
 }
 
+resource "terraform_data" "wait_for" {
+  input = var.wait_for
+}
+
 resource "kubernetes_namespace_v1" "k8s_dashboard" {
   metadata {
     name = "k8s-dashboard"
   }
+
+  depends_on = [terraform_data.wait_for]
 }
 
 resource "helm_release" "headlamp" {

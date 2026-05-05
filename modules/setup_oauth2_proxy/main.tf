@@ -17,7 +17,7 @@ resource "helm_release" "oauth2_proxy" {
       tag = var.oauth2_proxy_image_version
     }
     config = {
-      cookieSecret = base64encode(substr(random_password.cookie_secret.result, 0, 32))
+      cookieSecret = base64encode(random_password.cookie_secret.result)
       configFile   = <<-EOT
         email_domains = ["*"]
         cookie_secure = true
