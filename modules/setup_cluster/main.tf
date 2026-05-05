@@ -134,7 +134,6 @@ resource "ansible_playbook" "configure_microk8s_apiserver_authz" {
     ansible_user                 = var.username
     ansible_become_password      = random_password.user_password.result
     ansible_ssh_private_key_file = local_sensitive_file.user_private_key.filename
-    authorization_mode           = "Node,RBAC"
   }
 
   depends_on = [ansible_playbook.install_microk8s]

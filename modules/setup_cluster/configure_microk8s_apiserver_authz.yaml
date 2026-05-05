@@ -1,26 +1,22 @@
-- name: Configure MicroK8s API server authorization mode
+- name: Enable MicroK8s RBAC addon
   hosts: all
   gather_facts: false
   become: true
 
   vars:
     ansible_python_interpreter: /usr/bin/python3
-    apiserver_args: /var/snap/microk8s/current/args/kube-apiserver
 
   tasks:
-    - name: Set apiserver --authorization-mode
-      ansible.builtin.lineinfile:
-        path: "{{ apiserver_args }}"
-        regexp: '^--authorization-mode='
-        line: "--authorization-mode={{ authorization_mode }}"
-        state: present
-      register: authz_mode
+    - name: Check whether RBAC is already enabled
+      ansible.builtin.command: microk8s status --addon rbac --format short
+      register: rbac_status
+      changed_when: false
 
-    - name: Restart MicroK8s when authorization mode changed
-      ansible.builtin.command: snap restart microk8s
-      when: authz_mode.changed
+    - name: Enable MicroK8s rbac addon
+      ansible.builtin.command: microk8s enable rbac
+      when: "'enabled' not in rbac_status.stdout"
 
     - name: Wait for MicroK8s API to become ready
       ansible.builtin.command: microk8s status --wait-ready --timeout 600
       changed_when: false
-      when: authz_mode.changed
+      when: "'enabled' not in rbac_status.stdout"
