@@ -1,0 +1,26 @@
+- name: Configure MicroK8s API server authorization mode
+  hosts: all
+  gather_facts: false
+  become: true
+
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    apiserver_args: /var/snap/microk8s/current/args/kube-apiserver
+
+  tasks:
+    - name: Set apiserver --authorization-mode
+      ansible.builtin.lineinfile:
+        path: "{{ apiserver_args }}"
+        regexp: '^--authorization-mode='
+        line: "--authorization-mode={{ authorization_mode }}"
+        state: present
+      register: authz_mode
+
+    - name: Restart MicroK8s when authorization mode changed
+      ansible.builtin.command: snap restart microk8s
+      when: authz_mode.changed
+
+    - name: Wait for MicroK8s API to become ready
+      ansible.builtin.command: microk8s status --wait-ready --timeout 600
+      changed_when: false
+      when: authz_mode.changed
