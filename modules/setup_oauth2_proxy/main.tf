@@ -34,6 +34,7 @@ resource "helm_release" "oauth2_proxy" {
     alphaConfig = {
       enabled = true
       configFile = yamlencode({
+        injectRequestHeaders = var.inject_request_headers
         providers = [{
           id           = "entra"
           provider     = "oidc"
@@ -44,7 +45,7 @@ resource "helm_release" "oauth2_proxy" {
             audienceClaims = ["aud"]
             emailClaim     = "email"
           }
-          scope = "openid email profile User.Read"
+          scope = var.scope
         }]
         upstreamConfig = {
           upstreams = [{

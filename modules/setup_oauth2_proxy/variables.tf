@@ -44,3 +44,21 @@ variable "upstream_uri" {
   description = "Upstream service URI that authenticated requests are forwarded to"
   type        = string
 }
+
+variable "inject_request_headers" {
+  description = "Headers oauth2-proxy injects into upstream requests (alphaConfig.injectRequestHeaders). Used e.g. to forward the Entra access token as 'Authorization: Bearer ...' to Headlamp."
+  type = list(object({
+    name = string
+    values = list(object({
+      claim  = string
+      prefix = optional(string)
+    }))
+  }))
+  default = []
+}
+
+variable "scope" {
+  description = "OAuth2 scope requested from the OIDC provider"
+  type        = string
+  default     = "openid email profile User.Read"
+}
