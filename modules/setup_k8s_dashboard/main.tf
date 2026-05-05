@@ -16,13 +16,15 @@ resource "kubernetes_namespace_v1" "k8s_dashboard" {
 }
 
 resource "helm_release" "headlamp" {
-  name       = local.headlamp_name
-  repository = "https://kubernetes-sigs.github.io/headlamp/"
-  chart      = "headlamp"
-  version    = var.headlamp_chart_version
-  namespace  = kubernetes_namespace_v1.k8s_dashboard.metadata[0].name
-  wait       = true
-  timeout    = 600
+  name             = local.headlamp_name
+  repository       = "https://kubernetes-sigs.github.io/headlamp/"
+  chart            = "headlamp"
+  version          = var.headlamp_chart_version
+  namespace        = kubernetes_namespace_v1.k8s_dashboard.metadata[0].name
+  wait             = true
+  atomic           = true
+  cleanup_on_fail  = true
+  timeout          = 300
 
   values = [yamlencode({
     image = {

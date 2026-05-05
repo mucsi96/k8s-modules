@@ -38,13 +38,15 @@ locals {
 }
 
 resource "helm_release" "oauth2_proxy" {
-  name       = "${var.name}-oauth2-proxy"
-  repository = "https://oauth2-proxy.github.io/manifests"
-  chart      = "oauth2-proxy"
-  version    = var.oauth2_proxy_chart_version
-  namespace  = var.namespace
-  wait       = true
-  timeout    = 600
+  name             = "${var.name}-oauth2-proxy"
+  repository       = "https://oauth2-proxy.github.io/manifests"
+  chart            = "oauth2-proxy"
+  version          = var.oauth2_proxy_chart_version
+  namespace        = var.namespace
+  wait             = true
+  atomic           = true
+  cleanup_on_fail  = true
+  timeout          = 300
 
   values = [yamlencode({
     image = {
