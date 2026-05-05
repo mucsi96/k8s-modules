@@ -184,7 +184,7 @@ resource "ansible_playbook" "configure_microk8s_apiserver_oidc" {
     oidc_issuer_url              = var.apiserver_oidc.issuer_url
     oidc_client_id               = var.apiserver_oidc.client_id
     oidc_username_claim          = var.apiserver_oidc.username_claim
-    oidc_groups_claim            = coalesce(var.apiserver_oidc.groups_claim, "")
+    oidc_groups_claim            = var.apiserver_oidc.groups_claim == null ? "" : var.apiserver_oidc.groups_claim
   }
 
   depends_on = [ansible_playbook.configure_microk8s_oidc]
