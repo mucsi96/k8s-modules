@@ -64,11 +64,10 @@ variable "scope" {
 }
 
 variable "session_redis" {
-  description = "Optional external Redis backend for oauth2-proxy session storage. When set, sessions are stored in the referenced Redis instance and the browser cookie only carries a small session ID, avoiding 'request header too large' errors and Entra login redirect loops when injecting large id_tokens. When null, sessions live entirely in the browser cookie. Pass connection_url and password from modules/setup_redis."
+  description = "Redis backend for oauth2-proxy session storage. Sessions are stored server-side in the referenced Redis instance so the browser cookie only carries a small session ID, avoiding 'request header too large' errors and Entra login redirect loops when injecting large id_tokens. Pass connection_url and password from modules/setup_redis."
   type = object({
     connection_url = string
     password       = string
   })
-  default   = null
   sensitive = true
 }
