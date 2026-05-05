@@ -33,7 +33,7 @@ resource "helm_release" "headlamp" {
     }
     clusterRoleBinding = {
       create          = true
-      clusterRoleName = "cluster-admin"
+      clusterRoleName = "view"
     }
     service = {
       type = "ClusterIP"
