@@ -1,5 +1,4 @@
 locals {
-  hostname      = "k8s.${var.dns_zone}"
   headlamp_name = "headlamp"
   headlamp_port = 80
 }
@@ -99,7 +98,7 @@ resource "kubernetes_manifest" "headlamp_ingressroute" {
       entryPoints = ["web"]
       routes = [
         {
-          match = "Host(`${local.hostname}`)"
+          match = "Host(`${var.hostname}`)"
           kind  = "Rule"
           services = [{
             name = module.headlamp_oauth2_proxy.service_name

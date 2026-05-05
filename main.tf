@@ -311,7 +311,7 @@ module "setup_hello_app" {
 
 module "setup_k8s_dashboard" {
   source                     = "./modules/setup_k8s_dashboard"
-  dns_zone                   = data.azurerm_key_vault_secret.dns_zone.value
+  hostname                   = local.k8s_dashboard_hostname
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   client_id                  = module.register_headlamp_dashboard.client_id
   client_secret              = module.register_headlamp_dashboard.client_secret

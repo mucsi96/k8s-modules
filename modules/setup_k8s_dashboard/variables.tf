@@ -1,5 +1,5 @@
-variable "dns_zone" {
-  description = "DNS zone used to expose the Headlamp dashboard (e.g. example.com -> k8s.example.com)"
+variable "hostname" {
+  description = "Public hostname where the Headlamp dashboard is exposed (e.g. k8s.example.com)"
   type        = string
   sensitive   = true
 }

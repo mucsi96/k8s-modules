@@ -5,6 +5,6 @@ output "k8s_namespace" {
 
 output "hostname" {
   description = "Public hostname where the Headlamp dashboard is exposed"
-  value       = local.hostname
+  value       = var.hostname
   sensitive   = true
 }
