@@ -57,6 +57,7 @@ module "headlamp_oauth2_proxy" {
   oauth2_proxy_chart_version = var.oauth2_proxy_chart_version
   oauth2_proxy_image_version = var.oauth2_proxy_image_version
   upstream_uri               = "http://${helm_release.headlamp.name}.${kubernetes_namespace_v1.k8s_dashboard.metadata[0].name}.svc.cluster.local:${local.headlamp_port}"
+  session_store              = "redis"
   inject_request_headers = [{
     name = "Authorization"
     values = [{

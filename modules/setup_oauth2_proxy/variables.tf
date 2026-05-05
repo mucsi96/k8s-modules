@@ -62,3 +62,14 @@ variable "scope" {
   type        = string
   default     = "openid email profile User.Read"
 }
+
+variable "session_store" {
+  description = "Backend used by oauth2-proxy to persist sessions. 'cookie' keeps everything in the browser cookie. 'redis' enables the bundled Bitnami Redis subchart so the cookie only carries a small session ID, which avoids 'request header too large' errors and Entra login redirect loops when injecting large id_tokens."
+  type        = string
+  default     = "cookie"
+
+  validation {
+    condition     = contains(["cookie", "redis"], var.session_store)
+    error_message = "session_store must be 'cookie' or 'redis'."
+  }
+}

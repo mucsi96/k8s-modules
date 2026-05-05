@@ -70,5 +70,11 @@ resource "helm_release" "oauth2_proxy" {
     ingress = {
       enabled = false
     }
+    sessionStorage = {
+      type = var.session_store
+    }
+    redis = {
+      enabled = var.session_store == "redis"
+    }
   })]
 }
