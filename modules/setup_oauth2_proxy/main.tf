@@ -3,6 +3,33 @@ resource "random_password" "cookie_secret" {
   special = false
 }
 
+# The bundled Bitnami Redis subchart generates its own password on first
+# install and refuses to re-roll it on upgrade unless you pass the old one,
+# which is brittle to manage from Terraform. Owning the password here and
+# pointing both the subchart and oauth2-proxy at the same Secret keeps
+# upgrades idempotent.
+resource "random_password" "redis_password" {
+  count = var.session_store == "redis" ? 1 : 0
+
+  length  = 32
+  special = false
+}
+
+resource "kubernetes_secret_v1" "redis_auth" {
+  count = var.session_store == "redis" ? 1 : 0
+
+  metadata {
+    name      = "${var.name}-oauth2-proxy-redis-auth"
+    namespace = var.namespace
+  }
+
+  data = {
+    redis-password = random_password.redis_password[0].result
+  }
+
+  type = "Opaque"
+}
+
 locals {
   base_config_lines = [
     "email_domains = [\"*\"]",
@@ -19,6 +46,8 @@ locals {
     local.base_config_lines,
     length(var.inject_request_headers) == 0 ? ["session_cookie_minimal = true"] : [],
   ))
+
+  redis_auth_secret_name = try(kubernetes_secret_v1.redis_auth[0].metadata[0].name, "")
 }
 
 resource "helm_release" "oauth2_proxy" {
@@ -72,9 +101,15 @@ resource "helm_release" "oauth2_proxy" {
     }
     sessionStorage = {
       type = var.session_store
+      redis = {
+        existingSecret = local.redis_auth_secret_name
+      }
     }
     redis = {
       enabled = var.session_store == "redis"
+      auth = {
+        existingSecret = local.redis_auth_secret_name
+      }
     }
   })]
 }
