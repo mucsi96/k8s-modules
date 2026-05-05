@@ -1,0 +1,68 @@
+- name: Configure MicroK8s API server OIDC authentication
+  hosts: all
+  gather_facts: false
+  become: true
+
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    apiserver_args: /var/snap/microk8s/current/args/kube-apiserver
+
+  tasks:
+    - name: Set apiserver --oidc-issuer-url
+      ansible.builtin.lineinfile:
+        path: "{{ apiserver_args }}"
+        regexp: '^--oidc-issuer-url='
+        line: "--oidc-issuer-url={{ oidc_issuer_url }}"
+        state: present
+      register: oidc_issuer
+
+    - name: Set apiserver --oidc-client-id
+      ansible.builtin.lineinfile:
+        path: "{{ apiserver_args }}"
+        regexp: '^--oidc-client-id='
+        line: "--oidc-client-id={{ oidc_client_id }}"
+        state: present
+      register: oidc_client
+
+    - name: Set apiserver --oidc-username-claim
+      ansible.builtin.lineinfile:
+        path: "{{ apiserver_args }}"
+        regexp: '^--oidc-username-claim='
+        line: "--oidc-username-claim={{ oidc_username_claim }}"
+        state: present
+      register: oidc_username
+
+    - name: Set apiserver --oidc-username-prefix
+      ansible.builtin.lineinfile:
+        path: "{{ apiserver_args }}"
+        regexp: '^--oidc-username-prefix='
+        line: "--oidc-username-prefix=-"
+        state: present
+      register: oidc_username_prefix
+
+    - name: Set apiserver --oidc-groups-claim
+      ansible.builtin.lineinfile:
+        path: "{{ apiserver_args }}"
+        regexp: '^--oidc-groups-claim='
+        line: "--oidc-groups-claim={{ oidc_groups_claim }}"
+        state: "{{ 'present' if oidc_groups_claim | length > 0 else 'absent' }}"
+      register: oidc_groups
+
+    - name: Restart MicroK8s when any OIDC flag changed
+      ansible.builtin.command: snap restart microk8s
+      when: >
+        oidc_issuer.changed or
+        oidc_client.changed or
+        oidc_username.changed or
+        oidc_username_prefix.changed or
+        oidc_groups.changed
+
+    - name: Wait for MicroK8s API to become ready
+      ansible.builtin.command: microk8s status --wait-ready --timeout 600
+      changed_when: false
+      when: >
+        oidc_issuer.changed or
+        oidc_client.changed or
+        oidc_username.changed or
+        oidc_username_prefix.changed or
+        oidc_groups.changed

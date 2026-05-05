@@ -141,6 +141,23 @@ module "setup_cluster" {
   storage_account_name     = var.storage_account_name
   azure_tenant_id          = data.azurerm_client_config.current.tenant_id
   local_python_interpreter = var.local_python_interpreter
+
+  apiserver_oidc = {
+    issuer_url = "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/v2.0"
+    client_id  = module.register_headlamp_dashboard.client_id
+  }
+}
+
+locals {
+  k8s_dashboard_hostname = "k8s.${data.azurerm_key_vault_secret.dns_zone.value}"
+}
+
+module "register_headlamp_dashboard" {
+  source = "./modules/register_webapp"
+
+  display_name  = "Headlamp - ${var.environment_name}"
+  owner         = local.owner
+  redirect_uris = ["https://${local.k8s_dashboard_hostname}/oauth2/callback"]
 }
 
 data "azurerm_key_vault_secret" "dns_zone" {
@@ -233,6 +250,22 @@ module "create_database" {
   db_name       = "postgres1"
 }
 
+module "create_redis_namespace" {
+  source           = "./modules/create_app_namespace"
+  environment_name = var.environment_name
+  k8s_namespace    = "redis"
+
+  k8s_host                   = module.setup_cluster.k8s_host
+  k8s_cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
+  wait_for                   = module.setup_ingress_controller.traefik_ready
+}
+
+module "create_redis" {
+  source        = "./modules/setup_redis"
+  k8s_name      = "headlamp-session"
+  k8s_namespace = module.create_redis_namespace.k8s_namespace
+}
+
 data "azurerm_client_config" "current" {}
 
 locals {
@@ -290,6 +323,24 @@ module "setup_hello_app" {
   db_password                = module.create_database.password
   twingate_service_key       = module.setup_twingate.service_key
   wait_for                   = module.setup_ingress_controller.traefik_ready
+}
+
+module "setup_k8s_dashboard" {
+  source                     = "./modules/setup_k8s_dashboard"
+  hostname                   = local.k8s_dashboard_hostname
+  tenant_id                  = data.azurerm_client_config.current.tenant_id
+  client_id                  = module.register_headlamp_dashboard.client_id
+  client_secret              = module.register_headlamp_dashboard.client_secret
+  valid_email                = data.azurerm_key_vault_secret.letsencrypt_email.value
+  headlamp_chart_version     = "0.41.0"  #https://github.com/headlamp-k8s/headlamp/releases
+  headlamp_image_version     = "v0.41.0" #https://github.com/headlamp-k8s/headlamp/releases
+  oauth2_proxy_chart_version = "7.12.6"  #https://github.com/oauth2-proxy/manifests/releases
+  oauth2_proxy_image_version = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
+  session_redis = {
+    connection_url = module.create_redis.connection_url
+    password       = module.create_redis.password
+  }
+  wait_for = module.setup_ingress_controller.traefik_ready
 }
 
 module "setup_training_log_app" {

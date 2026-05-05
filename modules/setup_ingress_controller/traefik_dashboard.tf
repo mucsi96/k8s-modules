@@ -1,6 +1,38 @@
+data "kubernetes_service_v1" "traefik" {
+  metadata {
+    name      = helm_release.traefik.name
+    namespace = kubernetes_namespace_v1.traefik.metadata[0].name
+  }
+}
+
 locals {
+  traefik_admin_port           = one([for p in data.kubernetes_service_v1.traefik.spec[0].port : p.port if p.name == "traefik"])
   traefik_dashboard_host       = "traefik.${var.dns_zone}"
   traefik_dashboard_host_regex = replace(local.traefik_dashboard_host, ".", "\\.")
+}
+
+module "register_traefik_dashboard" {
+  source = "../register_webapp"
+
+  display_name  = "Traefik Dashboard - ${var.environment_name}"
+  owner         = var.owner
+  redirect_uris = ["https://${local.traefik_dashboard_host}/oauth2/callback"]
+}
+
+module "traefik_dashboard_oauth2_proxy" {
+  source = "../setup_oauth2_proxy"
+
+  name                       = "traefik-dashboard"
+  namespace                  = kubernetes_namespace_v1.traefik.metadata[0].name
+  client_id                  = module.register_traefik_dashboard.client_id
+  client_secret              = module.register_traefik_dashboard.client_secret
+  tenant_id                  = var.tenant_id
+  valid_email                = var.valid_email
+  oauth2_proxy_chart_version = var.oauth2_proxy_chart_version
+  oauth2_proxy_image_version = var.oauth2_proxy_image_version
+  upstream_uri               = "http://${helm_release.traefik.name}.${kubernetes_namespace_v1.traefik.metadata[0].name}.svc.cluster.local:${local.traefik_admin_port}"
+
+  depends_on = [helm_release.traefik]
 }
 
 resource "kubernetes_manifest" "traefik_dashboard_redirect_root_middleware" {
@@ -42,7 +74,7 @@ resource "kubernetes_manifest" "traefik_dashboard_ingressroute" {
             namespace = kubernetes_namespace_v1.traefik.metadata[0].name
           }]
           services = [{
-            name = "traefik-dashboard-oauth2-proxy"
+            name = module.traefik_dashboard_oauth2_proxy.service_name
             port = 80
           }]
         },
@@ -50,7 +82,7 @@ resource "kubernetes_manifest" "traefik_dashboard_ingressroute" {
           match = "Host(`${local.traefik_dashboard_host}`)"
           kind  = "Rule"
           services = [{
-            name = "traefik-dashboard-oauth2-proxy"
+            name = module.traefik_dashboard_oauth2_proxy.service_name
             port = 80
           }]
         },
@@ -59,7 +91,7 @@ resource "kubernetes_manifest" "traefik_dashboard_ingressroute" {
   }
 
   depends_on = [
-    helm_release.traefik_dashboard_oauth2_proxy,
+    module.traefik_dashboard_oauth2_proxy,
     kubernetes_manifest.traefik_dashboard_redirect_root_middleware,
   ]
 }
