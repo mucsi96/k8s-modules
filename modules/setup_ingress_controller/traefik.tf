@@ -28,10 +28,8 @@ resource "helm_release" "traefik" {
         allowCrossNamespace = true
       }
     }
-    ingressRoute = {
-      dashboard = {
-        enabled = true
-      }
+    api = {
+      insecure = true
     }
     service = {
       spec = {
@@ -44,28 +42,11 @@ resource "helm_release" "traefik" {
           insecure = true
         }
       }
+      traefik = {
+        expose = {
+          default = true
+        }
+      }
     }
   })]
-}
-
-resource "kubernetes_service_v1" "traefik_dashboard_internal" {
-  metadata {
-    name      = "traefik-dashboard-internal"
-    namespace = kubernetes_namespace_v1.traefik.metadata[0].name
-  }
-
-  spec {
-    selector = {
-      "app.kubernetes.io/name"     = "traefik"
-      "app.kubernetes.io/instance" = "${helm_release.traefik.name}-${kubernetes_namespace_v1.traefik.metadata[0].name}"
-    }
-
-    port {
-      name        = "traefik"
-      port        = 9000
-      target_port = "traefik"
-    }
-
-    type = "ClusterIP"
-  }
 }
