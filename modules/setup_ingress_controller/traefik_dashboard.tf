@@ -31,6 +31,7 @@ module "traefik_dashboard_oauth2_proxy" {
   oauth2_proxy_chart_version = var.oauth2_proxy_chart_version
   oauth2_proxy_image_version = var.oauth2_proxy_image_version
   upstream_uri               = "http://${helm_release.traefik.name}.${kubernetes_namespace_v1.traefik.metadata[0].name}.svc.cluster.local:${local.traefik_admin_port}"
+  session_redis              = var.session_redis
 
   depends_on = [helm_release.traefik]
 }
