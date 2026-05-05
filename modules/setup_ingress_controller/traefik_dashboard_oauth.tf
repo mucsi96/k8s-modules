@@ -31,6 +31,8 @@ resource "helm_release" "traefik_dashboard_oauth2_proxy" {
         cookie_secure = true
         reverse_proxy = true
         skip_provider_button = true
+        session_cookie_minimal = true
+        silence_ping_logging = true
       EOT
     }
     authenticatedEmailsFile = {
