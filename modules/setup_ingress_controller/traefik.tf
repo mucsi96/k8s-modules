@@ -33,6 +33,9 @@ resource "helm_release" "traefik" {
         enabled = false
       }
     }
+    api = {
+      insecure = true
+    }
     service = {
       spec = {
         type = "ClusterIP"
