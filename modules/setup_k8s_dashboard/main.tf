@@ -33,7 +33,7 @@ resource "helm_release" "headlamp" {
     }
     clusterRoleBinding = {
       create          = true
-      clusterRoleName = "cluster-admin"
+      clusterRoleName = "view"
     }
     service = {
       type = "ClusterIP"
@@ -83,7 +83,7 @@ resource "kubernetes_cluster_role_binding_v1" "headlamp_user" {
 
   role_ref {
     kind      = "ClusterRole"
-    name      = "cluster-admin"
+    name      = "view"
     api_group = "rbac.authorization.k8s.io"
   }
 }
