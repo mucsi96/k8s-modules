@@ -3,6 +3,24 @@ resource "random_password" "cookie_secret" {
   special = false
 }
 
+locals {
+  base_config_lines = [
+    "email_domains = [\"*\"]",
+    "cookie_secure = true",
+    "reverse_proxy = true",
+    "skip_provider_button = true",
+    "silence_ping_logging = true",
+  ]
+
+  # session_cookie_minimal strips OAuth tokens from the session, which makes
+  # injecting id_token / access_token into upstream requests impossible. Only
+  # enable it when no header injection is configured.
+  config_file = join("\n", concat(
+    local.base_config_lines,
+    length(var.inject_request_headers) == 0 ? ["session_cookie_minimal = true"] : [],
+  ))
+}
+
 resource "helm_release" "oauth2_proxy" {
   name       = "${var.name}-oauth2-proxy"
   repository = "https://oauth2-proxy.github.io/manifests"
@@ -18,14 +36,7 @@ resource "helm_release" "oauth2_proxy" {
     }
     config = {
       cookieSecret = base64encode(random_password.cookie_secret.result)
-      configFile   = <<-EOT
-        email_domains = ["*"]
-        cookie_secure = true
-        reverse_proxy = true
-        skip_provider_button = true
-        session_cookie_minimal = true
-        silence_ping_logging = true
-      EOT
+      configFile   = local.config_file
     }
     authenticatedEmailsFile = {
       enabled           = true
