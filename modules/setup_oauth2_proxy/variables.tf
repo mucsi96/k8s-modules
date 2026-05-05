@@ -1,31 +1,22 @@
 variable "name" {
-  description = "Resource name prefix used for the oauth2-proxy Helm release, IngressRoute and middleware"
+  description = "Resource name prefix used for the oauth2-proxy Helm release"
   type        = string
 }
 
 variable "namespace" {
-  description = "Kubernetes namespace where oauth2-proxy and the IngressRoute will be created"
+  description = "Kubernetes namespace where oauth2-proxy is deployed"
   type        = string
 }
 
-variable "hostname" {
-  description = "Public hostname protected by oauth2-proxy (e.g. traefik.example.com)"
+variable "client_id" {
+  description = "OIDC client ID for the registered Entra application"
   type        = string
 }
 
-variable "display_name" {
-  description = "Display name used for the registered Entra application (environment is appended)"
+variable "client_secret" {
+  description = "OIDC client secret for the registered Entra application"
   type        = string
-}
-
-variable "environment_name" {
-  description = "Environment name appended to the Entra application display name"
-  type        = string
-}
-
-variable "owner" {
-  description = "Object ID of the Entra principal that owns the registered application"
-  type        = string
+  sensitive   = true
 }
 
 variable "tenant_id" {
@@ -52,16 +43,4 @@ variable "oauth2_proxy_image_version" {
 variable "upstream_uri" {
   description = "Upstream service URI that authenticated requests are forwarded to"
   type        = string
-}
-
-variable "redirect_root_to" {
-  description = "Optional path to redirect requests at '/' to (e.g. '/dashboard/'). Set to null to disable."
-  type        = string
-  default     = null
-}
-
-variable "entry_point" {
-  description = "Traefik entry point used by the IngressRoute"
-  type        = string
-  default     = "web"
 }
