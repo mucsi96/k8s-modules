@@ -325,6 +325,13 @@ module "setup_hello_app" {
   wait_for                   = module.setup_ingress_controller.traefik_ready
 }
 
+module "setup_metrics_server" {
+  source                       = "./modules/setup_metrics_server"
+  metrics_server_chart_version = "3.12.2" #https://github.com/kubernetes-sigs/metrics-server/releases
+  metrics_server_image_version = "v0.7.2" #https://github.com/kubernetes-sigs/metrics-server/releases
+  wait_for                     = module.setup_ingress_controller.traefik_ready
+}
+
 module "setup_k8s_dashboard" {
   source                     = "./modules/setup_k8s_dashboard"
   hostname                   = local.k8s_dashboard_hostname
@@ -340,7 +347,7 @@ module "setup_k8s_dashboard" {
     connection_url = module.create_redis.connection_url
     password       = module.create_redis.password
   }
-  wait_for = module.setup_ingress_controller.traefik_ready
+  wait_for = module.setup_metrics_server.metrics_server_ready
 }
 
 module "setup_training_log_app" {
