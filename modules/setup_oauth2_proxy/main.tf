@@ -3,31 +3,18 @@ resource "random_password" "cookie_secret" {
   special = false
 }
 
-# The bundled Bitnami Redis subchart generates its own password on first
-# install and refuses to re-roll it on upgrade unless you pass the old one,
-# which is brittle to manage from Terraform. Owning the password here and
-# pointing both the subchart and oauth2-proxy at the same Secret keeps
-# upgrades idempotent.
+# Per https://github.com/oauth2-proxy/manifests/issues/225 the Bitnami Redis
+# subchart and oauth2-proxy each read the password from a different place:
+# the subchart wants global.redis.password (it's what its pre-upgrade hook
+# checks against the password baked into the existing PVC), and oauth2-proxy
+# itself wants sessionStorage.redis.password to authenticate the connection.
+# Generating it once in Terraform and feeding both keys keeps helm upgrades
+# idempotent.
 resource "random_password" "redis_password" {
   count = var.session_store == "redis" ? 1 : 0
 
   length  = 32
   special = false
-}
-
-resource "kubernetes_secret_v1" "redis_auth" {
-  count = var.session_store == "redis" ? 1 : 0
-
-  metadata {
-    name      = "${var.name}-oauth2-proxy-redis-auth"
-    namespace = var.namespace
-  }
-
-  data = {
-    redis-password = random_password.redis_password[0].result
-  }
-
-  type = "Opaque"
 }
 
 locals {
@@ -47,7 +34,7 @@ locals {
     length(var.inject_request_headers) == 0 ? ["session_cookie_minimal = true"] : [],
   ))
 
-  redis_auth_secret_name = try(kubernetes_secret_v1.redis_auth[0].metadata[0].name, "")
+  redis_password = try(random_password.redis_password[0].result, "")
 }
 
 resource "helm_release" "oauth2_proxy" {
@@ -102,13 +89,15 @@ resource "helm_release" "oauth2_proxy" {
     sessionStorage = {
       type = var.session_store
       redis = {
-        existingSecret = local.redis_auth_secret_name
+        password = local.redis_password
       }
     }
     redis = {
       enabled = var.session_store == "redis"
-      auth = {
-        existingSecret = local.redis_auth_secret_name
+      global = {
+        redis = {
+          password = local.redis_password
+        }
       }
     }
   })]
