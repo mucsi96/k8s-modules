@@ -262,7 +262,7 @@ module "create_redis_namespace" {
 
 module "create_redis" {
   source        = "./modules/setup_redis"
-  k8s_name      = "headlamp-session"
+  k8s_name      = "redis"
   k8s_namespace = module.create_redis_namespace.k8s_namespace
 }
 
