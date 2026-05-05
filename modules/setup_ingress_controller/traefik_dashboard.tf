@@ -54,12 +54,12 @@ resource "kubernetes_manifest" "traefik_dashboard_redirect_root_ingressroute" {
   ]
 }
 
-resource "kubernetes_manifest" "traefik_dashboard_ingressroute" {
+resource "kubernetes_manifest" "traefik_dashboard_public_ingressroute" {
   manifest = {
     apiVersion = "traefik.io/v1alpha1"
     kind       = "IngressRoute"
     metadata = {
-      name      = "traefik-dashboard"
+      name      = "traefik-dashboard-public"
       namespace = kubernetes_namespace_v1.traefik.metadata[0].name
     }
     spec = {
