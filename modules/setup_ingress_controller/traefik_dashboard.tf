@@ -23,57 +23,43 @@ resource "kubernetes_manifest" "traefik_dashboard_redirect_root_middleware" {
   depends_on = [helm_release.traefik]
 }
 
-resource "kubernetes_manifest" "traefik_dashboard_redirect_root_ingressroute" {
+resource "kubernetes_manifest" "traefik_dashboard_ingressroute" {
   manifest = {
     apiVersion = "traefik.io/v1alpha1"
     kind       = "IngressRoute"
     metadata = {
-      name      = "traefik-dashboard-redirect-root"
-      namespace = kubernetes_namespace_v1.traefik.metadata[0].name
-    }
-    spec = {
-      entryPoints = ["traefik"]
-      routes = [{
-        match = "Host(`${local.traefik_dashboard_host}`) && Path(`/`)"
-        kind  = "Rule"
-        middlewares = [{
-          name      = "traefik-dashboard-redirect-root"
-          namespace = kubernetes_namespace_v1.traefik.metadata[0].name
-        }]
-        services = [{
-          kind = "TraefikService"
-          name = "api@internal"
-        }]
-      }]
-    }
-  }
-
-  depends_on = [
-    helm_release.traefik,
-    kubernetes_manifest.traefik_dashboard_redirect_root_middleware,
-  ]
-}
-
-resource "kubernetes_manifest" "traefik_dashboard_public_ingressroute" {
-  manifest = {
-    apiVersion = "traefik.io/v1alpha1"
-    kind       = "IngressRoute"
-    metadata = {
-      name      = "traefik-dashboard-public"
+      name      = "traefik-dashboard"
       namespace = kubernetes_namespace_v1.traefik.metadata[0].name
     }
     spec = {
       entryPoints = ["web"]
-      routes = [{
-        match = "Host(`${local.traefik_dashboard_host}`)"
-        kind  = "Rule"
-        services = [{
-          name = "traefik-dashboard-oauth2-proxy"
-          port = 80
-        }]
-      }]
+      routes = [
+        {
+          match = "Host(`${local.traefik_dashboard_host}`) && Path(`/`)"
+          kind  = "Rule"
+          middlewares = [{
+            name      = "traefik-dashboard-redirect-root"
+            namespace = kubernetes_namespace_v1.traefik.metadata[0].name
+          }]
+          services = [{
+            name = "traefik-dashboard-oauth2-proxy"
+            port = 80
+          }]
+        },
+        {
+          match = "Host(`${local.traefik_dashboard_host}`)"
+          kind  = "Rule"
+          services = [{
+            name = "traefik-dashboard-oauth2-proxy"
+            port = 80
+          }]
+        },
+      ]
     }
   }
 
-  depends_on = [helm_release.traefik_dashboard_oauth2_proxy]
+  depends_on = [
+    helm_release.traefik_dashboard_oauth2_proxy,
+    kubernetes_manifest.traefik_dashboard_redirect_root_middleware,
+  ]
 }
