@@ -11,6 +11,11 @@ locals {
     "reverse_proxy = true",
     "skip_provider_button = true",
     "silence_ping_logging = true",
+    # Refresh the OIDC session before Entra's ~1h id_token expires so the
+    # Authorization: Bearer id_token forwarded upstream stays valid; otherwise
+    # kube-apiserver rejects it with "oidc: token is expired" once the original
+    # id_token aged out and the SPA bounces back to the login screen.
+    "cookie_refresh = \"30m\"",
   ]
 
   # session_cookie_minimal strips OAuth tokens from the session, which makes

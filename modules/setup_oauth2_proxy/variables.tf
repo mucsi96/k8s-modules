@@ -58,9 +58,9 @@ variable "inject_request_headers" {
 }
 
 variable "scope" {
-  description = "OAuth2 scope requested from the OIDC provider"
+  description = "OAuth2 scope requested from the OIDC provider. Must include offline_access so Entra issues a refresh_token; oauth2-proxy needs it to refresh the id_token before it expires (cookie_refresh)."
   type        = string
-  default     = "openid email profile User.Read"
+  default     = "openid email profile offline_access User.Read"
 }
 
 variable "session_redis" {
