@@ -23,6 +23,17 @@ variable "tenant_id" {
   type        = string
 }
 
+variable "azure_subscription_id" {
+  description = "The Azure subscription ID the app deploys into."
+  type        = string
+}
+
+variable "github_repository_owner" {
+  description = "GitHub owner/org that hosts the app's repository."
+  type        = string
+  default     = "mucsi96"
+}
+
 variable "owner" {
   description = "The owner object ID for access policy"
   type        = string

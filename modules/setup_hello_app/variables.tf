@@ -40,6 +40,11 @@ variable "tenant_id" {
   type        = string
 }
 
+variable "azure_subscription_id" {
+  description = "The Azure subscription ID the app deploys into."
+  type        = string
+}
+
 variable "db_jdbc_url" {
   description = "The JDBC URL for the database"
   type        = string

@@ -285,6 +285,7 @@ module "setup_backup_app" {
   k8s_oidc_issuer_url        = module.setup_cluster.oidc_issuer_url
   hostname                   = data.azurerm_key_vault_secret.dns_zone.value
   tenant_id                  = data.azurerm_client_config.current.tenant_id
+  azure_subscription_id      = var.azure_subscription_id
   db_username                = module.create_database.username
   db_password                = module.create_database.password
   twingate_service_key       = module.setup_twingate.service_key
@@ -304,6 +305,7 @@ module "setup_learn_language_app" {
   k8s_oidc_issuer_url        = module.setup_cluster.oidc_issuer_url
   hostname                   = data.azurerm_key_vault_secret.dns_zone.value
   tenant_id                  = data.azurerm_client_config.current.tenant_id
+  azure_subscription_id      = var.azure_subscription_id
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password
@@ -321,6 +323,7 @@ module "setup_hello_app" {
   k8s_oidc_issuer_url        = module.setup_cluster.oidc_issuer_url
   hostname                   = data.azurerm_key_vault_secret.dns_zone.value
   tenant_id                  = data.azurerm_client_config.current.tenant_id
+  azure_subscription_id      = var.azure_subscription_id
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password
@@ -363,6 +366,7 @@ module "setup_training_log_app" {
   k8s_oidc_issuer_url        = module.setup_cluster.oidc_issuer_url
   hostname                   = data.azurerm_key_vault_secret.dns_zone.value
   tenant_id                  = data.azurerm_client_config.current.tenant_id
+  azure_subscription_id      = var.azure_subscription_id
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password

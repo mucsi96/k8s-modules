@@ -10,6 +10,7 @@ module "app_base" {
   app_name                   = "learn-language"
   azure_location             = var.azure_location
   tenant_id                  = var.tenant_id
+  azure_subscription_id      = var.azure_subscription_id
   owner                      = var.owner
   twingate_service_key       = var.twingate_service_key
   k8s_host                   = var.k8s_host
