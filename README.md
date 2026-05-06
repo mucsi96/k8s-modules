@@ -35,17 +35,17 @@ Useful commands for debugging Kubernetes (MicroK8s) clusters and authorization i
 kubectl auth can-i --list
 
 # List all permissions for a specific user (impersonation)
-kubectl auth can-i --list --as=igor.bari@outlook.com
+kubectl auth can-i --list --as=user@example.com
 
 # Check whether a specific action is permitted
-kubectl auth can-i create pods --as=igor.bari@outlook.com -n default
+kubectl auth can-i create pods --as=user@example.com -n default
 
 # List all permissions for a service account
 kubectl auth can-i --list --as=system:serviceaccount:<namespace>:<sa-name>
 
 # Show all ClusterRoleBindings and RoleBindings for a user
 kubectl get clusterrolebindings,rolebindings --all-namespaces -o json \
-  | jq -r '.items[] | select(.subjects[]?.name=="igor.bari@outlook.com") | "\(.kind)/\(.metadata.name)"'
+  | jq -r '.items[] | select(.subjects[]?.name=="user@example.com") | "\(.kind)/\(.metadata.name)"'
 ```
 
 ### MicroK8s API Server Configuration (run on the server)
