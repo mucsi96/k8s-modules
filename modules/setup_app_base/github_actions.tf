@@ -31,12 +31,6 @@ resource "github_actions_secret" "dockerhub_username" {
   value       = data.docker_login.current.username
 }
 
-resource "github_actions_secret" "azure_keyvault_endpoint" {
-  repository  = var.github_repository
-  secret_name = "AZURE_KEYVAULT_ENDPOINT"
-  value       = azurerm_key_vault.app_kv.vault_uri
-}
-
 resource "docker_access_token" "app" {
   token_label = var.github_repository
   scopes      = ["repo:read", "repo:write"]
