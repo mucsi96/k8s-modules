@@ -1,0 +1,57 @@
+# Routes host DNS through systemd-resolved so kubelet sees a single-nameserver
+# resolv.conf and stops emitting DNSConfigForming "Nameserver limits were
+# exceeded" warnings on coredns and calico-node. Hetzner ships 4 upstream
+# resolvers in /etc/resolv.conf, but glibc's MAXNS is hardcoded to 3 and
+# kubelet enforces the same cap. systemd-resolved fans queries out to all 4
+# upstreams itself, bypassing that limit.
+- name: Configure systemd-resolved as the host DNS resolver
+  hosts: all
+  gather_facts: true
+  become: true
+
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    kubelet_args: /var/snap/microk8s/current/args/kubelet
+    # The stub file contains only 127.0.0.53. CoreDNS uses its own Corefile
+    # forwarders (configured by the dns addon), so it does not need real
+    # upstreams in its in-pod resolv.conf. calico-node runs with hostNetwork
+    # and reaches systemd-resolved on 127.0.0.53 directly.
+    kubelet_resolv_conf: /run/systemd/resolve/stub-resolv.conf
+
+  tasks:
+    - name: Ensure systemd-resolved is installed
+      ansible.builtin.apt:
+        name: systemd-resolved
+        state: present
+        update_cache: true
+
+    - name: Ensure systemd-resolved is enabled and running
+      ansible.builtin.systemd:
+        name: systemd-resolved
+        enabled: true
+        state: started
+
+    - name: Point /etc/resolv.conf at the systemd-resolved stub
+      ansible.builtin.file:
+        src: /run/systemd/resolve/stub-resolv.conf
+        dest: /etc/resolv.conf
+        state: link
+        force: true
+        follow: false
+
+    - name: Set MicroK8s kubelet --resolv-conf to the systemd-resolved stub
+      ansible.builtin.lineinfile:
+        path: "{{ kubelet_args }}"
+        regexp: '^--resolv-conf='
+        line: "--resolv-conf={{ kubelet_resolv_conf }}"
+        state: present
+      register: kubelet_resolv_conf_arg
+
+    - name: Restart MicroK8s when kubelet --resolv-conf changed
+      ansible.builtin.command: snap restart microk8s
+      when: kubelet_resolv_conf_arg.changed
+
+    - name: Wait for MicroK8s API to become ready
+      ansible.builtin.command: microk8s status --wait-ready --timeout 600
+      changed_when: false
+      when: kubelet_resolv_conf_arg.changed
