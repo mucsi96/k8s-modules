@@ -1,5 +1,11 @@
-variable "hostname" {
+variable "grafana_hostname" {
   description = "Public hostname where the Grafana dashboard is exposed (e.g. grafana.example.com)"
+  type        = string
+  sensitive   = true
+}
+
+variable "prometheus_hostname" {
+  description = "Public hostname where the Prometheus UI is exposed (e.g. prometheus.example.com)"
   type        = string
   sensitive   = true
 }
@@ -14,19 +20,30 @@ variable "tenant_id" {
   type        = string
 }
 
-variable "client_id" {
-  description = "OIDC client ID of the Entra application used by oauth2-proxy"
+variable "grafana_client_id" {
+  description = "OIDC client ID of the Entra application used by Grafana's oauth2-proxy"
   type        = string
 }
 
-variable "client_secret" {
-  description = "OIDC client secret of the Entra application used by oauth2-proxy"
+variable "grafana_client_secret" {
+  description = "OIDC client secret of the Entra application used by Grafana's oauth2-proxy"
+  type        = string
+  sensitive   = true
+}
+
+variable "prometheus_client_id" {
+  description = "OIDC client ID of the Entra application used by Prometheus's oauth2-proxy"
+  type        = string
+}
+
+variable "prometheus_client_secret" {
+  description = "OIDC client secret of the Entra application used by Prometheus's oauth2-proxy"
   type        = string
   sensitive   = true
 }
 
 variable "valid_email" {
-  description = "Email address allowed to sign in to the Grafana dashboard"
+  description = "Email address allowed to sign in to the Grafana and Prometheus dashboards"
   type        = string
   sensitive   = true
 }

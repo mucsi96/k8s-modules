@@ -1,8 +1,12 @@
 locals {
-  grafana_release_name = "kube-prometheus-stack"
-  grafana_service_name = "${local.grafana_release_name}-grafana"
+  release_name         = "kube-prometheus-stack"
+  grafana_service_name = "${local.release_name}-grafana"
   grafana_port         = 80
-  email_header_name    = "X-Auth-Request-Email"
+  # Service created by the chart for the Prometheus instance managed by the
+  # Operator. The default port comes from the Prometheus pod (9090).
+  prometheus_service_name = "${local.release_name}-prometheus"
+  prometheus_port         = 9090
+  email_header_name       = "X-Auth-Request-Email"
 }
 
 resource "terraform_data" "wait_for" {
@@ -23,7 +27,7 @@ resource "kubernetes_namespace_v1" "monitoring" {
 # installed by the chart so other modules can ship their own scrape configs and
 # alerting rules without managing CRDs separately.
 resource "helm_release" "kube_prometheus_stack" {
-  name       = local.grafana_release_name
+  name       = local.release_name
   repository = "https://prometheus-community.github.io/helm-charts"
   chart      = "kube-prometheus-stack"
   version    = var.kube_prometheus_stack_chart_version
@@ -70,6 +74,16 @@ resource "helm_release" "kube_prometheus_stack" {
       }
     }
     prometheus = {
+      # The Prometheus UI exposed by the operator-managed StatefulSet has no
+      # built-in auth, so we front it with oauth2-proxy below. The Service is
+      # ClusterIP-only; external access happens through the IngressRoute.
+      service = {
+        type = "ClusterIP"
+        port = local.prometheus_port
+      }
+      ingress = {
+        enabled = false
+      }
       prometheusSpec = {
         # Pick up ServiceMonitor / PodMonitor / PrometheusRule resources from
         # any namespace so apps can ship their own scrape configs.
@@ -93,8 +107,8 @@ module "grafana_oauth2_proxy" {
 
   name                       = "grafana"
   namespace                  = kubernetes_namespace_v1.monitoring.metadata[0].name
-  client_id                  = var.client_id
-  client_secret              = var.client_secret
+  client_id                  = var.grafana_client_id
+  client_secret              = var.grafana_client_secret
   tenant_id                  = var.tenant_id
   valid_email                = var.valid_email
   oauth2_proxy_chart_version = var.oauth2_proxy_chart_version
@@ -112,6 +126,23 @@ module "grafana_oauth2_proxy" {
   depends_on = [helm_release.kube_prometheus_stack]
 }
 
+module "prometheus_oauth2_proxy" {
+  source = "../setup_oauth2_proxy"
+
+  name                       = "prometheus"
+  namespace                  = kubernetes_namespace_v1.monitoring.metadata[0].name
+  client_id                  = var.prometheus_client_id
+  client_secret              = var.prometheus_client_secret
+  tenant_id                  = var.tenant_id
+  valid_email                = var.valid_email
+  oauth2_proxy_chart_version = var.oauth2_proxy_chart_version
+  oauth2_proxy_image_version = var.oauth2_proxy_image_version
+  upstream_uri               = "http://${local.prometheus_service_name}.${kubernetes_namespace_v1.monitoring.metadata[0].name}.svc.cluster.local:${local.prometheus_port}"
+  session_redis              = var.session_redis
+
+  depends_on = [helm_release.kube_prometheus_stack]
+}
+
 resource "kubernetes_manifest" "grafana_ingressroute" {
   manifest = {
     apiVersion = "traefik.io/v1alpha1"
@@ -124,7 +155,7 @@ resource "kubernetes_manifest" "grafana_ingressroute" {
       entryPoints = ["web"]
       routes = [
         {
-          match = "Host(`${var.hostname}`)"
+          match = "Host(`${var.grafana_hostname}`)"
           kind  = "Rule"
           services = [{
             name = module.grafana_oauth2_proxy.service_name
@@ -136,4 +167,30 @@ resource "kubernetes_manifest" "grafana_ingressroute" {
   }
 
   depends_on = [module.grafana_oauth2_proxy]
+}
+
+resource "kubernetes_manifest" "prometheus_ingressroute" {
+  manifest = {
+    apiVersion = "traefik.io/v1alpha1"
+    kind       = "IngressRoute"
+    metadata = {
+      name      = "prometheus"
+      namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
+    }
+    spec = {
+      entryPoints = ["web"]
+      routes = [
+        {
+          match = "Host(`${var.prometheus_hostname}`)"
+          kind  = "Rule"
+          services = [{
+            name = module.prometheus_oauth2_proxy.service_name
+            port = 80
+          }]
+        },
+      ]
+    }
+  }
+
+  depends_on = [module.prometheus_oauth2_proxy]
 }
