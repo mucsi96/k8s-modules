@@ -30,8 +30,10 @@ locals {
 # absent on disk, which made every apply replay "Creating..." even though the
 # SSH key in state hadn't changed. terraform_data's state is independent of
 # disk, so the provisioner only re-runs when triggers_replace actually changes.
-# Dependent resources reference .output so the implicit dependency on this
-# resource (and therefore on the file having been written) is preserved.
+# Dependent resources reference .input (not .output) so the path is known at
+# plan time -- otherwise data.azurerm_key_vault_secret.k8s_* (which depends_on
+# install_microk8s) gets deferred to apply, leaving the kubernetes provider
+# without a host and falling back to localhost on refresh.
 resource "terraform_data" "user_private_key" {
   input = local.user_private_key_path
 
@@ -98,7 +100,7 @@ resource "ansible_playbook" "system_update" {
     ansible_port                 = tostring(random_integer.ssh_port.result)
     ansible_user                 = var.username
     ansible_become_password      = random_password.user_password.result
-    ansible_ssh_private_key_file = terraform_data.user_private_key.output
+    ansible_ssh_private_key_file = terraform_data.user_private_key.input
   }
 
   depends_on = [ansible_playbook.secure_private_server]
@@ -137,7 +139,7 @@ resource "ansible_playbook" "install_microk8s" {
     ansible_port                 = tostring(random_integer.ssh_port.result)
     ansible_user                 = var.username
     ansible_become_password      = random_password.user_password.result
-    ansible_ssh_private_key_file = terraform_data.user_private_key.output
+    ansible_ssh_private_key_file = terraform_data.user_private_key.input
     azure_key_vault_name         = var.azure_key_vault_name
     azure_subscription_id        = var.azure_subscription_id
     local_python_interpreter     = var.local_python_interpreter
@@ -164,7 +166,7 @@ resource "ansible_playbook" "publish_microk8s_oidc" {
     ansible_port                 = tostring(random_integer.ssh_port.result)
     ansible_user                 = var.username
     ansible_become_password      = random_password.user_password.result
-    ansible_ssh_private_key_file = terraform_data.user_private_key.output
+    ansible_ssh_private_key_file = terraform_data.user_private_key.input
     resource_group               = var.environment_name
     storage_account_name         = var.storage_account_name
     issuer                       = data.azurerm_storage_account.oidc.primary_web_endpoint
@@ -188,7 +190,7 @@ resource "ansible_playbook" "configure_microk8s_oidc" {
     ansible_port                 = tostring(random_integer.ssh_port.result)
     ansible_user                 = var.username
     ansible_become_password      = random_password.user_password.result
-    ansible_ssh_private_key_file = terraform_data.user_private_key.output
+    ansible_ssh_private_key_file = terraform_data.user_private_key.input
     issuer                       = data.azurerm_storage_account.oidc.primary_web_endpoint
   }
 
@@ -217,7 +219,7 @@ resource "ansible_playbook" "configure_microk8s_apiserver_oidc" {
     ansible_port                 = tostring(random_integer.ssh_port.result)
     ansible_user                 = var.username
     ansible_become_password      = random_password.user_password.result
-    ansible_ssh_private_key_file = terraform_data.user_private_key.output
+    ansible_ssh_private_key_file = terraform_data.user_private_key.input
     oidc_issuer_url              = var.apiserver_oidc.issuer_url
     oidc_client_id               = var.apiserver_oidc.client_id
     oidc_username_claim          = var.apiserver_oidc.username_claim
