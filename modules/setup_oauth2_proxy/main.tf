@@ -63,7 +63,19 @@ resource "helm_release" "oauth2_proxy" {
     alphaConfig = {
       enabled = true
       configFile = yamlencode({
-        injectRequestHeaders = var.inject_request_headers
+        injectRequestHeaders = [
+          for header in var.inject_request_headers : {
+            name = header.name
+            values = [
+              for value in header.values : {
+                claimSource = merge(
+                  { claim = value.claim },
+                  value.prefix == null ? {} : { prefix = value.prefix },
+                )
+              }
+            ]
+          }
+        ]
         providers = [{
           id           = "entra"
           provider     = "oidc"
