@@ -285,18 +285,6 @@ module "create_database" {
   k8s_name      = "postgres1"
   k8s_namespace = module.create_database_namespace.k8s_namespace
   db_name       = "postgres1"
-  # Pin the PV name and host path to the values the original deployment used,
-  # so the existing volume keeps holding the same data after the module gained
-  # support for multiple Postgres instances.
-  pv_name   = "database"
-  host_path = "/data/database"
-}
-
-module "create_grafana_database" {
-  source        = "./modules/create_postgres_database"
-  k8s_name      = "grafana-db"
-  k8s_namespace = module.create_database_namespace.k8s_namespace
-  db_name       = "grafana"
 }
 
 data "azurerm_client_config" "current" {}
@@ -403,12 +391,12 @@ module "setup_prometheus_operator" {
     connection_url = module.create_redis.connection_url
     password       = module.create_redis.password
   }
-  grafana_database = {
-    host     = module.create_grafana_database.host
-    port     = module.create_grafana_database.port
-    name     = module.create_grafana_database.name
-    username = module.create_grafana_database.username
-    password = module.create_grafana_database.password
+  database = {
+    host           = module.create_database.host
+    port           = module.create_database.port
+    name           = module.create_database.name
+    admin_username = module.create_database.username
+    admin_password = module.create_database.password
   }
   wait_for = module.setup_ingress_controller.traefik_ready
 }

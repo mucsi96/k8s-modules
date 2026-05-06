@@ -24,14 +24,9 @@ resource "random_password" "exporter_password" {
   override_special = "-_=+:[]{}" // verified: []
 }
 
-locals {
-  pv_name   = coalesce(var.pv_name, var.k8s_name)
-  host_path = coalesce(var.host_path, "/data/${var.k8s_name}")
-}
-
 resource "kubernetes_persistent_volume_v1" "database_pv" {
   metadata {
-    name = local.pv_name
+    name = "database"
   }
 
   spec {
@@ -43,7 +38,7 @@ resource "kubernetes_persistent_volume_v1" "database_pv" {
     persistent_volume_reclaim_policy = "Retain"
     persistent_volume_source {
       host_path {
-        path = local.host_path
+        path = "/data/database"
       }
     }
   }

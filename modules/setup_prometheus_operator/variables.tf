@@ -67,14 +67,14 @@ variable "session_redis" {
   sensitive = true
 }
 
-variable "grafana_database" {
-  description = "PostgreSQL database Grafana stores its dashboards, users, and other state in. Pass values from a setup_postgres_database / create_postgres_database module instance."
+variable "database" {
+  description = "PostgreSQL instance Grafana stores its state in. Grafana shares the database with other apps but writes to a dedicated 'grafana' schema owned by a dedicated 'grafana' role created at apply time. Pass admin credentials from a create_postgres_database module instance so the role and schema can be provisioned."
   type = object({
-    host     = string
-    port     = number
-    name     = string
-    username = string
-    password = string
+    host           = string
+    port           = number
+    name           = string
+    admin_username = string
+    admin_password = string
   })
   sensitive = true
 }
