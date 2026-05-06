@@ -67,6 +67,18 @@ variable "session_redis" {
   sensitive = true
 }
 
+variable "grafana_database" {
+  description = "PostgreSQL database Grafana stores its dashboards, users, and other state in. Pass values from a setup_postgres_database / create_postgres_database module instance."
+  type = object({
+    host     = string
+    port     = number
+    name     = string
+    username = string
+    password = string
+  })
+  sensitive = true
+}
+
 variable "wait_for" {
   description = "Optional dependency to wait for before deploying (e.g., ingress controller readiness)"
   type        = string

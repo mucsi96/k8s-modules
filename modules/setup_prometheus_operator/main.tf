@@ -21,6 +21,20 @@ resource "kubernetes_namespace_v1" "monitoring" {
   depends_on = [terraform_data.wait_for]
 }
 
+resource "kubernetes_secret_v1" "grafana_database" {
+  metadata {
+    name      = "grafana-database"
+    namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
+  }
+
+  data = {
+    username = var.grafana_database.username
+    password = var.grafana_database.password
+  }
+
+  type = "Opaque"
+}
+
 # kube-prometheus-stack bundles the Prometheus Operator together with
 # Prometheus, Alertmanager, Grafana, node-exporter and kube-state-metrics. The
 # Operator's CRDs (ServiceMonitor, PodMonitor, PrometheusRule, ...) are
@@ -47,12 +61,38 @@ resource "helm_release" "kube_prometheus_stack" {
       ingress = {
         enabled = false
       }
+      # Persist Grafana's metadata (dashboards, folders, users, datasources,
+      # ...) in PostgreSQL so changes survive pod restarts and chart upgrades.
+      # The credentials are mounted from the secret created below to avoid
+      # baking them into the rendered Helm values.
+      envValueFrom = {
+        GF_DATABASE_USER = {
+          secretKeyRef = {
+            name = kubernetes_secret_v1.grafana_database.metadata[0].name
+            key  = "username"
+          }
+        }
+        GF_DATABASE_PASSWORD = {
+          secretKeyRef = {
+            name = kubernetes_secret_v1.grafana_database.metadata[0].name
+            key  = "password"
+          }
+        }
+      }
       # Trust the email header injected by oauth2-proxy. oauth2-proxy already
       # restricts sign-in to var.valid_email, so any request that reaches
       # Grafana with this header is the authorized user. auto_sign_up creates
       # the Grafana account on first login and auto_assign_org_role gives it
       # Admin so dashboards can be edited.
       "grafana.ini" = {
+        database = {
+          type = "postgres"
+          host = "${var.grafana_database.host}:${var.grafana_database.port}"
+          name = var.grafana_database.name
+          # Postgres deployed by create_postgres_database does not enable TLS;
+          # the connection stays inside the cluster network.
+          ssl_mode = "disable"
+        }
         "auth.proxy" = {
           enabled         = true
           header_name     = local.email_header_name
