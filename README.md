@@ -63,6 +63,9 @@ sudo journalctl -u snap.microk8s.daemon-kubelite -f
 # Filter API server logs for authorization decisions
 sudo journalctl -u snap.microk8s.daemon-kubelite | grep -i "forbidden\|unauthorized"
 
+# Inspect recent OIDC-related log lines (token validation, issuer discovery)
+sudo journalctl -u snap.microk8s.daemon-kubelite -n 200 --no-pager | grep -i oidc
+
 # Check MicroK8s status and enabled addons
 sudo microk8s status
 
