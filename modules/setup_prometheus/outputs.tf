@@ -1,9 +1,19 @@
 output "prometheus_namespace" {
-  description = "Namespace where Prometheus is deployed"
+  description = "Namespace where the kube-prometheus-stack is deployed"
   value       = kubernetes_namespace_v1.prometheus.metadata[0].name
 }
 
-output "prometheus_ready" {
-  description = "Prometheus Helm release status to ensure it's ready"
-  value       = helm_release.prometheus.status
+output "kube_prometheus_stack_ready" {
+  description = "kube-prometheus-stack Helm release status"
+  value       = helm_release.kube_prometheus_stack.status
+}
+
+output "prometheus_adapter_ready" {
+  description = "prometheus-adapter Helm release status"
+  value       = helm_release.prometheus_adapter.status
+}
+
+output "blackbox_exporter_ready" {
+  description = "prometheus-blackbox-exporter Helm release status"
+  value       = helm_release.blackbox_exporter.status
 }

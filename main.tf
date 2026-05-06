@@ -151,6 +151,7 @@ module "setup_cluster" {
 locals {
   k8s_dashboard_hostname = "k8s.${data.azurerm_key_vault_secret.dns_zone.value}"
   prometheus_hostname    = "prometheus.${data.azurerm_key_vault_secret.dns_zone.value}"
+  grafana_hostname       = "grafana.${data.azurerm_key_vault_secret.dns_zone.value}"
 }
 
 module "register_headlamp_dashboard" {
@@ -167,6 +168,14 @@ module "register_prometheus" {
   display_name  = "Prometheus - ${var.environment_name}"
   owner         = local.owner
   redirect_uris = ["https://${local.prometheus_hostname}/oauth2/callback"]
+}
+
+module "register_grafana" {
+  source = "./modules/register_webapp"
+
+  display_name  = "Grafana - ${var.environment_name}"
+  owner         = local.owner
+  redirect_uris = ["https://${local.grafana_hostname}/oauth2/callback"]
 }
 
 data "azurerm_key_vault_secret" "dns_zone" {
@@ -366,16 +375,32 @@ module "setup_k8s_dashboard" {
 }
 
 module "setup_prometheus" {
-  source                     = "./modules/setup_prometheus"
-  hostname                   = local.prometheus_hostname
-  tenant_id                  = data.azurerm_client_config.current.tenant_id
-  client_id                  = module.register_prometheus.client_id
-  client_secret              = module.register_prometheus.client_secret
-  valid_email                = data.azurerm_key_vault_secret.letsencrypt_email.value
-  prometheus_chart_version   = "27.40.0" #https://github.com/prometheus-community/helm-charts/releases?q=prometheus-
-  prometheus_image_version   = "v3.6.0"  #https://github.com/prometheus/prometheus/releases
-  oauth2_proxy_chart_version = "7.12.6"  #https://github.com/oauth2-proxy/manifests/releases
-  oauth2_proxy_image_version = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
+  source                                     = "./modules/setup_prometheus"
+  prometheus_hostname                        = local.prometheus_hostname
+  grafana_hostname                           = local.grafana_hostname
+  tenant_id                                  = data.azurerm_client_config.current.tenant_id
+  prometheus_client_id                       = module.register_prometheus.client_id
+  prometheus_client_secret                   = module.register_prometheus.client_secret
+  grafana_client_id                          = module.register_grafana.client_id
+  grafana_client_secret                      = module.register_grafana.client_secret
+  valid_email                                = data.azurerm_key_vault_secret.letsencrypt_email.value
+  kube_prometheus_stack_chart_version        = "75.0.0"  #https://github.com/prometheus-community/helm-charts/releases?q=kube-prometheus-stack
+  prometheus_image_version                   = "v3.6.0"  #https://github.com/prometheus/prometheus/releases
+  alertmanager_image_version                 = "v0.28.1" #https://github.com/prometheus/alertmanager/releases
+  grafana_image_version                      = "12.2.0"  #https://github.com/grafana/grafana/releases
+  prometheus_blackbox_exporter_chart_version = "9.6.0"   #https://github.com/prometheus-community/helm-charts/releases?q=prometheus-blackbox-exporter
+  prometheus_blackbox_exporter_image_version = "v0.27.0" #https://github.com/prometheus/blackbox_exporter/releases
+  prometheus_adapter_chart_version           = "4.15.0"  #https://github.com/prometheus-community/helm-charts/releases?q=prometheus-adapter
+  prometheus_adapter_image_version           = "v0.13.0" #https://github.com/kubernetes-sigs/prometheus-adapter/releases
+  oauth2_proxy_chart_version                 = "7.12.6"  #https://github.com/oauth2-proxy/manifests/releases
+  oauth2_proxy_image_version                 = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
+  grafana_database = {
+    host     = "postgres1.db"
+    port     = 5432
+    name     = "postgres1"
+    user     = module.create_database.username
+    password = module.create_database.password
+  }
   session_redis = {
     connection_url = module.create_redis.connection_url
     password       = module.create_redis.password

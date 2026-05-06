@@ -1,5 +1,11 @@
-variable "hostname" {
-  description = "Public hostname where Prometheus is exposed (e.g. prometheus.example.com)"
+variable "prometheus_hostname" {
+  description = "Public hostname where the Prometheus UI is exposed (e.g. prometheus.example.com)"
+  type        = string
+  sensitive   = true
+}
+
+variable "grafana_hostname" {
+  description = "Public hostname where Grafana is exposed (e.g. grafana.example.com)"
   type        = string
   sensitive   = true
 }
@@ -18,30 +24,71 @@ variable "tenant_id" {
   type        = string
 }
 
-variable "client_id" {
-  description = "OIDC client ID of the Entra application used by oauth2-proxy"
+variable "prometheus_client_id" {
+  description = "OIDC client ID of the Entra application protecting the Prometheus UI"
   type        = string
 }
 
-variable "client_secret" {
-  description = "OIDC client secret of the Entra application used by oauth2-proxy"
+variable "prometheus_client_secret" {
+  description = "OIDC client secret of the Entra application protecting the Prometheus UI"
+  type        = string
+  sensitive   = true
+}
+
+variable "grafana_client_id" {
+  description = "OIDC client ID of the Entra application protecting Grafana"
+  type        = string
+}
+
+variable "grafana_client_secret" {
+  description = "OIDC client secret of the Entra application protecting Grafana"
   type        = string
   sensitive   = true
 }
 
 variable "valid_email" {
-  description = "Email address allowed to sign in to Prometheus"
+  description = "Email address allowed to sign in to Prometheus and Grafana"
   type        = string
   sensitive   = true
 }
 
-variable "prometheus_chart_version" {
-  description = "Helm chart version for prometheus-community/prometheus"
+variable "kube_prometheus_stack_chart_version" {
+  description = "Helm chart version for prometheus-community/kube-prometheus-stack"
   type        = string
 }
 
 variable "prometheus_image_version" {
   description = "Container image tag for the Prometheus server"
+  type        = string
+}
+
+variable "alertmanager_image_version" {
+  description = "Container image tag for Alertmanager"
+  type        = string
+}
+
+variable "grafana_image_version" {
+  description = "Container image tag for Grafana"
+  type        = string
+}
+
+variable "prometheus_blackbox_exporter_chart_version" {
+  description = "Helm chart version for prometheus-community/prometheus-blackbox-exporter"
+  type        = string
+}
+
+variable "prometheus_blackbox_exporter_image_version" {
+  description = "Container image tag for blackbox-exporter"
+  type        = string
+}
+
+variable "prometheus_adapter_chart_version" {
+  description = "Helm chart version for prometheus-community/prometheus-adapter"
+  type        = string
+}
+
+variable "prometheus_adapter_image_version" {
+  description = "Container image tag for prometheus-adapter"
   type        = string
 }
 
@@ -53,6 +100,18 @@ variable "oauth2_proxy_chart_version" {
 variable "oauth2_proxy_image_version" {
   description = "Container image tag for oauth2-proxy"
   type        = string
+}
+
+variable "grafana_database" {
+  description = "PostgreSQL backend used by Grafana to store dashboards, users and other internal state."
+  type = object({
+    host     = string
+    port     = number
+    name     = string
+    user     = string
+    password = string
+  })
+  sensitive = true
 }
 
 variable "wait_for" {
