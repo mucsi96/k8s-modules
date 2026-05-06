@@ -152,6 +152,21 @@ resource "ansible_playbook" "install_microk8s" {
   depends_on = [terraform_data.wait_for_system]
 }
 
+resource "ansible_playbook" "configure_dns" {
+  name       = var.host
+  playbook   = "${path.module}/configure_dns.yaml"
+  replayable = false
+
+  extra_vars = {
+    ansible_port                 = tostring(random_integer.ssh_port.result)
+    ansible_user                 = var.username
+    ansible_become_password      = random_password.user_password.result
+    ansible_ssh_private_key_file = terraform_data.user_private_key.input
+  }
+
+  depends_on = [ansible_playbook.install_microk8s]
+}
+
 data "azurerm_storage_account" "oidc" {
   name                = var.storage_account_name
   resource_group_name = var.environment_name
@@ -178,7 +193,7 @@ resource "ansible_playbook" "publish_microk8s_oidc" {
     ignore_changes = [extra_vars["local_python_interpreter"]]
   }
 
-  depends_on = [ansible_playbook.install_microk8s]
+  depends_on = [ansible_playbook.configure_dns]
 }
 
 resource "ansible_playbook" "configure_microk8s_oidc" {
