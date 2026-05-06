@@ -169,12 +169,23 @@ resource "ansible_playbook" "configure_microk8s_oidc" {
   depends_on = [ansible_playbook.publish_microk8s_oidc]
 }
 
+resource "terraform_data" "apiserver_oidc_args" {
+  count = var.apiserver_oidc == null ? 0 : 1
+
+  triggers_replace = {
+    issuer_url     = var.apiserver_oidc.issuer_url
+    client_id      = var.apiserver_oidc.client_id
+    username_claim = var.apiserver_oidc.username_claim
+    groups_claim   = var.apiserver_oidc.groups_claim == null ? "" : var.apiserver_oidc.groups_claim
+  }
+}
+
 resource "ansible_playbook" "configure_microk8s_apiserver_oidc" {
   count = var.apiserver_oidc == null ? 0 : 1
 
   name       = var.host
   playbook   = "${path.module}/configure_microk8s_apiserver_oidc.yaml"
-  replayable = true
+  replayable = false
 
   extra_vars = {
     ansible_port                 = tostring(random_integer.ssh_port.result)
@@ -185,6 +196,10 @@ resource "ansible_playbook" "configure_microk8s_apiserver_oidc" {
     oidc_client_id               = var.apiserver_oidc.client_id
     oidc_username_claim          = var.apiserver_oidc.username_claim
     oidc_groups_claim            = var.apiserver_oidc.groups_claim == null ? "" : var.apiserver_oidc.groups_claim
+  }
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.apiserver_oidc_args[0]]
   }
 
   depends_on = [ansible_playbook.configure_microk8s_oidc]
