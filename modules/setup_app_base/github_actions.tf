@@ -47,3 +47,27 @@ resource "github_actions_secret" "dockerhub_token" {
   secret_name = "DOCKERHUB_TOKEN"
   value       = docker_access_token.app.token
 }
+
+resource "github_actions_variable" "azure_client_id" {
+  repository    = var.github_repository
+  variable_name = "AZURE_CLIENT_ID"
+  value         = module.github_oidc.client_id
+}
+
+resource "github_actions_variable" "azure_tenant_id" {
+  repository    = var.github_repository
+  variable_name = "AZURE_TENANT_ID"
+  value         = var.tenant_id
+}
+
+resource "github_actions_variable" "azure_subscription_id" {
+  repository    = var.github_repository
+  variable_name = "AZURE_SUBSCRIPTION_ID"
+  value         = var.azure_subscription_id
+}
+
+resource "github_actions_variable" "azure_keyvault_name" {
+  repository    = var.github_repository
+  variable_name = "AZURE_KEYVAULT_NAME"
+  value         = azurerm_key_vault.app_kv.name
+}
