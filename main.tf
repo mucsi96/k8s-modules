@@ -150,6 +150,7 @@ module "setup_cluster" {
 
 locals {
   k8s_dashboard_hostname = "k8s.${data.azurerm_key_vault_secret.dns_zone.value}"
+  grafana_hostname       = "grafana.${data.azurerm_key_vault_secret.dns_zone.value}"
 }
 
 module "register_headlamp_dashboard" {
@@ -158,6 +159,14 @@ module "register_headlamp_dashboard" {
   display_name  = "Headlamp - ${var.environment_name}"
   owner         = local.owner
   redirect_uris = ["https://${local.k8s_dashboard_hostname}/oauth2/callback"]
+}
+
+module "register_grafana_dashboard" {
+  source = "./modules/register_webapp"
+
+  display_name  = "Grafana - ${var.environment_name}"
+  owner         = local.owner
+  redirect_uris = ["https://${local.grafana_hostname}/oauth2/callback"]
 }
 
 data "azurerm_key_vault_secret" "dns_zone" {
@@ -354,6 +363,23 @@ module "setup_k8s_dashboard" {
     password       = module.create_redis.password
   }
   wait_for = module.setup_metrics_server.metrics_server_ready
+}
+
+module "setup_prometheus_operator" {
+  source                              = "./modules/setup_prometheus_operator"
+  hostname                            = local.grafana_hostname
+  tenant_id                           = data.azurerm_client_config.current.tenant_id
+  client_id                           = module.register_grafana_dashboard.client_id
+  client_secret                       = module.register_grafana_dashboard.client_secret
+  valid_email                         = data.azurerm_key_vault_secret.letsencrypt_email.value
+  kube_prometheus_stack_chart_version = "84.5.0"  #https://github.com/prometheus-community/helm-charts/releases?q=kube-prometheus-stack
+  oauth2_proxy_chart_version          = "7.12.6"  #https://github.com/oauth2-proxy/manifests/releases
+  oauth2_proxy_image_version          = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
+  session_redis = {
+    connection_url = module.create_redis.connection_url
+    password       = module.create_redis.password
+  }
+  wait_for = module.setup_ingress_controller.traefik_ready
 }
 
 module "setup_training_log_app" {
