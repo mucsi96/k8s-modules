@@ -158,6 +158,18 @@ resource "helm_release" "loki" {
         }
       }
     }
+    # Same workaround as setup_prometheus_operator: the kiwigrid/k8s-sidecar
+    # the chart runs alongside Loki (loki-sc-rules) calls kube-apiserver over
+    # HTTPS using the in-cluster CA. MicroK8s' CA cert is missing the
+    # keyUsage extension, which Python 3.14 + OpenSSL 3 rejects ("CA cert
+    # does not include key usage extension"), so the sidecar
+    # CrashLoopBackOffs and keeps the Loki pod NotReady. The API call stays
+    # inside the pod network on every node, so skipping verification only
+    # widens the trust boundary to "anything that can already reach the
+    # kube-apiserver", which is acceptable here.
+    sidecar = {
+      skipTlsVerify = true
+    }
   })]
 
   depends_on = [kubernetes_persistent_volume_v1.loki]
