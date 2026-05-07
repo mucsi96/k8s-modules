@@ -41,6 +41,16 @@ resource "azurerm_key_vault_secret" "backup_dbs_config" {
       excludeTables = [
         "oauth2_authorized_client"
       ]
+    },
+    {
+      name            = "Grafana"
+      host            = "postgres1.db"
+      port            = 5432
+      database        = "postgres1"
+      schema          = "grafana"
+      username        = var.db_username
+      password        = var.db_password
+      createPlainDump = true
     }
   ])
 }
