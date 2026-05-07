@@ -291,6 +291,13 @@ data "azurerm_client_config" "current" {}
 
 locals {
   owner = data.azurerm_client_config.current.object_id
+  db = {
+    host     = module.create_database.host
+    port     = module.create_database.port
+    database = module.create_database.name
+    username = module.create_database.username
+    password = module.create_database.password
+  }
 }
 
 module "setup_backup_app" {
@@ -311,14 +318,9 @@ module "setup_backup_app" {
   azure_storage_account_name                = "ibari"
 
   dbs_config = [
-    {
+    merge(local.db, {
       name            = "Learn language"
-      host            = module.create_database.host
-      port            = module.create_database.port
-      database        = module.create_database.name
       schema          = "learn_language"
-      username        = module.create_database.username
-      password        = module.create_database.password
       createPlainDump = true
       folderBackups = [
         {
@@ -332,15 +334,10 @@ module "setup_backup_app" {
         "unhealthy_cards",
         "api_tokens"
       ]
-    },
-    {
+    }),
+    merge(local.db, {
       name            = "Training log"
-      host            = module.create_database.host
-      port            = module.create_database.port
-      database        = module.create_database.name
       schema          = "training_log"
-      username        = module.create_database.username
-      password        = module.create_database.password
       createPlainDump = true
       folderBackups = [
         {
@@ -350,17 +347,12 @@ module "setup_backup_app" {
       excludeTables = [
         "oauth2_authorized_client"
       ]
-    },
-    {
+    }),
+    merge(local.db, {
       name            = "Grafana"
-      host            = module.create_database.host
-      port            = module.create_database.port
-      database        = module.create_database.name
       schema          = "grafana"
-      username        = module.create_database.username
-      password        = module.create_database.password
       createPlainDump = true
-    }
+    })
   ]
 }
 

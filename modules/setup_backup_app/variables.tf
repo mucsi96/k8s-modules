@@ -56,9 +56,20 @@ variable "azure_subscription_id" {
 }
 
 variable "dbs_config" {
-  description = "List of database/schema entries the backup tool should snapshot. Each entry is passed straight through to postgres-azure-backup, so the shape is whatever that tool accepts (name, host, port, database, schema, username, password, plus optional createPlainDump, folderBackups, excludeTables)."
-  type        = any
+  description = "List of database/schema entries the backup tool should snapshot. Each entry is passed straight through to postgres-azure-backup."
   sensitive   = true
+  type = list(object({
+    name            = string
+    host            = string
+    port            = number
+    database        = string
+    schema          = string
+    username        = string
+    password        = string
+    createPlainDump = optional(bool)
+    folderBackups   = optional(list(object({ path = string })))
+    excludeTables   = optional(list(string))
+  }))
 }
 
 variable "twingate_service_key" {
