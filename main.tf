@@ -401,6 +401,14 @@ module "setup_prometheus_operator" {
   wait_for = module.setup_ingress_controller.traefik_ready
 }
 
+module "setup_loki" {
+  source              = "./modules/setup_loki"
+  loki_chart_version  = "7.0.0" #https://github.com/grafana/loki/blob/main/production/helm/loki/Chart.yaml
+  alloy_chart_version = "1.8.1" #https://github.com/grafana/helm-charts/releases?q=alloy
+  grafana_namespace   = module.setup_prometheus_operator.namespace
+  wait_for            = module.setup_prometheus_operator.kube_prometheus_stack_ready
+}
+
 module "setup_training_log_app" {
   source                     = "./modules/setup_training_log_app"
   environment_name           = var.environment_name
