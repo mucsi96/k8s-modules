@@ -184,7 +184,10 @@ resource "helm_release" "kube_prometheus_stack" {
       # restricts sign-in to var.valid_email, so any request that reaches
       # Grafana with this header is the authorized user. auto_sign_up creates
       # the Grafana account on first login and auto_assign_org_role gives it
-      # Admin so dashboards can be edited.
+      # Admin so dashboards can be edited. We deliberately leave
+      # [auth].disable_login_form off and [auth.basic].enabled at its default
+      # so the chart's dashboard/datasource sidecars can keep talking to
+      # Grafana with the bundled admin credentials.
       "grafana.ini" = {
         database = {
           type = "postgres"
@@ -200,17 +203,9 @@ resource "helm_release" "kube_prometheus_stack" {
           header_property = "email"
           auto_sign_up    = true
         }
-        auth = {
-          disable_login_form   = true
-          disable_signout_menu = true
-        }
-        "auth.basic" = {
-          enabled = false
-        }
         users = {
           auto_assign_org      = true
           auto_assign_org_role = "Admin"
-          allow_sign_up        = false
         }
       }
     }
