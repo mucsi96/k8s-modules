@@ -180,6 +180,17 @@ resource "helm_release" "kube_prometheus_stack" {
           }
         }
       }
+      # The kiwigrid/k8s-sidecar containers (dashboards + datasources) talk
+      # to the kube-apiserver over HTTPS using the in-cluster CA. MicroK8s'
+      # CA cert is missing the keyUsage extension, which Python 3.14 +
+      # OpenSSL 3 rejects ("CA cert does not include key usage extension"),
+      # so the sidecars CrashLoopBackOff and the pod stays NotReady. The
+      # API call stays inside the pod network on every node, so skipping
+      # verification only widens the trust boundary to "anything that can
+      # already reach the kube-apiserver", which is acceptable here.
+      sidecar = {
+        skipTlsVerify = true
+      }
       # Trust the email header injected by oauth2-proxy. oauth2-proxy already
       # restricts sign-in to var.valid_email, so any request that reaches
       # Grafana with this header is the authorized user. auto_sign_up creates
