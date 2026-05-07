@@ -55,14 +55,9 @@ variable "azure_subscription_id" {
   type        = string
 }
 
-variable "db_username" {
-  description = "The database username"
-  type        = string
-}
-
-variable "db_password" {
-  description = "The database password"
-  type        = string
+variable "dbs_config" {
+  description = "List of database/schema entries the backup tool should snapshot. Each entry is passed straight through to postgres-azure-backup, so the shape is whatever that tool accepts (name, host, port, database, schema, username, password, plus optional createPlainDump, folderBackups, excludeTables)."
+  type        = any
   sensitive   = true
 }
 

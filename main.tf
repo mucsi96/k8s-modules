@@ -304,13 +304,64 @@ module "setup_backup_app" {
   hostname                   = data.azurerm_key_vault_secret.dns_zone.value
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   azure_subscription_id      = var.azure_subscription_id
-  db_username                = module.create_database.username
-  db_password                = module.create_database.password
   twingate_service_key       = module.setup_twingate.service_key
   wait_for                   = module.setup_ingress_controller.traefik_ready
 
   azure_storage_account_resource_group_name = "ibari"
   azure_storage_account_name                = "ibari"
+
+  dbs_config = [
+    {
+      name            = "Learn language"
+      host            = module.create_database.host
+      port            = module.create_database.port
+      database        = module.create_database.name
+      schema          = "learn_language"
+      username        = module.create_database.username
+      password        = module.create_database.password
+      createPlainDump = true
+      folderBackups = [
+        {
+          path = "/app/storage/learn-language"
+        }
+      ]
+      excludeTables = [
+        "study_sessions",
+        "study_session_cards",
+        "model_usage_logs",
+        "unhealthy_cards",
+        "api_tokens"
+      ]
+    },
+    {
+      name            = "Training log"
+      host            = module.create_database.host
+      port            = module.create_database.port
+      database        = module.create_database.name
+      schema          = "training_log"
+      username        = module.create_database.username
+      password        = module.create_database.password
+      createPlainDump = true
+      folderBackups = [
+        {
+          path = "/app/storage/training-log"
+        }
+      ]
+      excludeTables = [
+        "oauth2_authorized_client"
+      ]
+    },
+    {
+      name            = "Grafana"
+      host            = module.create_database.host
+      port            = module.create_database.port
+      database        = module.create_database.name
+      schema          = "grafana"
+      username        = module.create_database.username
+      password        = module.create_database.password
+      createPlainDump = true
+    }
+  ]
 }
 
 module "setup_learn_language_app" {
