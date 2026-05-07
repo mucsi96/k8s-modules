@@ -215,9 +215,13 @@ resource "helm_release" "kube_prometheus_stack" {
           disable_login_form   = true
           disable_signout_menu = true
         }
-        "auth.basic" = {
-          enabled = false
-        }
+        # Leave [auth.basic] at its default (enabled). The kiwigrid sidecars
+        # call /api/admin/provisioning/{dashboards,datasources}/reload with
+        # HTTP Basic Auth as the chart's auto-generated admin user; disabling
+        # basic auth makes those calls 401 and the bundled Prometheus
+        # datasource never gets provisioned. External access is already gated
+        # by the IngressRoute in front of oauth2-proxy, so leaving basic auth
+        # on doesn't widen the attack surface.
         users = {
           auto_assign_org      = true
           auto_assign_org_role = "Admin"
