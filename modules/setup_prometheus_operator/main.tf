@@ -81,8 +81,7 @@ resource "kubernetes_job_v1" "grafana_database_init" {
   }
 
   spec {
-    backoff_limit              = 5
-    ttl_seconds_after_finished = 300
+    backoff_limit = 5
 
     template {
       metadata {}
