@@ -1,6 +1,6 @@
 locals {
-  pgweb_name = "pgweb"
-  pgweb_port = 8081
+  pgweb_name   = "pgweb"
+  pgweb_port   = 8081
   database_url = "postgres://${var.database.username}:${urlencode(var.database.password)}@${var.database.host}:${var.database.port}/${var.database.name}?sslmode=prefer"
 }
 
