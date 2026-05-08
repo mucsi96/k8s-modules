@@ -22,7 +22,7 @@ variable "image" {
 }
 
 variable "username" {
-  description = "Initial sudo user created via cloud-init."
+  description = "Sudo user created via cloud-init. Authenticates with the generated SSH key and has NOPASSWD sudo."
   type        = string
   default     = "ubuntu"
 }

@@ -1,24 +1,28 @@
 variable "host" {
-  description = "DNS name or IP address of the target Linux host accessible over SSH."
+  description = "Public IPv4 address (or DNS name) of the target Hetzner Cloud server."
   type        = string
 }
 
-variable "initial_port" {
-  description = "SSH port used to reach the target host."
+variable "ssh_port" {
+  description = "SSH port the server listens on (set by cloud-init at provisioning time)."
   type        = number
 }
 
 variable "username" {
-  description = "Name of the user on the target host."
+  description = "Sudo user on the target host. Must have NOPASSWD sudo configured by cloud-init."
   type        = string
 }
 
-variable "initial_password" {
-  description = "Initial password for the user on the target host."
+variable "ssh_private_key_path" {
+  description = "Path on the Ansible controller to the OpenSSH private key authorized for `username`."
+  type        = string
+}
+
+variable "ssh_private_key" {
+  description = "OpenSSH private key contents authorized for `username`. Used by remote-exec connections; Ansible uses the path."
   type        = string
   sensitive   = true
 }
-
 
 variable "azure_key_vault_name" {
   description = "Name of the Azure Key Vault to store Kubernetes secrets."
@@ -60,4 +64,10 @@ variable "apiserver_oidc" {
     groups_claim   = optional(string)
   })
   default = null
+}
+
+variable "wait_for" {
+  description = "Optional dependency hook (e.g. provision_hetzner_server.known_hosts_ready) to delay Ansible execution until the host is reachable."
+  type        = any
+  default     = null
 }

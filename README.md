@@ -9,10 +9,7 @@ The following secrets must exist in the Azure Key Vault (named after the `enviro
 
 | Secret Name | Description |
 |---|---|
-| `host` | SSH host address of the target Linux server |
-| `ssh-user-name` | SSH username for server access |
-| `ssh-initial-password` | Initial SSH password for server access |
-| `ssh-initial-port` | Initial SSH port number |
+| `hcloud-token` | Hetzner Cloud API token used to provision the cluster server |
 | `dns-zone` | DNS zone domain used by all applications |
 | `letsencrypt-email` | Email address for Let's Encrypt certificate registration |
 | `cloudflare-zone-id` | Cloudflare zone ID for DNS management |
@@ -23,6 +20,14 @@ The following secrets must exist in the Azure Key Vault (named after the `enviro
 | `twingate-api-token` | Twingate API token with Read, Write & Provision permissions |
 | `twingate-network` | Twingate network name (e.g. `mynetwork` from `mynetwork.twingate.com`) |
 | `github-token` | GitHub personal access token with `repo` scope for setting Actions secrets |
+
+The cluster server is provisioned on Hetzner Cloud by Terraform. SSH keys, port,
+and host credentials are generated during `terraform apply` and exported to the
+Key Vault as `host`, `ssh-user-name`, `ssh-port`, `ssh-private-key`, and
+`ssh-public-key` for downstream tooling (`scripts/ssh_to_server.sh` reads them).
+The cloud-init user data bakes in the public key, sets a custom SSH port,
+disables password authentication and root login, and grants NOPASSWD sudo to the
+bootstrap user so no password is ever generated or rotated by Ansible.
 
 ## Debugging Commands
 

@@ -6,6 +6,7 @@ VAULT_NAME=${AZURE_KEYVAULT_NAME:-p06}
 SSH_HOST_SECRET=${SSH_HOST_SECRET:-host}
 SSH_USER_SECRET=${SSH_USER_SECRET:-ssh-user-name}
 SSH_PORT_SECRET=${SSH_PORT_SECRET:-ssh-port}
+SSH_PRIVATE_KEY_SECRET=${SSH_PRIVATE_KEY_SECRET:-ssh-private-key}
 
 get_secret() {
   local secret_name=$1
@@ -36,15 +37,6 @@ if [ -z "$ssh_user" ]; then
   exit 1
 fi
 
-ssh_key_path=${SSH_IDENTITY_PATH:-"modules/setup_cluster/.generated/${ssh_host}-id_ed25519"}
-
-if [ ! -f "$ssh_key_path" ]; then
-  echo "SSH identity file not found at $ssh_key_path" >&2
-  exit 1
-fi
-
-chmod 600 "$ssh_key_path"
-
 ssh_port=$(get_secret "$SSH_PORT_SECRET")
 
 if [ -z "$ssh_port" ]; then
@@ -52,28 +44,15 @@ if [ -z "$ssh_port" ]; then
   exit 1
 fi
 
+ssh_key_path=${SSH_IDENTITY_PATH:-}
 
-# echo "Copying files to the server..."
-# scp \
-#   -i "$ssh_key_path" \
-#   -P "$ssh_port" \
-#   -r \
-#   sources \
-#   "$ssh_user@$ssh_host:~/"
+if [ -z "$ssh_key_path" ]; then
+  ssh_key_path=$(mktemp)
+  trap 'rm -f "$ssh_key_path"' EXIT
+  get_secret "$SSH_PRIVATE_KEY_SECRET" > "$ssh_key_path"
+fi
 
-# echo "Copy file from the server..."
-# scp \
-#   -i "$ssh_key_path" \
-#   -P "$ssh_port" \
-#   "$ssh_user@$ssh_host:~/e7fc892d-2ddf-440e-bd7b-ba0771931d4a.webp" \
-#   .
-# scp \
-#   -i "$ssh_key_path" \
-#   -P "$ssh_port" \
-#   "$ssh_user@$ssh_host:~/df2a457a-7d49-4cc4-b1ea-3e5f9186cab0.webp" \
-#   .
-
-
+chmod 600 "$ssh_key_path"
 
 ssh \
   -i "$ssh_key_path" \

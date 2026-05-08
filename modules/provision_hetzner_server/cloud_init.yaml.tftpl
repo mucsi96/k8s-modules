@@ -1,20 +1,25 @@
 #cloud-config
+disable_root: true
+ssh_pwauth: false
+package_update: true
+package_upgrade: false
 users:
   - name: ${username}
     groups: [sudo]
     shell: /bin/bash
-    sudo: 'ALL=(ALL) ALL'
-    lock_passwd: false
-chpasswd:
-  expire: false
-  users:
-    - name: ${username}
-      password: ${jsonencode(password)}
-      type: text
-ssh_pwauth: true
-package_update: true
-package_upgrade: false
+    sudo: 'ALL=(ALL) NOPASSWD:ALL'
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ${ssh_public_key}
+write_files:
+  - path: /etc/ssh/sshd_config.d/00-k8s-modules.conf
+    owner: root:root
+    permissions: '0644'
+    content: |
+      Port ${ssh_port}
+      PasswordAuthentication no
+      PermitRootLogin no
+      KbdInteractiveAuthentication no
+      PubkeyAuthentication yes
 runcmd:
-  - install -d -m 755 /etc/ssh/sshd_config.d
-  - printf 'PasswordAuthentication yes\nPermitRootLogin yes\nKbdInteractiveAuthentication yes\n' > /etc/ssh/sshd_config.d/00-cloud-init-bootstrap.conf
-  - systemctl restart ssh || systemctl restart sshd
+  - [systemctl, restart, ssh]

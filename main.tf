@@ -49,6 +49,11 @@ terraform {
       source  = "docker/docker"
       version = ">= 0.2.0"
     }
+
+    hcloud = {
+      source  = "hetznercloud/hcloud"
+      version = ">= 1.48.0"
+    }
   }
 
   required_version = ">= 1.2"
@@ -104,43 +109,46 @@ provider "github" {
 
 provider "docker" {}
 
+provider "hcloud" {
+  token = data.azurerm_key_vault_secret.hcloud_token.value
+}
+
 data "azurerm_key_vault" "kv" {
   resource_group_name = var.environment_name
   name                = var.environment_name
 }
 
-data "azurerm_key_vault_secret" "setup_cluster_host" {
+data "azurerm_key_vault_secret" "hcloud_token" {
   key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "host"
+  name         = "hcloud-token"
 }
 
-data "azurerm_key_vault_secret" "setup_cluster_username" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "ssh-user-name"
-}
-
-data "azurerm_key_vault_secret" "setup_cluster_initial_password" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "ssh-initial-password"
-}
-
-data "azurerm_key_vault_secret" "setup_cluster_initial_port" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "ssh-initial-port"
+module "provision_hetzner_server" {
+  source      = "./modules/provision_hetzner_server"
+  server_name = var.environment_name
+  server_type = var.hcloud_server_type
+  location    = var.hcloud_location
+  image       = var.hcloud_image
+  username    = var.hcloud_username
+  labels = {
+    environment = var.environment_name
+  }
 }
 
 module "setup_cluster" {
   source                   = "./modules/setup_cluster"
-  host                     = data.azurerm_key_vault_secret.setup_cluster_host.value
-  initial_port             = tonumber(data.azurerm_key_vault_secret.setup_cluster_initial_port.value)
-  username                 = data.azurerm_key_vault_secret.setup_cluster_username.value
-  initial_password         = data.azurerm_key_vault_secret.setup_cluster_initial_password.value
+  host                     = module.provision_hetzner_server.ipv4_address
+  ssh_port                 = module.provision_hetzner_server.ssh_port
+  username                 = module.provision_hetzner_server.username
+  ssh_private_key_path     = module.provision_hetzner_server.ssh_private_key_path
+  ssh_private_key          = module.provision_hetzner_server.ssh_private_key
   azure_key_vault_name     = data.azurerm_key_vault.kv.name
   environment_name         = var.environment_name
   azure_subscription_id    = var.azure_subscription_id
   storage_account_name     = var.storage_account_name
   azure_tenant_id          = data.azurerm_client_config.current.tenant_id
   local_python_interpreter = var.local_python_interpreter
+  wait_for                 = module.provision_hetzner_server.known_hosts_ready
 
   apiserver_oidc = {
     issuer_url = "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/v2.0"
@@ -275,7 +283,7 @@ module "setup_twingate" {
   environment_name   = var.environment_name
   twingate_network   = data.azurerm_key_vault_secret.twingate_network.value
   twingate_api_token = data.azurerm_key_vault_secret.twingate_api_token.value
-  k8s_host           = data.azurerm_key_vault_secret.setup_cluster_host.value
+  k8s_host           = module.provision_hetzner_server.ipv4_address
   depends_on         = [module.setup_cluster]
 }
 
