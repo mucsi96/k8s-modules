@@ -2,13 +2,12 @@ resource "terraform_data" "wait_for" {
   input = var.wait_for
 }
 
-# Common Ansible vars: SSH via the agent loaded by provision_hetzner_server,
-# accept-new pinned to a per-apply known_hosts file so the first connect
-# records the host key and every subsequent connect verifies it, without ever
-# touching the operator's ~/.ssh/known_hosts.
+# Common Ansible vars: SSH via the agent loaded by provision_hetzner_server.
+# StrictHostKeyChecking=no is intentional — the host IP comes back from the
+# Hetzner Cloud API over TLS seconds before the first connect, so first-connect
+# host-key verification adds plumbing without practical security.
 locals {
-  user_known_hosts_file   = coalesce(var.known_hosts_file, "/dev/null")
-  ansible_ssh_common_args = "-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${local.user_known_hosts_file}"
+  ansible_ssh_common_args = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
   ansible_connection_vars = {
     ansible_port            = tostring(var.ssh_port)
