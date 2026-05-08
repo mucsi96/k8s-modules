@@ -1,5 +1,5 @@
 variable "hostname" {
-  description = "Public hostname where pgAdmin is exposed (e.g. pgadmin.example.com)"
+  description = "Public hostname where pgweb is exposed (e.g. db.example.com)"
   type        = string
   sensitive   = true
 }
@@ -21,7 +21,7 @@ variable "client_secret" {
 }
 
 variable "valid_email" {
-  description = "Email address allowed to sign in to pgAdmin via Entra"
+  description = "Email address allowed to sign in to pgweb via Entra"
   type        = string
   sensitive   = true
 }
@@ -35,13 +35,8 @@ variable "session_redis" {
   sensitive = true
 }
 
-variable "pgadmin_chart_version" {
-  description = "Helm chart version for pgAdmin 4 (runix/pgadmin4)"
-  type        = string
-}
-
-variable "pgadmin_image_version" {
-  description = "Container image tag for dpage/pgadmin4"
+variable "pgweb_image_version" {
+  description = "Container image tag for sosedoff/pgweb"
   type        = string
 }
 
@@ -56,12 +51,13 @@ variable "oauth2_proxy_image_version" {
 }
 
 variable "database" {
-  description = "Connection details for the Postgres instance pgAdmin should be pre-configured to manage. The password is not preloaded into pgAdmin (the chart's extraSecretMounts can't set the 0600 mode libpq requires for passfiles); the user enters it once on first connection and pgAdmin persists it via 'Save password'."
+  description = "Connection details for the Postgres instance pgweb connects to."
   type = object({
     name     = string
     host     = string
     port     = number
     username = string
+    password = string
   })
   sensitive = true
 }
