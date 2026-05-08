@@ -1,7 +1,3 @@
-resource "terraform_data" "wait_for" {
-  input = var.wait_for
-}
-
 # Common Ansible vars: SSH via the agent loaded by provision_hetzner_server.
 # StrictHostKeyChecking=no is intentional — the host IP comes back from the
 # Hetzner Cloud API over TLS seconds before the first connect, so first-connect
@@ -16,14 +12,22 @@ locals {
   }
 }
 
+# Folding var.wait_for into extra_vars (rather than a side terraform_data with
+# a depends_on edge) is what actually serializes against ssh_ready. A
+# terraform_data sentinel updates its `input` field in-place silently, so
+# `depends_on` on it is a no-op barrier — Terraform schedules the dependent
+# in parallel. Putting var.wait_for inside extra_vars forces the data-flow
+# tracker to wait for the value to be known, which cannot happen until
+# ssh_ready has finished polling the new sshd port. The value is passed to
+# ansible-playbook as --extra-vars _wait_for=...; the playbook ignores it.
 resource "ansible_playbook" "system_update" {
   name       = var.host
   playbook   = "${path.module}/system_update.yaml"
   replayable = false
 
-  extra_vars = local.ansible_connection_vars
-
-  depends_on = [terraform_data.wait_for]
+  extra_vars = merge(local.ansible_connection_vars, {
+    _wait_for = coalesce(var.wait_for, "")
+  })
 }
 
 resource "terraform_data" "wait_for_system" {
