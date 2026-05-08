@@ -31,9 +31,17 @@ bootstrap user so no password is ever generated or rotated by Ansible.
 
 During `terraform apply`, Ansible authenticates via an `ssh-agent` started by
 `scripts/create.sh`; the generated private key is piped straight into
-`ssh-add` and never written to disk. Run `terraform apply` through that script
-(or start your own agent with `eval "$(ssh-agent -s)"` first) — applies fail
-fast if `SSH_AUTH_SOCK` is unset.
+`ssh-add` and never written to disk. The script also stages a per-apply
+`known_hosts` file under `$XDG_RUNTIME_DIR` (tmpfs) and exports its path as
+`TF_VAR_known_hosts_file`; Ansible runs with
+`StrictHostKeyChecking=accept-new` against that file, so the host key is
+recorded on first connect and re-verified on every subsequent connect for
+the rest of the apply, with no impact on `~/.ssh/known_hosts`. Both the
+agent and the runtime dir are torn down on script exit.
+
+Run `terraform apply` through `scripts/create.sh` (or set `SSH_AUTH_SOCK`
+and `TF_VAR_known_hosts_file` yourself) — applies fail fast if
+`SSH_AUTH_SOCK` is unset.
 
 ## Debugging Commands
 

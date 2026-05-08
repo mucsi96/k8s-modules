@@ -146,6 +146,7 @@ module "setup_cluster" {
   storage_account_name     = var.storage_account_name
   azure_tenant_id          = data.azurerm_client_config.current.tenant_id
   local_python_interpreter = var.local_python_interpreter
+  known_hosts_file         = var.known_hosts_file
   wait_for                 = module.provision_hetzner_server.agent_loaded
 
   apiserver_oidc = {

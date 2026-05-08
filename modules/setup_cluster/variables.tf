@@ -55,6 +55,12 @@ variable "apiserver_oidc" {
   default = null
 }
 
+variable "known_hosts_file" {
+  description = "Per-apply known_hosts file Ansible should pin host keys to. Created by scripts/create.sh under $XDG_RUNTIME_DIR. Falls back to /dev/null when null, which weakens host-key verification to TOFU-per-connect."
+  type        = string
+  default     = null
+}
+
 variable "wait_for" {
   description = "Optional dependency hook (e.g. provision_hetzner_server.agent_loaded) that gates Ansible execution until the SSH key has been loaded into the agent."
   type        = any

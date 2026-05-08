@@ -27,3 +27,9 @@ variable "local_python_interpreter" {
   type        = string
   default     = "./.venv/bin/python"
 }
+
+variable "known_hosts_file" {
+  description = "Per-apply known_hosts file consumed by Ansible. scripts/create.sh creates this under $XDG_RUNTIME_DIR; falls back to /dev/null when null, which weakens host-key verification to TOFU-per-connect."
+  type        = string
+  default     = null
+}
