@@ -1,7 +1,6 @@
 variable "hcloud_server_type" {
-  description = "Hetzner Cloud server type. CX42 = 8 vCPU shared Intel, 16 GB RAM, 160 GB SSD."
+  description = "Hetzner Cloud server type for the cluster VPS (e.g. cx42 = 8 vCPU shared Intel, 16 GB RAM, 160 GB SSD). Required — no default to keep the operator from accidentally provisioning a size other than what the environment was capacity-planned for."
   type        = string
-  default     = "cx42"
 }
 
 variable "hcloud_location" {
