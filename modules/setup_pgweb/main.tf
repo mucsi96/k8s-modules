@@ -1,7 +1,7 @@
 locals {
   pgweb_name   = "pgweb"
   pgweb_port   = 8081
-  database_url = "postgres://${var.database.username}:${urlencode(var.database.password)}@${var.database.host}:${var.database.port}/${var.database.name}?sslmode=prefer"
+  database_url = "postgres://${var.database.username}:${urlencode(var.database.password)}@${var.database.host}:${var.database.port}/${var.database.name}?sslmode=disable"
 }
 
 resource "terraform_data" "wait_for" {
@@ -23,7 +23,7 @@ resource "kubernetes_secret_v1" "pgweb_db" {
   }
 
   data = {
-    DATABASE_URL = local.database_url
+    PGWEB_DATABASE_URL = local.database_url
   }
 }
 
@@ -67,11 +67,11 @@ resource "kubernetes_deployment_v1" "pgweb" {
           ]
 
           env {
-            name = "DATABASE_URL"
+            name = "PGWEB_DATABASE_URL"
             value_from {
               secret_key_ref {
                 name = kubernetes_secret_v1.pgweb_db.metadata[0].name
-                key  = "DATABASE_URL"
+                key  = "PGWEB_DATABASE_URL"
               }
             }
           }
