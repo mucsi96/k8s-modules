@@ -303,8 +303,8 @@ module "prometheus_oauth2_proxy" {
   depends_on = [helm_release.kube_prometheus_stack]
 }
 
-resource "kubernetes_manifest" "grafana_ingressroute" {
-  manifest = {
+resource "kubectl_manifest" "grafana_ingressroute" {
+  yaml_body = yamlencode({
     apiVersion = "traefik.io/v1alpha1"
     kind       = "IngressRoute"
     metadata = {
@@ -324,13 +324,13 @@ resource "kubernetes_manifest" "grafana_ingressroute" {
         },
       ]
     }
-  }
+  })
 
   depends_on = [module.grafana_oauth2_proxy]
 }
 
-resource "kubernetes_manifest" "prometheus_ingressroute" {
-  manifest = {
+resource "kubectl_manifest" "prometheus_ingressroute" {
+  yaml_body = yamlencode({
     apiVersion = "traefik.io/v1alpha1"
     kind       = "IngressRoute"
     metadata = {
@@ -350,7 +350,7 @@ resource "kubernetes_manifest" "prometheus_ingressroute" {
         },
       ]
     }
-  }
+  })
 
   depends_on = [module.prometheus_oauth2_proxy]
 }

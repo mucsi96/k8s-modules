@@ -54,6 +54,11 @@ terraform {
       source  = "hetznercloud/hcloud"
       version = ">= 1.48.0"
     }
+
+    kubectl = {
+      source  = "gavinbunney/kubectl"
+      version = ">= 1.14.0"
+    }
   }
 
   required_version = ">= 1.2"
@@ -86,6 +91,18 @@ provider "helm" {
     client_key             = module.setup_cluster.k8s_client_key
     cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
   }
+}
+
+# Used in place of hashicorp/kubernetes's kubernetes_manifest for CRDs (Traefik
+# IngressRoute / Middleware). kubernetes_manifest opens a REST client at plan
+# time and breaks the from-scratch apply because the cluster does not exist
+# yet; kubectl_manifest defers the connection to apply time.
+provider "kubectl" {
+  host                   = module.setup_cluster.k8s_host
+  client_certificate     = module.setup_cluster.k8s_client_certificate
+  client_key             = module.setup_cluster.k8s_client_key
+  cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
+  load_config_file       = false
 }
 
 provider "acme" {

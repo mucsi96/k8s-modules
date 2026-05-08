@@ -36,8 +36,8 @@ module "traefik_dashboard_oauth2_proxy" {
   depends_on = [helm_release.traefik]
 }
 
-resource "kubernetes_manifest" "traefik_dashboard_redirect_root_middleware" {
-  manifest = {
+resource "kubectl_manifest" "traefik_dashboard_redirect_root_middleware" {
+  yaml_body = yamlencode({
     apiVersion = "traefik.io/v1alpha1"
     kind       = "Middleware"
     metadata = {
@@ -51,13 +51,13 @@ resource "kubernetes_manifest" "traefik_dashboard_redirect_root_middleware" {
         permanent   = true
       }
     }
-  }
+  })
 
   depends_on = [helm_release.traefik]
 }
 
-resource "kubernetes_manifest" "traefik_dashboard_ingressroute" {
-  manifest = {
+resource "kubectl_manifest" "traefik_dashboard_ingressroute" {
+  yaml_body = yamlencode({
     apiVersion = "traefik.io/v1alpha1"
     kind       = "IngressRoute"
     metadata = {
@@ -89,10 +89,10 @@ resource "kubernetes_manifest" "traefik_dashboard_ingressroute" {
         },
       ]
     }
-  }
+  })
 
   depends_on = [
     module.traefik_dashboard_oauth2_proxy,
-    kubernetes_manifest.traefik_dashboard_redirect_root_middleware,
+    kubectl_manifest.traefik_dashboard_redirect_root_middleware,
   ]
 }

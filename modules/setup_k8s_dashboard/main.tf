@@ -126,8 +126,8 @@ resource "kubernetes_cluster_role_v1" "headlamp_view_extras" {
   }
 }
 
-resource "kubernetes_manifest" "headlamp_ingressroute" {
-  manifest = {
+resource "kubectl_manifest" "headlamp_ingressroute" {
+  yaml_body = yamlencode({
     apiVersion = "traefik.io/v1alpha1"
     kind       = "IngressRoute"
     metadata = {
@@ -147,7 +147,7 @@ resource "kubernetes_manifest" "headlamp_ingressroute" {
         },
       ]
     }
-  }
+  })
 
   depends_on = [module.headlamp_oauth2_proxy]
 }
