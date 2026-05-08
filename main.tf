@@ -152,6 +152,7 @@ locals {
   k8s_dashboard_hostname = "k8s.${data.azurerm_key_vault_secret.dns_zone.value}"
   grafana_hostname       = "grafana.${data.azurerm_key_vault_secret.dns_zone.value}"
   prometheus_hostname    = "prometheus.${data.azurerm_key_vault_secret.dns_zone.value}"
+  pgweb_hostname       = "db.${data.azurerm_key_vault_secret.dns_zone.value}"
 }
 
 module "register_headlamp_dashboard" {
@@ -176,6 +177,14 @@ module "register_prometheus_dashboard" {
   display_name  = "Prometheus - ${var.environment_name}"
   owner         = local.owner
   redirect_uris = ["https://${local.prometheus_hostname}/oauth2/callback"]
+}
+
+module "register_pgweb_dashboard" {
+  source = "./modules/register_webapp"
+
+  display_name  = "pgweb - ${var.environment_name}"
+  owner         = local.owner
+  redirect_uris = ["https://${local.pgweb_hostname}/oauth2/callback"]
 }
 
 data "azurerm_key_vault_secret" "dns_zone" {
@@ -450,6 +459,30 @@ module "setup_loki" {
   alloy_chart_version = "1.8.1" #https://github.com/grafana/helm-charts/releases?q=alloy
   grafana_namespace   = module.setup_prometheus_operator.namespace
   wait_for            = module.setup_prometheus_operator.kube_prometheus_stack_ready
+}
+
+module "setup_pgweb" {
+  source                     = "./modules/setup_pgweb"
+  hostname                   = local.pgweb_hostname
+  tenant_id                  = data.azurerm_client_config.current.tenant_id
+  client_id                  = module.register_pgweb_dashboard.client_id
+  client_secret              = module.register_pgweb_dashboard.client_secret
+  valid_email                = data.azurerm_key_vault_secret.letsencrypt_email.value
+  pgweb_image_version        = "0.16.2"  #https://github.com/sosedoff/pgweb/releases
+  oauth2_proxy_chart_version = "7.12.6"  #https://github.com/oauth2-proxy/manifests/releases
+  oauth2_proxy_image_version = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
+  session_redis = {
+    connection_url = module.create_redis.connection_url
+    password       = module.create_redis.password
+  }
+  database = {
+    name     = module.create_database.name
+    host     = module.create_database.host
+    port     = module.create_database.port
+    username = module.create_database.username
+    password = module.create_database.password
+  }
+  wait_for = module.setup_ingress_controller.traefik_ready
 }
 
 module "setup_training_log_app" {
