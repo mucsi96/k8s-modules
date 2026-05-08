@@ -140,15 +140,13 @@ module "setup_cluster" {
   host                     = module.provision_hetzner_server.ipv4_address
   ssh_port                 = module.provision_hetzner_server.ssh_port
   username                 = module.provision_hetzner_server.username
-  ssh_private_key_path     = module.provision_hetzner_server.ssh_private_key_path
-  ssh_private_key          = module.provision_hetzner_server.ssh_private_key
   azure_key_vault_name     = data.azurerm_key_vault.kv.name
   environment_name         = var.environment_name
   azure_subscription_id    = var.azure_subscription_id
   storage_account_name     = var.storage_account_name
   azure_tenant_id          = data.azurerm_client_config.current.tenant_id
   local_python_interpreter = var.local_python_interpreter
-  wait_for                 = module.provision_hetzner_server.known_hosts_ready
+  wait_for                 = module.provision_hetzner_server.agent_loaded
 
   apiserver_oidc = {
     issuer_url = "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/v2.0"

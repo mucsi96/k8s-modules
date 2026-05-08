@@ -29,6 +29,12 @@ The cloud-init user data bakes in the public key, sets a custom SSH port,
 disables password authentication and root login, and grants NOPASSWD sudo to the
 bootstrap user so no password is ever generated or rotated by Ansible.
 
+During `terraform apply`, Ansible authenticates via an `ssh-agent` started by
+`scripts/create.sh`; the generated private key is piped straight into
+`ssh-add` and never written to disk. Run `terraform apply` through that script
+(or start your own agent with `eval "$(ssh-agent -s)"` first) — applies fail
+fast if `SSH_AUTH_SOCK` is unset.
+
 ## Debugging Commands
 
 Useful commands for debugging Kubernetes (MicroK8s) clusters and authorization issues.

@@ -19,7 +19,7 @@ output "ssh_port" {
 }
 
 output "ssh_private_key" {
-  description = "Generated SSH private key in OpenSSH format. The key is also written to ssh_private_key_path so Ansible can use it."
+  description = "Generated SSH private key in OpenSSH format. Stored in Key Vault for ad-hoc operator SSH; the apply itself uses ssh-agent."
   value       = tls_private_key.user.private_key_openssh
   sensitive   = true
 }
@@ -29,14 +29,9 @@ output "ssh_public_key" {
   value       = tls_private_key.user.public_key_openssh
 }
 
-output "ssh_private_key_path" {
-  description = "Local path to the generated SSH private key file. Stable across applies; consumed by setup_cluster's Ansible playbooks."
-  value       = terraform_data.user_private_key.input
-}
-
-output "known_hosts_ready" {
-  description = "Sentinel that lets downstream modules wait until the host has been added to the local known_hosts file."
-  value       = terraform_data.known_hosts_entry.id
+output "agent_loaded" {
+  description = "Sentinel that lets downstream modules wait until the SSH key has been added to ssh-agent."
+  value       = terraform_data.ssh_agent_loaded.id
 }
 
 output "server_id" {

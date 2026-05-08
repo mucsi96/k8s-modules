@@ -13,17 +13,6 @@ variable "username" {
   type        = string
 }
 
-variable "ssh_private_key_path" {
-  description = "Path on the Ansible controller to the OpenSSH private key authorized for `username`."
-  type        = string
-}
-
-variable "ssh_private_key" {
-  description = "OpenSSH private key contents authorized for `username`. Used by remote-exec connections; Ansible uses the path."
-  type        = string
-  sensitive   = true
-}
-
 variable "azure_key_vault_name" {
   description = "Name of the Azure Key Vault to store Kubernetes secrets."
   type        = string
@@ -67,7 +56,7 @@ variable "apiserver_oidc" {
 }
 
 variable "wait_for" {
-  description = "Optional dependency hook (e.g. provision_hetzner_server.known_hosts_ready) to delay Ansible execution until the host is reachable."
+  description = "Optional dependency hook (e.g. provision_hetzner_server.agent_loaded) that gates Ansible execution until the SSH key has been loaded into the agent."
   type        = any
   default     = null
 }
