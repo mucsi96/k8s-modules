@@ -56,7 +56,7 @@ variable "apiserver_oidc" {
 }
 
 variable "wait_for" {
-  description = "Optional dependency hook (e.g. provision_hetzner_server.agent_loaded) that gates Ansible execution until the SSH key has been loaded into the agent."
+  description = "Optional dependency hook (e.g. provision_hetzner_server.ssh_ready) that gates Ansible execution until ssh-agent has the key AND cloud-init has finished bringing sshd up on the custom port."
   type        = any
   default     = null
 }

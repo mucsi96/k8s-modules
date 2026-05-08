@@ -34,6 +34,11 @@ output "agent_loaded" {
   value       = terraform_data.ssh_agent_loaded.id
 }
 
+output "ssh_ready" {
+  description = "Sentinel that lets downstream modules wait until cloud-init has finished and sshd is reachable on the custom port. Transitively depends on agent_loaded."
+  value       = terraform_data.ssh_ready.id
+}
+
 output "server_id" {
   description = "Hetzner Cloud server ID."
   value       = hcloud_server.this.id

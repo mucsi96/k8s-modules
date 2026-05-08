@@ -163,7 +163,7 @@ module "setup_cluster" {
   storage_account_name     = var.storage_account_name
   azure_tenant_id          = data.azurerm_client_config.current.tenant_id
   local_python_interpreter = var.local_python_interpreter
-  wait_for                 = module.provision_hetzner_server.agent_loaded
+  wait_for                 = module.provision_hetzner_server.ssh_ready
 
   apiserver_oidc = {
     issuer_url = "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/v2.0"

@@ -56,3 +56,38 @@ resource "terraform_data" "ssh_agent_loaded" {
 
   depends_on = [hcloud_server.this]
 }
+
+# Polls the new SSH port until cloud-init has finished writing the sshd
+# drop-in, restarted sshd, and sshd is accepting connections. Without this,
+# Ansible races cloud-init and fails with "Connection refused".
+resource "terraform_data" "ssh_ready" {
+  triggers_replace = {
+    server_id = hcloud_server.this.id
+    ssh_port  = random_integer.ssh_port.result
+  }
+
+  provisioner "local-exec" {
+    interpreter = ["/bin/bash", "-c"]
+    environment = {
+      HOST     = hcloud_server.this.ipv4_address
+      SSH_PORT = tostring(random_integer.ssh_port.result)
+    }
+    command = <<-EOT
+      set -euo pipefail
+      for attempt in $(seq 1 60); do
+        keys=$(ssh-keyscan -T 5 -p "$SSH_PORT" "$HOST" 2>/dev/null || true)
+        if [ -n "$keys" ]; then
+          exit 0
+        fi
+        sleep 5
+      done
+      echo "Timed out waiting for sshd on $HOST:$SSH_PORT" >&2
+      exit 1
+    EOT
+  }
+
+  depends_on = [
+    hcloud_server.this,
+    terraform_data.ssh_agent_loaded,
+  ]
+}
