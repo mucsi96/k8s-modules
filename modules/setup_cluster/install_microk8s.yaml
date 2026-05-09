@@ -5,7 +5,12 @@
   become: true
 
   vars:
-    microk8s_channel: "1.30/stable"
+    # Traefik chart v39 ships Gateway-API CRDs whose CEL validation rule uses
+    # the `isIP` function, which only exists in the Kubernetes API server from
+    # 1.31 onward. Anything older fails CRD install with "undeclared reference
+    # to 'isIP'". 1.32/stable is the conservative pick — current LTS-like
+    # branch with isIP available.
+    microk8s_channel: "1.32/stable"
     ansible_python_interpreter: /usr/bin/python3
 
   pre_tasks:
