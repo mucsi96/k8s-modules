@@ -54,16 +54,9 @@ resource "terraform_data" "wait_for_system" {
 }
 
 resource "ansible_playbook" "install_microk8s" {
-  name = var.host
-  playbook = "${path.module}/install_microk8s.yaml"
-  # Replayable so every apply revalidates that microk8s is actually installed
-  # and on the right channel. Without this, an out-of-band snap remove (e.g.
-  # cleaning up after a botched install) leaves Terraform's state believing
-  # microk8s is healthy while the server has no /var/snap/microk8s/* — and
-  # downstream playbooks (configure_dns) and helm_releases all fail. The
-  # playbook itself is idempotent: it `snap list`s and only installs / refreshes
-  # as needed, so the steady-state cost is one quick check.
-  replayable = true
+  name       = var.host
+  playbook   = "${path.module}/install_microk8s.yaml"
+  replayable = false
 
   extra_vars = merge(local.ansible_connection_vars, {
     azure_key_vault_name     = var.azure_key_vault_name
@@ -157,22 +150,37 @@ resource "ansible_playbook" "configure_microk8s_apiserver_oidc" {
   depends_on = [ansible_playbook.configure_microk8s_oidc]
 }
 
+# Captures the IDs of the playbooks that can rotate the calico service-account
+# token (snap install/refresh, OIDC apiserver flag changes). When any of those
+# playbooks is replaced — e.g. on first apply, on a manual `-replace`, or on
+# an apiserver_oidc config change — this terraform_data is replaced too, which
+# in turn causes ansible_playbook.restart_calico to be replaced via
+# replace_triggered_by. Routine applies that touch nothing here leave it alone.
+resource "terraform_data" "calico_restart_trigger" {
+  triggers_replace = {
+    install_microk8s_id          = ansible_playbook.install_microk8s.id
+    configure_microk8s_oidc_id   = ansible_playbook.configure_microk8s_oidc.id
+    configure_apiserver_oidc_id  = try(ansible_playbook.configure_microk8s_apiserver_oidc[0].id, "")
+  }
+}
+
 # Force the Calico CNI to pick up rotated apiserver tokens before the next
 # helm release tries to schedule pods. install_microk8s, configure_microk8s_oidc
 # and configure_microk8s_apiserver_oidc can each rotate the calico
-# service-account token, but the on-host /etc/cni/net.d/calico-kubeconfig
-# only gets rewritten when the calico-node pod restarts — otherwise every new
-# pod sandbox creation fails with "connection is unauthorized: Unauthorized"
-# and downstream helm_releases (workload_identity_webhook, traefik, ...) hang.
-# Replayable so it runs after every apply that may have rotated tokens; the
-# DaemonSet rollout takes a few seconds and does not affect already-running
-# pods.
+# service-account token, but the on-host /etc/cni/net.d/calico-kubeconfig only
+# gets rewritten when the calico-node pod restarts — otherwise every new pod
+# sandbox creation fails with "connection is unauthorized: Unauthorized" and
+# downstream helm_releases (workload_identity_webhook, traefik, ...) hang.
 resource "ansible_playbook" "restart_calico" {
   name       = var.host
   playbook   = "${path.module}/restart_calico.yaml"
-  replayable = true
+  replayable = false
 
   extra_vars = local.ansible_connection_vars
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.calico_restart_trigger]
+  }
 
   depends_on = [
     ansible_playbook.install_microk8s,
