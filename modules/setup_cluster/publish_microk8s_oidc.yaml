@@ -21,6 +21,10 @@
         path: "/var/snap/microk8s/current/certs/serviceaccount.pub"
         return_content: true
       register: publickey_result
+      # serviceaccount.key is root:root mode 0600 and lives under root-owned
+      # /var/snap/microk8s/. Without become, openssl_publickey gets EACCES and
+      # reports it as "private key does not exist" (misleading).
+      become: true
 
     - name: Write public key to temporary file
       ansible.builtin.copy:
