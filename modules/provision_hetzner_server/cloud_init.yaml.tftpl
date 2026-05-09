@@ -22,4 +22,13 @@ write_files:
       KbdInteractiveAuthentication no
       PubkeyAuthentication yes
 runcmd:
-  - [systemctl, restart, ssh]
+  # Ubuntu 24.04 cloud images ship a socket-activated SSH (ssh.socket listens
+  # on :22 and starts ssh.service on connect). That bypasses the Port directive
+  # in our sshd_config drop-in: ssh.service never opens the custom port even
+  # after a restart, because the socket is the active listener. Disable the
+  # socket and run sshd as a regular service so the drop-in's Port takes
+  # effect. The `|| true` is for non-Noble images that ship without ssh.socket.
+  - systemctl daemon-reload
+  - systemctl disable --now ssh.socket 2>/dev/null || true
+  - systemctl enable ssh.service
+  - systemctl restart ssh.service
