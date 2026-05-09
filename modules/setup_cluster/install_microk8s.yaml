@@ -16,6 +16,17 @@
           - ansible_distribution_version is version('24.04', '>=')
         fail_msg: "MicroK8s installation supported only on Ubuntu Server 24.04 or newer"
 
+    # Hetzner's Ubuntu cloud image marks root's shadow entry expired
+    # (last-password-change set to 0), which makes any sudo invocation _from_
+    # root fail PAM with "Account or password is expired" — including the sudo
+    # calls inside the snap install hook. cloud-init now clears this on first
+    # boot, but for servers provisioned before that fix landed we re-clear it
+    # here so re-running this playbook is enough to recover.
+    - name: Clear root account/password expiry so snap install hook's sudo works
+      ansible.builtin.command:
+        cmd: "chage -d {{ ansible_date_time.date }} -E -1 -M -1 root"
+      changed_when: false
+
   tasks:
     - name: Ensure snapd is installed
       ansible.builtin.apt:

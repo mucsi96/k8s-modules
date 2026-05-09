@@ -10,5 +10,7 @@ source .venv/bin/activate
 eval "$(ssh-agent -s)" >/dev/null
 trap 'ssh-agent -k >/dev/null 2>&1 || true' EXIT
 
-terraform plan -out=tfplan
+# Forward extra args to plan so callers can do e.g.
+#   scripts/create.sh -replace='module.provision_hetzner_server.hcloud_server.this'
+terraform plan -out=tfplan "$@"
 terraform apply -auto-approve tfplan
