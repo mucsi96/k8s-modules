@@ -28,23 +28,20 @@ resource "hcloud_server" "this" {
   }
 }
 
-# Reads SSH_AUTH_SOCK at plan time so we can trigger ssh_agent_loaded whenever
-# the operator points Terraform at a different agent (every fresh
-# scripts/create.sh starts a new agent). Without this the second apply sees
-# "key already loaded" in state and skips ssh-add even though the new agent
-# is empty.
-data "external" "ssh_auth_sock" {
-  program = ["bash", "-c", "printf '{\"sock\":\"%s\"}' \"$SSH_AUTH_SOCK\""]
-}
-
 # Loads the generated private key into the caller's ssh-agent. The key is
 # piped via stdin from an env var, so it never touches the local filesystem.
 # The agent (and therefore SSH_AUTH_SOCK) must be started by the caller, e.g.
 # `eval "$(ssh-agent -s)"` in scripts/create.sh, before `terraform apply`.
+#
+# triggers_replace only watches tls_private_key.user.id. The wrapper
+# scripts/create.sh now pre-loads the key from Key Vault into ssh-agent on
+# every invocation, so the agent already has the key by the time terraform
+# runs and we do not need to re-trigger this resource on every fresh
+# SSH_AUTH_SOCK. The provisioner still exists to handle the very first apply,
+# when the key has not yet been mirrored to Key Vault.
 resource "terraform_data" "ssh_agent_loaded" {
   triggers_replace = {
     key_id = tls_private_key.user.id
-    sock   = data.external.ssh_auth_sock.result.sock
   }
 
   provisioner "local-exec" {
