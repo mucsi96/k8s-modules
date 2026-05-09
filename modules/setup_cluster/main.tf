@@ -54,9 +54,16 @@ resource "terraform_data" "wait_for_system" {
 }
 
 resource "ansible_playbook" "install_microk8s" {
-  name       = var.host
-  playbook   = "${path.module}/install_microk8s.yaml"
-  replayable = false
+  name = var.host
+  playbook = "${path.module}/install_microk8s.yaml"
+  # Replayable so every apply revalidates that microk8s is actually installed
+  # and on the right channel. Without this, an out-of-band snap remove (e.g.
+  # cleaning up after a botched install) leaves Terraform's state believing
+  # microk8s is healthy while the server has no /var/snap/microk8s/* — and
+  # downstream playbooks (configure_dns) and helm_releases all fail. The
+  # playbook itself is idempotent: it `snap list`s and only installs / refreshes
+  # as needed, so the steady-state cost is one quick check.
+  replayable = true
 
   extra_vars = merge(local.ansible_connection_vars, {
     azure_key_vault_name     = var.azure_key_vault_name
