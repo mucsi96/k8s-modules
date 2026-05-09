@@ -1,0 +1,29 @@
+# MicroK8s rotates the calico service-account token whenever the apiserver
+# config changes (snap install/refresh, OIDC flag changes, etc.), but the
+# kubeconfig embedded into /etc/cni/net.d/calico-kubeconfig is the one written
+# at calico-node-installer startup. Until the calico-node pod is recreated,
+# the on-host CNI plugin keeps using the rotated-out token, every new pod
+# sandbox creation 401s, and the next helm_release (workload-identity-webhook)
+# times out waiting for its pod to schedule.
+#
+# Deleting the calico-node DaemonSet pods regenerates calico-kubeconfig as
+# part of the new pod's startup. Cheap on a single-node cluster — a few
+# seconds of CNI churn while no other pods are being scheduled by the apply.
+- name: Restart Calico CNI so it picks up rotated apiserver tokens
+  hosts: all
+  gather_facts: false
+  become: true
+
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
+  tasks:
+    - name: Delete calico-node pods (DaemonSet recreates them with a fresh kubeconfig)
+      ansible.builtin.command:
+        cmd: microk8s kubectl -n kube-system delete pods -l k8s-app=calico-node
+      changed_when: true
+
+    - name: Wait for the new calico-node pods to be Ready
+      ansible.builtin.command:
+        cmd: microk8s kubectl -n kube-system rollout status daemonset/calico-node --timeout=300s
+      changed_when: false
