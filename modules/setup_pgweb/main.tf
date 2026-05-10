@@ -140,8 +140,8 @@ module "pgweb_oauth2_proxy" {
   depends_on = [kubernetes_deployment_v1.pgweb]
 }
 
-resource "kubernetes_manifest" "pgweb_ingressroute" {
-  manifest = {
+resource "kubectl_manifest" "pgweb_ingressroute" {
+  yaml_body = yamlencode({
     apiVersion = "traefik.io/v1alpha1"
     kind       = "IngressRoute"
     metadata = {
@@ -161,7 +161,7 @@ resource "kubernetes_manifest" "pgweb_ingressroute" {
         },
       ]
     }
-  }
+  })
 
   depends_on = [module.pgweb_oauth2_proxy]
 }

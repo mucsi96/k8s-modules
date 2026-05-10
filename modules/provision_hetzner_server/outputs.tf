@@ -9,19 +9,34 @@ output "ipv6_address" {
 }
 
 output "username" {
-  description = "Initial sudo user name created via cloud-init."
+  description = "Sudo user created via cloud-init."
   value       = var.username
 }
 
-output "initial_password" {
-  description = "Random password set for the initial sudo user via cloud-init."
-  value       = random_password.initial.result
+output "ssh_port" {
+  description = "Custom SSH port baked into the cloud-init sshd drop-in."
+  value       = random_integer.ssh_port.result
+}
+
+output "ssh_private_key" {
+  description = "Generated SSH private key in OpenSSH format. Stored in Key Vault for ad-hoc operator SSH; the apply itself uses ssh-agent."
+  value       = tls_private_key.user.private_key_openssh
   sensitive   = true
 }
 
-output "ssh_port" {
-  description = "Initial SSH port exposed by the Hetzner Cloud image (always 22)."
-  value       = 22
+output "ssh_public_key" {
+  description = "Generated SSH public key in OpenSSH format, installed via cloud-init."
+  value       = tls_private_key.user.public_key_openssh
+}
+
+output "agent_loaded" {
+  description = "Sentinel that lets downstream modules wait until the SSH key has been added to ssh-agent."
+  value       = terraform_data.ssh_agent_loaded.id
+}
+
+output "ssh_ready" {
+  description = "Sentinel that lets downstream modules wait until cloud-init has finished and sshd is reachable on the custom port. Transitively depends on agent_loaded."
+  value       = terraform_data.ssh_ready.id
 }
 
 output "server_id" {

@@ -1,20 +1,42 @@
 #cloud-config
+disable_root: true
+ssh_pwauth: false
+package_update: true
+package_upgrade: false
 users:
   - name: ${username}
     groups: [sudo]
     shell: /bin/bash
-    sudo: 'ALL=(ALL) ALL'
-    lock_passwd: false
-chpasswd:
-  expire: false
-  users:
-    - name: ${username}
-      password: ${jsonencode(password)}
-      type: text
-ssh_pwauth: true
-package_update: true
-package_upgrade: false
+    sudo: 'ALL=(ALL) NOPASSWD:ALL'
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ${ssh_public_key}
+write_files:
+  - path: /etc/ssh/sshd_config.d/00-k8s-modules.conf
+    owner: root:root
+    permissions: '0644'
+    content: |
+      Port ${ssh_port}
+      PasswordAuthentication no
+      PermitRootLogin no
+      KbdInteractiveAuthentication no
+      PubkeyAuthentication yes
 runcmd:
-  - install -d -m 755 /etc/ssh/sshd_config.d
-  - printf 'PasswordAuthentication yes\nPermitRootLogin yes\nKbdInteractiveAuthentication yes\n' > /etc/ssh/sshd_config.d/00-cloud-init-bootstrap.conf
-  - systemctl restart ssh || systemctl restart sshd
+  # Hetzner's Ubuntu cloud image ships root's shadow entry with last-password-
+  # change set to 0, which PAM treats as "password expired". Root stays locked
+  # so nothing can log in as root, but any sudo invocation _from_ root (e.g.
+  # the snap install hook spawned by snapd) trips PAM and fails with "Account
+  # or password is expired, reset your password and try again". The previous
+  # Ansible workflow accidentally papered over this by setting a fresh root
+  # password; here we just clear the expiry — root remains unloginable.
+  - chage -d $(date +%Y-%m-%d) -E -1 -M -1 root
+  # Ubuntu 24.04 cloud images ship a socket-activated SSH (ssh.socket listens
+  # on :22 and starts ssh.service on connect). That bypasses the Port directive
+  # in our sshd_config drop-in: ssh.service never opens the custom port even
+  # after a restart, because the socket is the active listener. Disable the
+  # socket and run sshd as a regular service so the drop-in's Port takes
+  # effect. The `|| true` is for non-Noble images that ship without ssh.socket.
+  - systemctl daemon-reload
+  - systemctl disable --now ssh.socket 2>/dev/null || true
+  - systemctl enable ssh.service
+  - systemctl restart ssh.service

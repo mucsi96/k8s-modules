@@ -1,28 +1,34 @@
 #!/bin/bash
 
-set -euo pipefail
+# Two-pass destroy. The first pass is a normal `terraform destroy` and is the
+# common path. The second pass exists for one specific recovery case: a
+# destroy is in-flight, but the cluster's microk8s went away outside Terraform
+# (e.g. an earlier botched apply that left microk8s broken, followed by
+# `snap remove microk8s --purge`). The Hetzner VM is still up, but every
+# kubernetes_* / helm_release / kubectl_manifest delete call against the
+# (now closed) apiserver port fails with "connection refused" and the destroy
+# stalls. The underlying objects are gone with the cluster, so the safe
+# recovery is to drop those references from state and continue destroying the
+# rest (the VM, Key Vault secrets, Azure AD apps, ...).
+
+set -uo pipefail
 
 source .venv/bin/activate
 
-terraform destroy -target=module.setup_cluster.ansible_playbook.secure_private_server
+if terraform destroy -auto-approve "$@"; then
+  exit 0
+fi
 
-ssh_host=$(az keyvault secret show --vault-name p06 --name "host" --query value --output tsv)
-ssh_user=$(az keyvault secret show --vault-name p06 --name "ssh-user-name" --query value --output tsv)
-ssh_port=$(az keyvault secret show --vault-name p06 --name "ssh-port" --query value --output tsv)
-ssh_key_path="modules/setup_cluster/.generated/${ssh_host}-id_ed25519"
-user_password=$(az keyvault secret show --vault-name p06 --name "user-password" --query value --output tsv)
-initial_password=$(az keyvault secret show --vault-name p06 --name "ssh-initial-password" --query value --output tsv)
-initial_port=$(az keyvault secret show --vault-name p06 --name "ssh-initial-port" --query value --output tsv)
+echo
+echo "First-pass destroy did not complete cleanly. If the failures above are"
+echo "'connection refused' against the cluster API, microk8s is gone and the"
+echo "kubernetes_/helm_release/kubectl_manifest resources in state cannot be"
+echo "deleted via the API. Dropping those from state and retrying."
+echo
 
-ansible-playbook \
-  -i "$ssh_host," \
-  modules/setup_cluster/revert_secure_private_server.yaml \
-  --extra-vars "ansible_user=$ssh_user" \
-  --extra-vars "ansible_port=$ssh_port" \
-  --extra-vars "ansible_ssh_private_key_file=$ssh_key_path" \
-  --extra-vars "user_password=$user_password" \
-  --extra-vars "initial_username=$ssh_user" \
-  --extra-vars "initial_password=$initial_password" \
-  --extra-vars "initial_port=$initial_port"
+while read -r addr; do
+  [ -z "$addr" ] && continue
+  terraform state rm "$addr" || true
+done < <(terraform state list | grep -E '\.(kubernetes_[a-z0-9_]+|kubectl_manifest|helm_release)\.' || true)
 
-terraform destroy
+terraform destroy -auto-approve "$@"

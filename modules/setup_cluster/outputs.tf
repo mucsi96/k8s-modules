@@ -1,25 +1,3 @@
-output "ssh_public_key" {
-  description = "Public SSH key in OpenSSH format generated for the provided user."
-  value       = tls_private_key.user.public_key_openssh
-}
-
-output "ssh_private_key" {
-  description = "Private SSH key in OpenSSH format generated for the provided user."
-  value       = tls_private_key.user.private_key_openssh
-}
-
-output "ssh_port" {
-  description = "Randomly selected SSH port."
-  value       = random_integer.ssh_port.result
-}
-
-output "user_password" {
-  description = "Password for the provided user."
-  value       = random_password.user_password.result
-  sensitive   = true
-}
-
-
 data "azurerm_key_vault" "kv" {
   name                = var.azure_key_vault_name
   resource_group_name = var.environment_name

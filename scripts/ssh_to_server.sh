@@ -2,81 +2,34 @@
 
 set -euo pipefail
 
-VAULT_NAME=${AZURE_KEYVAULT_NAME:-p06}
-SSH_HOST_SECRET=${SSH_HOST_SECRET:-host}
-SSH_USER_SECRET=${SSH_USER_SECRET:-ssh-user-name}
-SSH_PORT_SECRET=${SSH_PORT_SECRET:-ssh-port}
+# Reads connection details straight from Terraform state — the authoritative
+# source on the machine that ran `terraform apply`. Key Vault mirrors are kept
+# for tooling that cannot read state, but this script bypasses them so a stale
+# pre-refactor `host` secret cannot send SSH at the wrong box.
 
-get_secret() {
-  local secret_name=$1
-
-  az keyvault secret show \
-    --vault-name "$VAULT_NAME" \
-    --name "$secret_name" \
-    --query value \
-    --output tsv
-}
-
-if ! command -v az >/dev/null 2>&1; then
-  echo "Azure CLI (az) is required but not installed." >&2
+if ! command -v terraform >/dev/null 2>&1; then
+  echo "terraform is required but not installed." >&2
   exit 1
 fi
 
-ssh_host=${SSH_HOST:-$(get_secret "$SSH_HOST_SECRET")}
+ssh_host=${SSH_HOST:-$(terraform output -raw hcloud_ipv4_address)}
+ssh_user=${SSH_USER:-$(terraform output -raw hcloud_ssh_user)}
+ssh_port=${SSH_PORT:-$(terraform output -raw hcloud_ssh_port)}
 
-if [ -z "$ssh_host" ]; then
-  echo "Unable to retrieve SSH host from Key Vault." >&2
+if [ -z "$ssh_host" ] || [ -z "$ssh_user" ] || [ -z "$ssh_port" ]; then
+  echo "Could not read host / user / port from terraform output. Has the cluster been applied?" >&2
   exit 1
 fi
 
-ssh_user=${SSH_USER:-$(get_secret "$SSH_USER_SECRET")}
-
-if [ -z "$ssh_user" ]; then
-  echo "Unable to retrieve SSH user from Key Vault." >&2
-  exit 1
-fi
-
-ssh_key_path=${SSH_IDENTITY_PATH:-"modules/setup_cluster/.generated/${ssh_host}-id_ed25519"}
-
-if [ ! -f "$ssh_key_path" ]; then
-  echo "SSH identity file not found at $ssh_key_path" >&2
-  exit 1
-fi
-
-chmod 600 "$ssh_key_path"
-
-ssh_port=$(get_secret "$SSH_PORT_SECRET")
-
-if [ -z "$ssh_port" ]; then
-  echo "Unable to retrieve SSH port from Key Vault." >&2
-  exit 1
-fi
-
-
-# echo "Copying files to the server..."
-# scp \
-#   -i "$ssh_key_path" \
-#   -P "$ssh_port" \
-#   -r \
-#   sources \
-#   "$ssh_user@$ssh_host:~/"
-
-# echo "Copy file from the server..."
-# scp \
-#   -i "$ssh_key_path" \
-#   -P "$ssh_port" \
-#   "$ssh_user@$ssh_host:~/e7fc892d-2ddf-440e-bd7b-ba0771931d4a.webp" \
-#   .
-# scp \
-#   -i "$ssh_key_path" \
-#   -P "$ssh_port" \
-#   "$ssh_user@$ssh_host:~/df2a457a-7d49-4cc4-b1ea-3e5f9186cab0.webp" \
-#   .
-
-
+# Use a per-invocation ssh-agent so the private key never lands on disk and
+# the parent shell's agent (if any) is not mutated. Killed on exit.
+eval "$(ssh-agent -s)" >/dev/null
+trap 'ssh-agent -k >/dev/null 2>&1 || true' EXIT
+terraform output -raw hcloud_ssh_private_key | ssh-add - >/dev/null 2>&1
 
 ssh \
-  -i "$ssh_key_path" \
   -p "$ssh_port" \
+  -o StrictHostKeyChecking=no \
+  -o UserKnownHostsFile=/dev/null \
   "$ssh_user@$ssh_host" \
   "$@"

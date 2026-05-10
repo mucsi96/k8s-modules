@@ -1,109 +1,33 @@
-
-
-resource "tls_private_key" "user" {
-  algorithm = "ED25519"
-}
-
-resource "random_password" "user_password" {
-  length           = 20
-  special          = true
-  override_special = "-_=+:[]{}"
-}
-
-resource "random_password" "root_password" {
-  length           = 20
-  special          = true
-  override_special = "-_=+:[]{}"
-}
-
-resource "random_integer" "ssh_port" {
-  min = 2000
-  max = 65000
-}
-
+# Common Ansible vars: SSH via the agent loaded by provision_hetzner_server.
+# StrictHostKeyChecking=no is intentional — the host IP comes back from the
+# Hetzner Cloud API over TLS seconds before the first connect, so first-connect
+# host-key verification adds plumbing without practical security.
 locals {
-  user_private_key_path = "${path.module}/.generated/${var.host}-id_ed25519"
-}
+  ansible_ssh_common_args = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
-# Use terraform_data + local-exec instead of local_sensitive_file. The local
-# provider's Read drops local_sensitive_file from state whenever the file is
-# absent on disk, which made every apply replay "Creating..." even though the
-# SSH key in state hadn't changed. terraform_data's state is independent of
-# disk, so the provisioner only re-runs when triggers_replace actually changes.
-# Dependent resources reference .input (not .output) so the path is known at
-# plan time -- otherwise data.azurerm_key_vault_secret.k8s_* (which depends_on
-# install_microk8s) gets deferred to apply, leaving the kubernetes provider
-# without a host and falling back to localhost on refresh.
-resource "terraform_data" "user_private_key" {
-  input = local.user_private_key_path
-
-  triggers_replace = {
-    key_id   = tls_private_key.user.id
-    filename = local.user_private_key_path
-  }
-
-  provisioner "local-exec" {
-    interpreter = ["/bin/bash", "-c"]
-    command     = <<-EOT
-      set -euo pipefail
-      install -m 0700 -d "$(dirname "$KEY_FILE")"
-      umask 077
-      printf '%s' "$SSH_KEY" > "$KEY_FILE"
-      chmod 0600 "$KEY_FILE"
-    EOT
-    environment = {
-      SSH_KEY  = tls_private_key.user.private_key_openssh
-      KEY_FILE = local.user_private_key_path
-    }
-  }
-}
-
-resource "terraform_data" "known_hosts_entry" {
-  provisioner "local-exec" {
-    interpreter = ["/bin/bash", "-lc"]
-    command     = <<-EOT
-      ssh-keyscan -H ${var.host} -p ${var.initial_port} >> ~/.ssh/known_hosts
-    EOT
-  }
-
-  triggers_replace = {
-    host = var.host
-  }
-}
-
-resource "ansible_playbook" "secure_private_server" {
-  name       = var.host
-  playbook   = "${path.module}/secure_private_server.yaml"
-  replayable = false
-
-  extra_vars = {
-    ansible_port            = var.initial_port
+  ansible_connection_vars = {
+    ansible_port            = tostring(var.ssh_port)
     ansible_user            = var.username
-    ansible_become_password = var.initial_password
-    ansible_ssh_pass        = var.initial_password
-
-    public_key        = tls_private_key.user.public_key_openssh
-    password          = random_password.user_password.result
-    new_root_password = random_password.root_password.result
-    ssh_port          = tostring(random_integer.ssh_port.result)
+    ansible_ssh_common_args = local.ansible_ssh_common_args
   }
-
-  depends_on = [terraform_data.known_hosts_entry]
 }
 
+# Folding var.wait_for into extra_vars (rather than a side terraform_data with
+# a depends_on edge) is what actually serializes against ssh_ready. A
+# terraform_data sentinel updates its `input` field in-place silently, so
+# `depends_on` on it is a no-op barrier — Terraform schedules the dependent
+# in parallel. Putting var.wait_for inside extra_vars forces the data-flow
+# tracker to wait for the value to be known, which cannot happen until
+# ssh_ready has finished polling the new sshd port. The value is passed to
+# ansible-playbook as --extra-vars _wait_for=...; the playbook ignores it.
 resource "ansible_playbook" "system_update" {
   name       = var.host
   playbook   = "${path.module}/system_update.yaml"
   replayable = false
 
-  extra_vars = {
-    ansible_port                 = tostring(random_integer.ssh_port.result)
-    ansible_user                 = var.username
-    ansible_become_password      = random_password.user_password.result
-    ansible_ssh_private_key_file = terraform_data.user_private_key.input
-  }
-
-  depends_on = [ansible_playbook.secure_private_server]
+  extra_vars = merge(local.ansible_connection_vars, {
+    _wait_for = coalesce(var.wait_for, "")
+  })
 }
 
 resource "terraform_data" "wait_for_system" {
@@ -117,13 +41,12 @@ resource "terraform_data" "wait_for_system" {
     ]
 
     connection {
-      type        = "ssh"
-      host        = var.host
-      port        = random_integer.ssh_port.result
-      user        = var.username
-      private_key = tls_private_key.user.private_key_openssh
-      timeout     = "10m"
-      agent       = false
+      type    = "ssh"
+      host    = var.host
+      port    = var.ssh_port
+      user    = var.username
+      agent   = true
+      timeout = "10m"
     }
   }
 
@@ -135,15 +58,11 @@ resource "ansible_playbook" "install_microk8s" {
   playbook   = "${path.module}/install_microk8s.yaml"
   replayable = false
 
-  extra_vars = {
-    ansible_port                 = tostring(random_integer.ssh_port.result)
-    ansible_user                 = var.username
-    ansible_become_password      = random_password.user_password.result
-    ansible_ssh_private_key_file = terraform_data.user_private_key.input
-    azure_key_vault_name         = var.azure_key_vault_name
-    azure_subscription_id        = var.azure_subscription_id
-    local_python_interpreter     = var.local_python_interpreter
-  }
+  extra_vars = merge(local.ansible_connection_vars, {
+    azure_key_vault_name     = var.azure_key_vault_name
+    azure_subscription_id    = var.azure_subscription_id
+    local_python_interpreter = var.local_python_interpreter
+  })
 
   lifecycle {
     ignore_changes = [extra_vars["local_python_interpreter"]]
@@ -157,12 +76,7 @@ resource "ansible_playbook" "configure_dns" {
   playbook   = "${path.module}/configure_dns.yaml"
   replayable = false
 
-  extra_vars = {
-    ansible_port                 = tostring(random_integer.ssh_port.result)
-    ansible_user                 = var.username
-    ansible_become_password      = random_password.user_password.result
-    ansible_ssh_private_key_file = terraform_data.user_private_key.input
-  }
+  extra_vars = local.ansible_connection_vars
 
   depends_on = [ansible_playbook.install_microk8s]
 }
@@ -177,17 +91,13 @@ resource "ansible_playbook" "publish_microk8s_oidc" {
   playbook   = "${path.module}/publish_microk8s_oidc.yaml"
   replayable = false
 
-  extra_vars = {
-    ansible_port                 = tostring(random_integer.ssh_port.result)
-    ansible_user                 = var.username
-    ansible_become_password      = random_password.user_password.result
-    ansible_ssh_private_key_file = terraform_data.user_private_key.input
-    resource_group               = var.environment_name
-    storage_account_name         = var.storage_account_name
-    issuer                       = data.azurerm_storage_account.oidc.primary_web_endpoint
-    azwi_version                 = "v1.5.1"
-    local_python_interpreter     = var.local_python_interpreter
-  }
+  extra_vars = merge(local.ansible_connection_vars, {
+    resource_group           = var.environment_name
+    storage_account_name     = var.storage_account_name
+    issuer                   = data.azurerm_storage_account.oidc.primary_web_endpoint
+    azwi_version             = "v1.5.1"
+    local_python_interpreter = var.local_python_interpreter
+  })
 
   lifecycle {
     ignore_changes = [extra_vars["local_python_interpreter"]]
@@ -201,13 +111,9 @@ resource "ansible_playbook" "configure_microk8s_oidc" {
   playbook   = "${path.module}/configure_microk8s_oidc.yaml"
   replayable = false
 
-  extra_vars = {
-    ansible_port                 = tostring(random_integer.ssh_port.result)
-    ansible_user                 = var.username
-    ansible_become_password      = random_password.user_password.result
-    ansible_ssh_private_key_file = terraform_data.user_private_key.input
-    issuer                       = data.azurerm_storage_account.oidc.primary_web_endpoint
-  }
+  extra_vars = merge(local.ansible_connection_vars, {
+    issuer = data.azurerm_storage_account.oidc.primary_web_endpoint
+  })
 
   depends_on = [ansible_playbook.publish_microk8s_oidc]
 }
@@ -230,22 +136,57 @@ resource "ansible_playbook" "configure_microk8s_apiserver_oidc" {
   playbook   = "${path.module}/configure_microk8s_apiserver_oidc.yaml"
   replayable = false
 
-  extra_vars = {
-    ansible_port                 = tostring(random_integer.ssh_port.result)
-    ansible_user                 = var.username
-    ansible_become_password      = random_password.user_password.result
-    ansible_ssh_private_key_file = terraform_data.user_private_key.input
-    oidc_issuer_url              = var.apiserver_oidc.issuer_url
-    oidc_client_id               = var.apiserver_oidc.client_id
-    oidc_username_claim          = var.apiserver_oidc.username_claim
-    oidc_groups_claim            = var.apiserver_oidc.groups_claim == null ? "" : var.apiserver_oidc.groups_claim
-  }
+  extra_vars = merge(local.ansible_connection_vars, {
+    oidc_issuer_url     = var.apiserver_oidc.issuer_url
+    oidc_client_id      = var.apiserver_oidc.client_id
+    oidc_username_claim = var.apiserver_oidc.username_claim
+    oidc_groups_claim   = var.apiserver_oidc.groups_claim == null ? "" : var.apiserver_oidc.groups_claim
+  })
 
   lifecycle {
     replace_triggered_by = [terraform_data.apiserver_oidc_args[0]]
   }
 
   depends_on = [ansible_playbook.configure_microk8s_oidc]
+}
+
+# Captures the IDs of the playbooks that can rotate the calico service-account
+# token (snap install/refresh, OIDC apiserver flag changes). When any of those
+# playbooks is replaced — e.g. on first apply, on a manual `-replace`, or on
+# an apiserver_oidc config change — this terraform_data is replaced too, which
+# in turn causes ansible_playbook.restart_calico to be replaced via
+# replace_triggered_by. Routine applies that touch nothing here leave it alone.
+resource "terraform_data" "calico_restart_trigger" {
+  triggers_replace = {
+    install_microk8s_id          = ansible_playbook.install_microk8s.id
+    configure_microk8s_oidc_id   = ansible_playbook.configure_microk8s_oidc.id
+    configure_apiserver_oidc_id  = try(ansible_playbook.configure_microk8s_apiserver_oidc[0].id, "")
+  }
+}
+
+# Force the Calico CNI to pick up rotated apiserver tokens before the next
+# helm release tries to schedule pods. install_microk8s, configure_microk8s_oidc
+# and configure_microk8s_apiserver_oidc can each rotate the calico
+# service-account token, but the on-host /etc/cni/net.d/calico-kubeconfig only
+# gets rewritten when the calico-node pod restarts — otherwise every new pod
+# sandbox creation fails with "connection is unauthorized: Unauthorized" and
+# downstream helm_releases (workload_identity_webhook, traefik, ...) hang.
+resource "ansible_playbook" "restart_calico" {
+  name       = var.host
+  playbook   = "${path.module}/restart_calico.yaml"
+  replayable = false
+
+  extra_vars = local.ansible_connection_vars
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.calico_restart_trigger]
+  }
+
+  depends_on = [
+    ansible_playbook.install_microk8s,
+    ansible_playbook.configure_microk8s_oidc,
+    ansible_playbook.configure_microk8s_apiserver_oidc,
+  ]
 }
 
 resource "helm_release" "workload_identity_webhook" {
@@ -262,5 +203,6 @@ resource "helm_release" "workload_identity_webhook" {
   depends_on = [
     ansible_playbook.configure_microk8s_oidc,
     ansible_playbook.configure_microk8s_apiserver_oidc,
+    ansible_playbook.restart_calico,
   ]
 }

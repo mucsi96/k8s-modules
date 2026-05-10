@@ -1,24 +1,17 @@
 variable "host" {
-  description = "DNS name or IP address of the target Linux host accessible over SSH."
+  description = "Public IPv4 address (or DNS name) of the target Hetzner Cloud server."
   type        = string
 }
 
-variable "initial_port" {
-  description = "SSH port used to reach the target host."
+variable "ssh_port" {
+  description = "SSH port the server listens on (set by cloud-init at provisioning time)."
   type        = number
 }
 
 variable "username" {
-  description = "Name of the user on the target host."
+  description = "Sudo user on the target host. Must have NOPASSWD sudo configured by cloud-init."
   type        = string
 }
-
-variable "initial_password" {
-  description = "Initial password for the user on the target host."
-  type        = string
-  sensitive   = true
-}
-
 
 variable "azure_key_vault_name" {
   description = "Name of the Azure Key Vault to store Kubernetes secrets."
@@ -60,4 +53,10 @@ variable "apiserver_oidc" {
     groups_claim   = optional(string)
   })
   default = null
+}
+
+variable "wait_for" {
+  description = "Optional dependency token (e.g. provision_hetzner_server.ssh_ready). Threaded through ansible_playbook.system_update.extra_vars so Terraform's data-flow tracker serializes Ansible execution behind ssh_ready — i.e. until ssh-agent has the key AND cloud-init has finished bringing sshd up on the custom port. depends_on on a terraform_data sentinel does not serialize correctly here."
+  type        = string
+  default     = null
 }
