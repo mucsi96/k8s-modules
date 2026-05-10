@@ -158,9 +158,9 @@ resource "ansible_playbook" "configure_microk8s_apiserver_oidc" {
 # replace_triggered_by. Routine applies that touch nothing here leave it alone.
 resource "terraform_data" "calico_restart_trigger" {
   triggers_replace = {
-    install_microk8s_id          = ansible_playbook.install_microk8s.id
-    configure_microk8s_oidc_id   = ansible_playbook.configure_microk8s_oidc.id
-    configure_apiserver_oidc_id  = try(ansible_playbook.configure_microk8s_apiserver_oidc[0].id, "")
+    install_microk8s_id         = ansible_playbook.install_microk8s.id
+    configure_microk8s_oidc_id  = ansible_playbook.configure_microk8s_oidc.id
+    configure_apiserver_oidc_id = try(ansible_playbook.configure_microk8s_apiserver_oidc[0].id, "")
   }
 }
 
