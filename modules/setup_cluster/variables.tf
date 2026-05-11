@@ -40,8 +40,13 @@ variable "azure_tenant_id" {
 }
 
 variable "owner" {
-  description = "Object ID of the owner for the Entra application that represents the kube-apiserver."
+  description = "Object ID of the owner for the Entra applications this module creates (apiserver app, cluster monitor app)."
   type        = string
+}
+
+variable "cluster_monitor_redirect_uris" {
+  description = "OAuth2 callback URIs for the cluster monitor (Headlamp) Entra application — typically the oauth2-proxy callback served by the dashboard ingress."
+  type        = list(string)
 }
 
 variable "local_python_interpreter" {

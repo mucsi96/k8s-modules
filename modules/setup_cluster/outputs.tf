@@ -77,3 +77,14 @@ output "apiserver_oidc_issuer_url" {
   description = "Entra v2 issuer URL trusted by kube-apiserver (--oidc-issuer-url). Derived from azure_tenant_id; exposed so callers don't have to recompute it."
   value       = local.apiserver_oidc_issuer_url
 }
+
+output "cluster_monitor_client_id" {
+  description = "Entra application client_id for the cluster monitor (Headlamp) dashboard. Wired into the dashboard's oauth2-proxy as its OIDC client_id."
+  value       = azuread_application.cluster_monitor.client_id
+}
+
+output "cluster_monitor_client_secret" {
+  description = "Client secret paired with cluster_monitor_client_id; consumed by the dashboard's oauth2-proxy."
+  value       = azuread_application_password.cluster_monitor.value
+  sensitive   = true
+}

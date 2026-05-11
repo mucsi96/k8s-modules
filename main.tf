@@ -153,18 +153,19 @@ module "provision_hetzner_server" {
 }
 
 module "setup_cluster" {
-  source                   = "./modules/setup_cluster"
-  host                     = module.provision_hetzner_server.ipv4_address
-  ssh_port                 = module.provision_hetzner_server.ssh_port
-  username                 = module.provision_hetzner_server.username
-  azure_key_vault_name     = data.azurerm_key_vault.kv.name
-  environment_name         = var.environment_name
-  azure_subscription_id    = var.azure_subscription_id
-  storage_account_name     = var.storage_account_name
-  azure_tenant_id          = data.azurerm_client_config.current.tenant_id
-  owner                    = local.owner
-  local_python_interpreter = var.local_python_interpreter
-  wait_for                 = module.provision_hetzner_server.ssh_ready
+  source                        = "./modules/setup_cluster"
+  host                          = module.provision_hetzner_server.ipv4_address
+  ssh_port                      = module.provision_hetzner_server.ssh_port
+  username                      = module.provision_hetzner_server.username
+  azure_key_vault_name          = data.azurerm_key_vault.kv.name
+  environment_name              = var.environment_name
+  azure_subscription_id         = var.azure_subscription_id
+  storage_account_name          = var.storage_account_name
+  azure_tenant_id               = data.azurerm_client_config.current.tenant_id
+  owner                         = local.owner
+  cluster_monitor_redirect_uris = ["https://${local.k8s_dashboard_hostname}/oauth2/callback"]
+  local_python_interpreter      = var.local_python_interpreter
+  wait_for                      = module.provision_hetzner_server.ssh_ready
 }
 
 # Cluster-admin binding for the human running Terraform. App deploy SPs are
@@ -198,14 +199,6 @@ locals {
   grafana_hostname       = "grafana.${data.azurerm_key_vault_secret.dns_zone.value}"
   prometheus_hostname    = "prometheus.${data.azurerm_key_vault_secret.dns_zone.value}"
   pgweb_hostname       = "db.${data.azurerm_key_vault_secret.dns_zone.value}"
-}
-
-module "register_headlamp_dashboard" {
-  source = "./modules/register_webapp"
-
-  display_name  = "Headlamp - ${var.environment_name}"
-  owner         = local.owner
-  redirect_uris = ["https://${local.k8s_dashboard_hostname}/oauth2/callback"]
 }
 
 module "register_grafana_dashboard" {
@@ -460,8 +453,8 @@ module "setup_k8s_dashboard" {
   source                     = "./modules/setup_k8s_dashboard"
   hostname                   = local.k8s_dashboard_hostname
   tenant_id                  = data.azurerm_client_config.current.tenant_id
-  client_id                  = module.register_headlamp_dashboard.client_id
-  client_secret              = module.register_headlamp_dashboard.client_secret
+  client_id                  = module.setup_cluster.cluster_monitor_client_id
+  client_secret              = module.setup_cluster.cluster_monitor_client_secret
   valid_email                = data.azurerm_key_vault_secret.letsencrypt_email.value
   headlamp_chart_version     = "0.41.0"  #https://github.com/headlamp-k8s/headlamp/releases
   headlamp_image_version     = "v0.41.0" #https://github.com/headlamp-k8s/headlamp/releases
