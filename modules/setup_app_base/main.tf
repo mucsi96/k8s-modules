@@ -30,11 +30,6 @@ resource "kubernetes_role_binding_v1" "deploy" {
   }
 }
 
-moved {
-  from = kubernetes_role_binding.deploy
-  to   = kubernetes_role_binding_v1.deploy
-}
-
 # Kubeconfig that delegates to kubelogin; published to the app KV as `k8s-config`
 # and to the app repo as the `K8S_CONFIG` GitHub Actions secret. No bearer
 # secret embedded — the deploy SP gets its token at runtime via kubelogin

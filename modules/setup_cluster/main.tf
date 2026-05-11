@@ -236,8 +236,3 @@ resource "kubernetes_cluster_role_binding_v1" "oidc_human_admin" {
     ansible_playbook.restart_calico,
   ]
 }
-
-moved {
-  from = kubernetes_cluster_role_binding.oidc_human_admin
-  to   = kubernetes_cluster_role_binding_v1.oidc_human_admin
-}
