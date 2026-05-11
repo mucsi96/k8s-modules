@@ -8,7 +8,7 @@ resource "github_actions_secret" "twingate_service_key" {
 resource "github_actions_secret" "k8s_config" {
   repository  = var.github_repository
   secret_name = "K8S_CONFIG"
-  value       = local.k8s_kubelogin_config
+  value       = var.k8s_oidc_config
 }
 
 resource "github_actions_secret" "hostname" {

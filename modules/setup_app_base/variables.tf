@@ -84,7 +84,8 @@ variable "api_resource_object_id" {
   type        = string
 }
 
-variable "apiserver_client_id" {
-  description = "Entra application client_id of the Kubernetes API server (output apiserver_oidc_client_id of setup_cluster). Baked into the kubelogin exec block as --server-id so the per-app deploy SP can mint tokens with the apiserver as the audience."
+variable "k8s_oidc_config" {
+  description = "Rendered kubelogin kubeconfig (output k8s_oidc_config of setup_cluster). Published as the app's `k8s-config` Key Vault secret and as the `K8S_CONFIG` GitHub Actions secret."
   type        = string
+  sensitive   = true
 }

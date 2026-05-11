@@ -332,7 +332,7 @@ module "setup_backup_app" {
   hostname                   = data.azurerm_key_vault_secret.dns_zone.value
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   azure_subscription_id      = var.azure_subscription_id
-  apiserver_client_id        = module.setup_cluster.apiserver_oidc_client_id
+  k8s_oidc_config            = module.setup_cluster.k8s_oidc_config
   twingate_service_key       = module.setup_twingate.service_key
   wait_for                   = module.setup_ingress_controller.traefik_ready
 
@@ -389,7 +389,7 @@ module "setup_learn_language_app" {
   hostname                   = data.azurerm_key_vault_secret.dns_zone.value
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   azure_subscription_id      = var.azure_subscription_id
-  apiserver_client_id        = module.setup_cluster.apiserver_oidc_client_id
+  k8s_oidc_config            = module.setup_cluster.k8s_oidc_config
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password
@@ -408,7 +408,7 @@ module "setup_hello_app" {
   hostname                   = data.azurerm_key_vault_secret.dns_zone.value
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   azure_subscription_id      = var.azure_subscription_id
-  apiserver_client_id        = module.setup_cluster.apiserver_oidc_client_id
+  k8s_oidc_config            = module.setup_cluster.k8s_oidc_config
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password
@@ -511,7 +511,7 @@ module "setup_training_log_app" {
   hostname                   = data.azurerm_key_vault_secret.dns_zone.value
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   azure_subscription_id      = var.azure_subscription_id
-  apiserver_client_id        = module.setup_cluster.apiserver_oidc_client_id
+  k8s_oidc_config            = module.setup_cluster.k8s_oidc_config
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password

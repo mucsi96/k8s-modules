@@ -79,9 +79,10 @@ variable "twingate_service_key" {
   default     = null
 }
 
-variable "apiserver_client_id" {
-  description = "Entra application client_id of the Kubernetes API server. Forwarded to setup_app_base as the kubelogin --server-id."
+variable "k8s_oidc_config" {
+  description = "Rendered kubelogin kubeconfig from setup_cluster. Forwarded to setup_app_base as the app's k8s-config Key Vault secret and K8S_CONFIG GitHub Actions secret."
   type        = string
+  sensitive   = true
 }
 
 variable "wait_for" {

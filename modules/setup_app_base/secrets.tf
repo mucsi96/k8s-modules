@@ -28,7 +28,7 @@ resource "azurerm_role_assignment" "allow_deploy_to_read_kv" {
 resource "azurerm_key_vault_secret" "k8s_user_config" {
   key_vault_id = azurerm_key_vault.app_kv.id
   name         = "k8s-config"
-  value        = local.k8s_kubelogin_config
+  value        = var.k8s_oidc_config
   depends_on   = [azurerm_role_assignment.allow_owner_to_manage_kv]
 }
 
