@@ -120,7 +120,7 @@ resource "ansible_playbook" "configure_microk8s_oidc" {
 
 locals {
   apiserver_oidc_issuer_url     = "https://login.microsoftonline.com/${var.azure_tenant_id}/v2.0"
-  apiserver_oidc_client_id      = azuread_application.apiserver.client_id
+  apiserver_oidc_client_id      = azuread_application.cluster_monitor.client_id
   apiserver_oidc_username_claim = "oid"
 }
 

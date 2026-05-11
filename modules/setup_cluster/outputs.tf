@@ -69,7 +69,7 @@ output "oidc_issuer_url" {
 }
 
 output "apiserver_oidc_client_id" {
-  description = "Entra application client_id that kube-apiserver uses as --oidc-client-id. Pass to kubelogin as --server-id; matches the `aud` claim in tokens minted for the cluster."
+  description = "Entra application client_id that kube-apiserver uses as --oidc-client-id. Same app as cluster_monitor (one Entra app serves both roles): tokens minted by kubelogin --server-id, AND id_tokens issued to the dashboard's oauth2-proxy, all have this as their `aud`."
   value       = local.apiserver_oidc_client_id
 }
 
@@ -79,13 +79,13 @@ output "apiserver_oidc_issuer_url" {
 }
 
 output "cluster_monitor_client_id" {
-  description = "Entra application client_id for the cluster monitor (Headlamp) dashboard. Wired into the dashboard's oauth2-proxy as its OIDC client_id."
-  value       = module.cluster_monitor.client_id
+  description = "Entra application client_id for the cluster monitor (Headlamp) dashboard. Wired into the dashboard's oauth2-proxy as its OIDC client_id; the same app is also the apiserver's --oidc-client-id (see apiserver_oidc_client_id)."
+  value       = azuread_application.cluster_monitor.client_id
 }
 
 output "cluster_monitor_client_secret" {
   description = "Client secret paired with cluster_monitor_client_id; consumed by the dashboard's oauth2-proxy."
-  value       = module.cluster_monitor.client_secret
+  value       = azuread_application_password.cluster_monitor.value
   sensitive   = true
 }
 
