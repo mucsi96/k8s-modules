@@ -46,6 +46,50 @@ resource "azurerm_key_vault_secret" "k8s_admin_config" {
   value        = module.setup_cluster.k8s_config
 }
 
+# Non-secret kubeconfig that delegates authentication to kubelogin. The exec
+# block defaults to `azurecli` (humans run `az login` first); pipelines override
+# at runtime by exporting AAD_LOGIN_METHOD=workloadidentity alongside the
+# AZURE_* env vars set by azure/login@v2. Stored in Key Vault to mirror the
+# k8s-admin-config workflow (scripts/pull_kube_oidc_config.sh fetches it).
+resource "azurerm_key_vault_secret" "k8s_oidc_config" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "k8s-oidc-config"
+  value        = yamlencode({
+    apiVersion = "v1"
+    kind       = "Config"
+    clusters = [{
+      name = var.environment_name
+      cluster = {
+        server                       = module.setup_cluster.k8s_host
+        "certificate-authority-data" = base64encode(module.setup_cluster.k8s_cluster_ca_certificate)
+      }
+    }]
+    contexts = [{
+      name = var.environment_name
+      context = {
+        cluster = var.environment_name
+        user    = var.environment_name
+      }
+    }]
+    "current-context" = var.environment_name
+    users = [{
+      name = var.environment_name
+      user = {
+        exec = {
+          apiVersion = "client.authentication.k8s.io/v1beta1"
+          command    = "kubelogin"
+          args = [
+            "get-token",
+            "--login=azurecli",
+            "--server-id=${module.register_k8s_apiserver.client_id}",
+            "--tenant-id=${data.azurerm_client_config.current.tenant_id}",
+          ]
+        }
+      }
+    }]
+  })
+}
+
 resource "azurerm_key_vault_secret" "db_namespace_k8s_user_config" {
   key_vault_id = data.azurerm_key_vault.kv.id
   name         = "db-namespace-k8s-user-config"

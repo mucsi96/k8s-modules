@@ -166,9 +166,68 @@ module "setup_cluster" {
   wait_for                 = module.provision_hetzner_server.ssh_ready
 
   apiserver_oidc = {
-    issuer_url = "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/v2.0"
-    client_id  = module.register_headlamp_dashboard.client_id
+    issuer_url     = "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/v2.0"
+    client_id      = module.register_k8s_apiserver.client_id
+    username_claim = "oid"
   }
+}
+
+module "register_k8s_apiserver" {
+  source       = "./modules/register_k8s_apiserver"
+  display_name = "Kubernetes API server - ${var.environment_name}"
+  owner        = local.owner
+}
+
+module "register_github_k8s_deploy" {
+  source         = "./modules/register_github_k8s_deploy"
+  display_name   = "Kubernetes deploy - ${var.environment_name}"
+  owner          = local.owner
+  github_subject = var.github_deploy_subject
+}
+
+# RBAC bindings for OIDC subjects. The kubernetes provider above still
+# authenticates with the admin client cert pulled from Key Vault, so these
+# resources apply on first bootstrap without any chicken-and-egg with kubelogin.
+# Subject names are the raw `oid` claim because setup_cluster passes
+# username_claim = "oid" and the apiserver has --oidc-username-prefix=-.
+resource "kubernetes_cluster_role_binding" "oidc_human_admin" {
+  metadata {
+    name = "oidc-human-admin"
+  }
+
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "ClusterRole"
+    name      = "cluster-admin"
+  }
+
+  subject {
+    kind      = "User"
+    name      = local.owner
+    api_group = "rbac.authorization.k8s.io"
+  }
+
+  depends_on = [module.setup_cluster]
+}
+
+resource "kubernetes_cluster_role_binding" "oidc_deploy_admin" {
+  metadata {
+    name = "oidc-deploy-admin"
+  }
+
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "ClusterRole"
+    name      = "cluster-admin"
+  }
+
+  subject {
+    kind      = "User"
+    name      = module.register_github_k8s_deploy.service_principal_object_id
+    api_group = "rbac.authorization.k8s.io"
+  }
+
+  depends_on = [module.setup_cluster]
 }
 
 locals {

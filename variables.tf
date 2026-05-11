@@ -26,3 +26,8 @@ variable "local_python_interpreter" {
   type        = string
   default     = "./.venv/bin/python"
 }
+
+variable "github_deploy_subject" {
+  description = "Federated credential subject claim used by the GitHub Actions deploy pipeline that talks to the cluster via kubelogin -l workloadidentity. Example: repo:mucsi96/k8s-modules:ref:refs/heads/main, or repo:mucsi96/k8s-modules:environment:production."
+  type        = string
+}

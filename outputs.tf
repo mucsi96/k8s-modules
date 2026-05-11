@@ -18,3 +18,13 @@ output "hcloud_ssh_private_key" {
   value       = module.provision_hetzner_server.ssh_private_key
   sensitive   = true
 }
+
+output "k8s_oidc_apiserver_client_id" {
+  description = "Entra application client_id for the Kubernetes API server. Used as kube-apiserver --oidc-client-id, as kubelogin --server-id, and as the audience for tokens minted by kubelogin -l workloadidentity."
+  value       = module.register_k8s_apiserver.client_id
+}
+
+output "k8s_oidc_deploy_client_id" {
+  description = "Entra application client_id for the GitHub-federated deploy SP. Set as AZURE_CLIENT_ID in the GitHub Actions workflow (paired with azure/login@v2)."
+  value       = module.register_github_k8s_deploy.client_id
+}
