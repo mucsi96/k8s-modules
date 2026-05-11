@@ -45,7 +45,7 @@ resource "github_actions_secret" "dockerhub_token" {
 resource "github_actions_secret" "azure_client_id" {
   repository  = var.github_repository
   secret_name = "AZURE_CLIENT_ID"
-  value       = module.github_deploy.client_id
+  value       = azuread_application.github_deploy.client_id
 }
 
 resource "github_actions_secret" "azure_tenant_id" {

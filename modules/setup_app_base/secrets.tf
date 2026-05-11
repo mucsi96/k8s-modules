@@ -22,7 +22,7 @@ resource "azurerm_role_assignment" "allow_api_to_read_kv" {
 resource "azurerm_role_assignment" "allow_deploy_to_read_kv" {
   scope                = azurerm_key_vault.app_kv.id
   role_definition_name = "Key Vault Secrets User"
-  principal_id         = module.github_deploy.service_principal_object_id
+  principal_id         = azuread_service_principal.github_deploy.object_id
 }
 
 resource "azurerm_key_vault_secret" "k8s_user_config" {

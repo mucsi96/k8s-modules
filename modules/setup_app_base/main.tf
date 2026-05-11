@@ -6,23 +6,11 @@ module "create_namespace" {
   k8s_cluster_ca_certificate = var.k8s_cluster_ca_certificate
 }
 
-# Combined per-app SP: reads the app's Key Vault (azurerm_role_assignment in
-# secrets.tf) and deploys into the app's namespace (RoleBinding +
-# ClusterRoleBinding below). Replaces the previous puller-only SP wired via
-# register_github_oidc; AZURE_CLIENT_ID in the app's repo now points here.
-module "github_deploy" {
-  source = "../register_github_k8s_deploy"
-
-  display_name   = "GitHub Actions deploy - ${var.environment_name} - ${var.app_name}"
-  owner          = var.owner
-  github_subject = "repo:${var.github_repository_owner}/${var.github_repository}:ref:refs/heads/main"
-}
-
-# Bind the deploy SP to the per-namespace Role created by create_app_namespace.
-# Namespace and CRD reads are deliberately not granted — application charts
-# don't manage either of those, so the matching ClusterRole is not bound here.
-# Subject name is the SP's `oid` because the apiserver runs with
-# --oidc-username-claim=oid --oidc-username-prefix=-.
+# Bind the deploy SP (github_deploy.tf) to the per-namespace Role created by
+# create_app_namespace. Namespace and CRD reads are deliberately not granted —
+# application charts don't manage either of those, so the matching ClusterRole
+# is not bound here. Subject name is the SP's `oid` because the apiserver runs
+# with --oidc-username-claim=oid --oidc-username-prefix=-.
 resource "kubernetes_role_binding" "deploy" {
   metadata {
     name      = "${var.app_name}-deploy"
@@ -37,7 +25,7 @@ resource "kubernetes_role_binding" "deploy" {
 
   subject {
     kind      = "User"
-    name      = module.github_deploy.service_principal_object_id
+    name      = azuread_service_principal.github_deploy.object_id
     api_group = "rbac.authorization.k8s.io"
   }
 }
