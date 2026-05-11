@@ -46,6 +46,12 @@ resource "azurerm_key_vault_secret" "k8s_admin_config" {
   value        = module.setup_cluster.k8s_config
 }
 
+resource "azurerm_key_vault_secret" "k8s_oidc_config" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "k8s-oidc-config"
+  value        = module.setup_cluster.k8s_oidc_config
+}
+
 resource "azurerm_key_vault_secret" "db_namespace_k8s_user_config" {
   key_vault_id = data.azurerm_key_vault.kv.id
   name         = "db-namespace-k8s-user-config"

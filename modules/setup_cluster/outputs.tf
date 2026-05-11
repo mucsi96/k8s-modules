@@ -88,3 +88,48 @@ output "cluster_monitor_client_secret" {
   value       = module.cluster_monitor.client_secret
   sensitive   = true
 }
+
+# Non-secret kubeconfig that delegates authentication to kubelogin. Exec block
+# defaults to `azurecli` (humans run `az login` first); pipelines override at
+# runtime by exporting AAD_LOGIN_METHOD=workloadidentity alongside the AZURE_*
+# env vars set by azure/login@v3. Marked sensitive because it embeds the
+# cluster CA cert (already a sensitive output of this module); the root stores
+# it as the k8s-oidc-config Key Vault secret for scripts/pull_kube_oidc_config.sh.
+output "k8s_oidc_config" {
+  description = "Rendered kubelogin kubeconfig for humans (`az login`) and pipelines (AAD_LOGIN_METHOD=workloadidentity). Caller is expected to store this in Key Vault."
+  value = yamlencode({
+    apiVersion = "v1"
+    kind       = "Config"
+    clusters = [{
+      name = var.environment_name
+      cluster = {
+        server                       = data.azurerm_key_vault_secret.k8s_host.value
+        "certificate-authority-data" = base64encode(data.azurerm_key_vault_secret.k8s_cluster_ca_certificate.value)
+      }
+    }]
+    contexts = [{
+      name = var.environment_name
+      context = {
+        cluster = var.environment_name
+        user    = var.environment_name
+      }
+    }]
+    "current-context" = var.environment_name
+    users = [{
+      name = var.environment_name
+      user = {
+        exec = {
+          apiVersion = "client.authentication.k8s.io/v1beta1"
+          command    = "kubelogin"
+          args = [
+            "get-token",
+            "--login=azurecli",
+            "--server-id=${local.apiserver_oidc_client_id}",
+            "--tenant-id=${var.azure_tenant_id}",
+          ]
+        }
+      }
+    }]
+  })
+  sensitive = true
+}
