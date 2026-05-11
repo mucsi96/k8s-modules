@@ -16,6 +16,10 @@ terraform {
       source = "hashicorp/helm"
     }
 
+    kubernetes = {
+      source = "hashicorp/kubernetes"
+    }
+
     random = {
       source = "hashicorp/random"
     }

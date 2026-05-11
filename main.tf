@@ -168,32 +168,6 @@ module "setup_cluster" {
   wait_for                      = module.provision_hetzner_server.ssh_ready
 }
 
-# Cluster-admin binding for the human running Terraform. App deploy SPs are
-# bound per-namespace inside setup_app_base, not here. The kubernetes provider
-# above still authenticates with the admin client cert pulled from Key Vault,
-# so this resource applies on first bootstrap without any chicken-and-egg with
-# kubelogin. Subject names are the raw `oid` claim because setup_cluster runs
-# the apiserver with --oidc-username-claim=oid --oidc-username-prefix=-.
-resource "kubernetes_cluster_role_binding" "oidc_human_admin" {
-  metadata {
-    name = "oidc-human-admin"
-  }
-
-  role_ref {
-    api_group = "rbac.authorization.k8s.io"
-    kind      = "ClusterRole"
-    name      = "cluster-admin"
-  }
-
-  subject {
-    kind      = "User"
-    name      = local.owner
-    api_group = "rbac.authorization.k8s.io"
-  }
-
-  depends_on = [module.setup_cluster]
-}
-
 locals {
   k8s_dashboard_hostname = "k8s.${data.azurerm_key_vault_secret.dns_zone.value}"
   grafana_hostname       = "grafana.${data.azurerm_key_vault_secret.dns_zone.value}"

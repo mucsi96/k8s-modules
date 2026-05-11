@@ -207,3 +207,32 @@ resource "helm_release" "workload_identity_webhook" {
     ansible_playbook.restart_calico,
   ]
 }
+
+# Cluster-admin binding for the human running Terraform (subject = the owner's
+# Entra object id, matching the apiserver's --oidc-username-claim=oid). The
+# kubernetes provider is configured in the root from this module's admin-cert
+# outputs, so this resource applies on first bootstrap without any chicken-
+# and-egg with kubelogin.
+resource "kubernetes_cluster_role_binding" "oidc_human_admin" {
+  metadata {
+    name = "oidc-human-admin"
+  }
+
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "ClusterRole"
+    name      = "cluster-admin"
+  }
+
+  subject {
+    kind      = "User"
+    name      = var.owner
+    api_group = "rbac.authorization.k8s.io"
+  }
+
+  depends_on = [
+    ansible_playbook.configure_microk8s_oidc,
+    ansible_playbook.configure_microk8s_apiserver_oidc,
+    ansible_playbook.restart_calico,
+  ]
+}
