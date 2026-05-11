@@ -45,6 +45,13 @@ resource "helm_release" "headlamp" {
   })]
 }
 
+# oauth2-proxy authenticates *who can open the dashboard* but does not forward
+# the user's token to Headlamp. Headlamp talks to the apiserver as its own
+# in-cluster ServiceAccount (created by the helm chart above with
+# clusterRoleBinding.create = true / clusterRoleName = "view"), so the
+# apiserver-trusted Entra audience and the dashboard sign-in audience stay
+# decoupled. Every authorized user sees the same `view` of the cluster; per-
+# user RBAC inside the dashboard is intentionally not modelled here.
 module "headlamp_oauth2_proxy" {
   source = "../setup_oauth2_proxy"
 
@@ -59,40 +66,14 @@ module "headlamp_oauth2_proxy" {
   upstream_uri               = "http://${helm_release.headlamp.name}.${kubernetes_namespace_v1.k8s_dashboard.metadata[0].name}.svc.cluster.local:${local.headlamp_port}"
   session_redis              = var.session_redis
 
-  inject_request_headers = [{
-    name = "Authorization"
-    values = [{
-      claim  = "id_token"
-      prefix = "Bearer "
-    }]
-  }]
-
   depends_on = [helm_release.headlamp]
-}
-
-resource "kubernetes_cluster_role_binding_v1" "headlamp_user" {
-  metadata {
-    name = "headlamp-user"
-  }
-
-  subject {
-    kind      = "User"
-    name      = var.valid_email
-    api_group = "rbac.authorization.k8s.io"
-  }
-
-  role_ref {
-    kind      = "ClusterRole"
-    name      = "view"
-    api_group = "rbac.authorization.k8s.io"
-  }
 }
 
 # Read-only cluster-scoped extras Headlamp needs (cluster overview, metrics,
 # CRD discovery, storage). The aggregation label causes the kube-controller-
-# manager to merge these rules into the built-in `view` ClusterRole, so the
-# `headlamp-user` binding above gains them automatically without needing a
-# second binding.
+# manager to merge these rules into the built-in `view` ClusterRole, which the
+# Headlamp ServiceAccount is bound to via the helm chart's
+# clusterRoleBinding.create / clusterRoleName = "view" settings.
 resource "kubernetes_cluster_role_v1" "headlamp_view_extras" {
   metadata {
     name = "headlamp-view-extras"
