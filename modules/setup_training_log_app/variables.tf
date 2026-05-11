@@ -69,7 +69,7 @@ variable "twingate_service_key" {
 }
 
 variable "k8s_oidc_config" {
-  description = "Rendered kubelogin kubeconfig from setup_cluster. Forwarded to setup_app_base as the app's k8s-config Key Vault secret and K8S_CONFIG GitHub Actions secret."
+  description = "Rendered kubelogin kubeconfig from setup_cluster. Forwarded to setup_app_base as the app's k8s-config Key Vault secret."
   type        = string
   sensitive   = true
 }

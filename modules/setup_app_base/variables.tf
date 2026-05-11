@@ -85,7 +85,7 @@ variable "api_resource_object_id" {
 }
 
 variable "k8s_oidc_config" {
-  description = "Rendered kubelogin kubeconfig (output k8s_oidc_config of setup_cluster). Published as the app's `k8s-config` Key Vault secret and as the `K8S_CONFIG` GitHub Actions secret."
+  description = "Rendered kubelogin kubeconfig (output k8s_oidc_config of setup_cluster). Published as the app's `k8s-config` Key Vault secret."
   type        = string
   sensitive   = true
 }
