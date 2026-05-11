@@ -69,17 +69,17 @@ output "oidc_issuer_url" {
 }
 
 output "apiserver_oidc_client_id" {
-  description = "Entra application client_id that kube-apiserver uses as --oidc-client-id. kubelogin passes this as --server-id so its access_tokens carry the right `aud`. Deliberately distinct from cluster_monitor_client_id so a leaked dashboard session can't be replayed against the apiserver."
+  description = "Entra application client_id of the apiserver-audience Entra app. kubelogin passes this as --server-id so its access_tokens carry the right `aud`. The apiserver's structured-auth config maps tokens with this audience to a bare-`oid` Kubernetes username, distinct from the `headlamp:<oid>` username produced for cluster_monitor-audience tokens — so a leaked dashboard session can't be replayed as cluster-admin."
   value       = local.apiserver_oidc_client_id
 }
 
 output "apiserver_oidc_issuer_url" {
-  description = "Entra v2 issuer URL trusted by kube-apiserver (--oidc-issuer-url). Derived from azure_tenant_id; exposed so callers don't have to recompute it."
+  description = "Entra v2 issuer URL trusted by both JWT authenticators in the apiserver's structured-auth config. Derived from azure_tenant_id; exposed so callers don't have to recompute it."
   value       = local.apiserver_oidc_issuer_url
 }
 
 output "cluster_monitor_client_id" {
-  description = "Entra application client_id for the cluster monitor (Headlamp) dashboard. Wired into the dashboard's oauth2-proxy as its OIDC client_id. Not trusted by the apiserver — Headlamp talks to the apiserver as its own in-cluster ServiceAccount (bound to `view` by the helm chart)."
+  description = "Entra application client_id for the cluster monitor (Headlamp) dashboard. Wired into the dashboard's oauth2-proxy as its OIDC client_id. The apiserver trusts this audience too, but maps it to the prefixed username `headlamp:<oid>` (see oidc_dashboard_view) — so dashboard tokens are RBAC-isolated from kubelogin tokens."
   value       = module.cluster_monitor.client_id
 }
 

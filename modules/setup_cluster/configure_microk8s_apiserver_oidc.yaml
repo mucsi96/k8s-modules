@@ -1,68 +1,86 @@
-- name: Configure MicroK8s API server OIDC authentication
+- name: Configure MicroK8s API server structured authentication
   hosts: all
   gather_facts: false
   become: true
 
+  # Structured authentication (kube-apiserver --authentication-config) replaces
+  # the legacy --oidc-* flags. Two JWT authenticators are configured against
+  # the same Entra v2 issuer but different audiences:
+  #
+  #   1. apiserver app (kubelogin --server-id) — username = bare `oid`. The
+  #      oidc_human_admin and per-app CI RoleBindings key off this name.
+  #
+  #   2. cluster_monitor app (Headlamp's oauth2-proxy client) — username =
+  #      "headlamp:<oid>". Bound to `view` via oidc_dashboard_view, so a token
+  #      Headlamp forwards to the apiserver cannot escalate to the user's
+  #      cluster-admin binding.
+  #
+  # Requires k8s >= 1.30 (StructuredAuthenticationConfiguration enabled by
+  # default since 1.30 beta, GA in 1.32). MicroK8s latest/stable tracks
+  # upstream.
   vars:
     ansible_python_interpreter: /usr/bin/python3
     apiserver_args: /var/snap/microk8s/current/args/kube-apiserver
+    auth_config_path: /var/snap/microk8s/current/args/authentication-config.yaml
 
   tasks:
-    - name: Set apiserver --oidc-issuer-url
+    - name: Write apiserver authentication config
+      ansible.builtin.copy:
+        dest: "{{ auth_config_path }}"
+        owner: root
+        group: root
+        mode: "0600"
+        content: |
+          apiVersion: apiserver.config.k8s.io/v1
+          kind: AuthenticationConfiguration
+          jwt:
+            - issuer:
+                url: {{ oidc_issuer_url }}
+                audiences:
+                  - {{ apiserver_client_id }}
+              claimMappings:
+                username:
+                  claim: oid
+                  prefix: ""
+            - issuer:
+                url: {{ oidc_issuer_url }}
+                audiences:
+                  - {{ dashboard_client_id }}
+              claimMappings:
+                username:
+                  claim: oid
+                  prefix: "headlamp:"
+      register: auth_config
+
+    - name: Set apiserver --authentication-config
       ansible.builtin.lineinfile:
         path: "{{ apiserver_args }}"
-        regexp: '^--oidc-issuer-url='
-        line: "--oidc-issuer-url={{ oidc_issuer_url }}"
+        regexp: '^--authentication-config='
+        line: "--authentication-config={{ auth_config_path }}"
         state: present
-      register: oidc_issuer
+      register: auth_config_flag
 
-    - name: Set apiserver --oidc-client-id
+    # Legacy --oidc-* flags are mutually exclusive with --authentication-config;
+    # apiserver refuses to start if both are set. Strip them on first apply
+    # (and on any re-apply that finds them, in case of partial state).
+    - name: Remove legacy --oidc-* apiserver flags
       ansible.builtin.lineinfile:
         path: "{{ apiserver_args }}"
-        regexp: '^--oidc-client-id='
-        line: "--oidc-client-id={{ oidc_client_id }}"
-        state: present
-      register: oidc_client
+        regexp: "{{ item }}"
+        state: absent
+      loop:
+        - '^--oidc-issuer-url='
+        - '^--oidc-client-id='
+        - '^--oidc-username-claim='
+        - '^--oidc-username-prefix='
+        - '^--oidc-groups-claim='
+      register: legacy_oidc
 
-    - name: Set apiserver --oidc-username-claim
-      ansible.builtin.lineinfile:
-        path: "{{ apiserver_args }}"
-        regexp: '^--oidc-username-claim='
-        line: "--oidc-username-claim={{ oidc_username_claim }}"
-        state: present
-      register: oidc_username
-
-    - name: Set apiserver --oidc-username-prefix
-      ansible.builtin.lineinfile:
-        path: "{{ apiserver_args }}"
-        regexp: '^--oidc-username-prefix='
-        line: "--oidc-username-prefix=-"
-        state: present
-      register: oidc_username_prefix
-
-    - name: Set apiserver --oidc-groups-claim
-      ansible.builtin.lineinfile:
-        path: "{{ apiserver_args }}"
-        regexp: '^--oidc-groups-claim='
-        line: "--oidc-groups-claim={{ oidc_groups_claim }}"
-        state: "{{ 'present' if oidc_groups_claim | length > 0 else 'absent' }}"
-      register: oidc_groups
-
-    - name: Restart MicroK8s when any OIDC flag changed
+    - name: Restart MicroK8s when apiserver auth config changed
       ansible.builtin.command: snap restart microk8s
-      when: >
-        oidc_issuer.changed or
-        oidc_client.changed or
-        oidc_username.changed or
-        oidc_username_prefix.changed or
-        oidc_groups.changed
+      when: auth_config.changed or auth_config_flag.changed or legacy_oidc.changed
 
     - name: Wait for MicroK8s API to become ready
       ansible.builtin.command: microk8s status --wait-ready --timeout 600
       changed_when: false
-      when: >
-        oidc_issuer.changed or
-        oidc_client.changed or
-        oidc_username.changed or
-        oidc_username_prefix.changed or
-        oidc_groups.changed
+      when: auth_config.changed or auth_config_flag.changed or legacy_oidc.changed
