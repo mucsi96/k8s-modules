@@ -20,6 +20,7 @@ module "app_base" {
   api_client_secret          = module.setup_hello_api.client_secret
   spa_client_id              = module.setup_hello_spa.client_id
   api_resource_object_id     = module.setup_hello_api.resource_object_id
+  apiserver_client_id        = var.apiserver_client_id
 }
 
 module "setup_hello_api" {

@@ -8,7 +8,7 @@ resource "github_actions_secret" "twingate_service_key" {
 resource "github_actions_secret" "k8s_config" {
   repository  = var.github_repository
   secret_name = "K8S_CONFIG"
-  value       = module.create_namespace.k8s_user_config
+  value       = local.k8s_kubelogin_config
 }
 
 resource "github_actions_secret" "hostname" {
@@ -45,7 +45,7 @@ resource "github_actions_secret" "dockerhub_token" {
 resource "github_actions_secret" "azure_client_id" {
   repository  = var.github_repository
   secret_name = "AZURE_CLIENT_ID"
-  value       = module.github_oidc.client_id
+  value       = module.github_deploy.client_id
 }
 
 resource "github_actions_secret" "azure_tenant_id" {

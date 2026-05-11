@@ -83,3 +83,8 @@ variable "api_resource_object_id" {
   description = "The API application service principal object ID for Key Vault access"
   type        = string
 }
+
+variable "apiserver_client_id" {
+  description = "Entra application client_id of the Kubernetes API server (see module register_k8s_apiserver). Baked into the kubelogin exec block as --server-id so the per-app deploy SP can mint tokens with the apiserver as the audience."
+  type        = string
+}

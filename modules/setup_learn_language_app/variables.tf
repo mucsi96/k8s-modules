@@ -68,6 +68,11 @@ variable "twingate_service_key" {
   default     = null
 }
 
+variable "apiserver_client_id" {
+  description = "Entra application client_id of the Kubernetes API server. Forwarded to setup_app_base as the kubelogin --server-id."
+  type        = string
+}
+
 variable "wait_for" {
   description = "Optional dependency to wait for before setting up app (e.g., ingress controller status)"
   type        = string
