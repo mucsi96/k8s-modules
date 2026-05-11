@@ -18,10 +18,11 @@ module "github_deploy" {
   github_subject = "repo:${var.github_repository_owner}/${var.github_repository}:ref:refs/heads/main"
 }
 
-# Bind the deploy SP to the existing per-namespace Role + ClusterRole created by
-# create_app_namespace (same blast radius as the ServiceAccount-token path that
-# this replaces). Subject names are the SP's `oid` because the apiserver runs
-# with --oidc-username-claim=oid --oidc-username-prefix=-.
+# Bind the deploy SP to the per-namespace Role created by create_app_namespace.
+# Namespace and CRD reads are deliberately not granted — application charts
+# don't manage either of those, so the matching ClusterRole is not bound here.
+# Subject name is the SP's `oid` because the apiserver runs with
+# --oidc-username-claim=oid --oidc-username-prefix=-.
 resource "kubernetes_role_binding" "deploy" {
   metadata {
     name      = "${var.app_name}-deploy"
@@ -31,24 +32,6 @@ resource "kubernetes_role_binding" "deploy" {
   role_ref {
     api_group = "rbac.authorization.k8s.io"
     kind      = "Role"
-    name      = var.app_name
-  }
-
-  subject {
-    kind      = "User"
-    name      = module.github_deploy.service_principal_object_id
-    api_group = "rbac.authorization.k8s.io"
-  }
-}
-
-resource "kubernetes_cluster_role_binding" "deploy" {
-  metadata {
-    name = "${var.app_name}-deploy"
-  }
-
-  role_ref {
-    api_group = "rbac.authorization.k8s.io"
-    kind      = "ClusterRole"
     name      = var.app_name
   }
 
