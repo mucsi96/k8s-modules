@@ -20,6 +20,7 @@ module "app_base" {
   api_client_secret          = module.setup_training_log_api.client_secret
   spa_client_id              = module.setup_training_log_spa.client_id
   api_resource_object_id     = module.setup_training_log_api.resource_object_id
+  k8s_oidc_config            = var.k8s_oidc_config
 }
 
 module "setup_training_log_api" {

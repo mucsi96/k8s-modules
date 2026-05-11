@@ -79,6 +79,12 @@ variable "twingate_service_key" {
   default     = null
 }
 
+variable "k8s_oidc_config" {
+  description = "Rendered kubelogin kubeconfig from setup_cluster. Forwarded to setup_app_base as the app's k8s-config Key Vault secret."
+  type        = string
+  sensitive   = true
+}
+
 variable "wait_for" {
   description = "Optional dependency to wait for before setting up app (e.g., ingress controller status)"
   type        = string

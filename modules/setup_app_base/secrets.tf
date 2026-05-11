@@ -19,10 +19,16 @@ resource "azurerm_role_assignment" "allow_api_to_read_kv" {
   principal_id         = var.api_resource_object_id
 }
 
+resource "azurerm_role_assignment" "allow_deploy_to_read_kv" {
+  scope                = azurerm_key_vault.app_kv.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azuread_service_principal.github_deploy.object_id
+}
+
 resource "azurerm_key_vault_secret" "k8s_user_config" {
   key_vault_id = azurerm_key_vault.app_kv.id
   name         = "k8s-config"
-  value        = module.create_namespace.k8s_user_config
+  value        = var.k8s_oidc_config
   depends_on   = [azurerm_role_assignment.allow_owner_to_manage_kv]
 }
 

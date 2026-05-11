@@ -5,24 +5,6 @@ resource "github_actions_secret" "twingate_service_key" {
   value       = var.twingate_service_key
 }
 
-resource "github_actions_secret" "k8s_config" {
-  repository  = var.github_repository
-  secret_name = "K8S_CONFIG"
-  value       = module.create_namespace.k8s_user_config
-}
-
-resource "github_actions_secret" "hostname" {
-  repository  = var.github_repository
-  secret_name = "HOSTNAME"
-  value       = var.app_hostname
-}
-
-resource "github_actions_secret" "api_client_id" {
-  repository  = var.github_repository
-  secret_name = "API_CLIENT_ID"
-  value       = var.api_client_id
-}
-
 data "docker_login" "current" {}
 
 resource "github_actions_secret" "dockerhub_username" {
@@ -45,7 +27,7 @@ resource "github_actions_secret" "dockerhub_token" {
 resource "github_actions_secret" "azure_client_id" {
   repository  = var.github_repository
   secret_name = "AZURE_CLIENT_ID"
-  value       = module.github_oidc.client_id
+  value       = azuread_application.github_deploy.client_id
 }
 
 resource "github_actions_secret" "azure_tenant_id" {

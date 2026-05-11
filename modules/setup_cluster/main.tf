@@ -118,33 +118,33 @@ resource "ansible_playbook" "configure_microk8s_oidc" {
   depends_on = [ansible_playbook.publish_microk8s_oidc]
 }
 
-resource "terraform_data" "apiserver_oidc_args" {
-  count = var.apiserver_oidc == null ? 0 : 1
+locals {
+  apiserver_oidc_issuer_url = "https://login.microsoftonline.com/${var.azure_tenant_id}/v2.0"
+  apiserver_oidc_client_id  = azuread_application.apiserver.client_id
+  dashboard_oidc_client_id  = module.cluster_monitor.client_id
+}
 
+resource "terraform_data" "apiserver_oidc_args" {
   triggers_replace = {
-    issuer_url     = var.apiserver_oidc.issuer_url
-    client_id      = var.apiserver_oidc.client_id
-    username_claim = var.apiserver_oidc.username_claim
-    groups_claim   = var.apiserver_oidc.groups_claim == null ? "" : var.apiserver_oidc.groups_claim
+    issuer_url          = local.apiserver_oidc_issuer_url
+    apiserver_client_id = local.apiserver_oidc_client_id
+    dashboard_client_id = local.dashboard_oidc_client_id
   }
 }
 
 resource "ansible_playbook" "configure_microk8s_apiserver_oidc" {
-  count = var.apiserver_oidc == null ? 0 : 1
-
   name       = var.host
   playbook   = "${path.module}/configure_microk8s_apiserver_oidc.yaml"
   replayable = false
 
   extra_vars = merge(local.ansible_connection_vars, {
-    oidc_issuer_url     = var.apiserver_oidc.issuer_url
-    oidc_client_id      = var.apiserver_oidc.client_id
-    oidc_username_claim = var.apiserver_oidc.username_claim
-    oidc_groups_claim   = var.apiserver_oidc.groups_claim == null ? "" : var.apiserver_oidc.groups_claim
+    oidc_issuer_url     = local.apiserver_oidc_issuer_url
+    apiserver_client_id = local.apiserver_oidc_client_id
+    dashboard_client_id = local.dashboard_oidc_client_id
   })
 
   lifecycle {
-    replace_triggered_by = [terraform_data.apiserver_oidc_args[0]]
+    replace_triggered_by = [terraform_data.apiserver_oidc_args]
   }
 
   depends_on = [ansible_playbook.configure_microk8s_oidc]
@@ -160,7 +160,7 @@ resource "terraform_data" "calico_restart_trigger" {
   triggers_replace = {
     install_microk8s_id         = ansible_playbook.install_microk8s.id
     configure_microk8s_oidc_id  = ansible_playbook.configure_microk8s_oidc.id
-    configure_apiserver_oidc_id = try(ansible_playbook.configure_microk8s_apiserver_oidc[0].id, "")
+    configure_apiserver_oidc_id = ansible_playbook.configure_microk8s_apiserver_oidc.id
   }
 }
 
@@ -199,6 +199,68 @@ resource "helm_release" "workload_identity_webhook" {
   values = [yamlencode({
     azureTenantID = var.azure_tenant_id
   })]
+
+  depends_on = [
+    ansible_playbook.configure_microk8s_oidc,
+    ansible_playbook.configure_microk8s_apiserver_oidc,
+    ansible_playbook.restart_calico,
+  ]
+}
+
+# Cluster-admin binding for the human running Terraform. The apiserver's
+# structured-auth config (configure_microk8s_apiserver_oidc.yaml) maps tokens
+# with aud = apiserver_app to the bare `oid` claim, so var.owner is the
+# operator's Kubernetes username when they kubelogin. The kubernetes provider
+# is configured in the root from this module's admin-cert outputs, so this
+# resource applies on first bootstrap without any chicken-and-egg with
+# kubelogin.
+resource "kubernetes_cluster_role_binding_v1" "oidc_human_admin" {
+  metadata {
+    name = "oidc-human-admin"
+  }
+
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "ClusterRole"
+    name      = "cluster-admin"
+  }
+
+  subject {
+    kind      = "User"
+    name      = var.owner
+    api_group = "rbac.authorization.k8s.io"
+  }
+
+  depends_on = [
+    ansible_playbook.configure_microk8s_oidc,
+    ansible_playbook.configure_microk8s_apiserver_oidc,
+    ansible_playbook.restart_calico,
+  ]
+}
+
+# View-only binding for Headlamp's authenticated user. Tokens issued to the
+# dashboard's oauth2-proxy (aud = cluster_monitor_app) are mapped by the
+# structured-auth config to "headlamp:<oid>" — a distinct Kubernetes username
+# from the bare `oid` that oidc_human_admin binds to cluster-admin. So when
+# the operator clicks through Headlamp, the apiserver sees a different user
+# and grants only `view` (plus whatever extras setup_k8s_dashboard's
+# headlamp_view_extras ClusterRole aggregates into `view`).
+resource "kubernetes_cluster_role_binding_v1" "oidc_dashboard_view" {
+  metadata {
+    name = "oidc-dashboard-view"
+  }
+
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "ClusterRole"
+    name      = "view"
+  }
+
+  subject {
+    kind      = "User"
+    name      = "headlamp:${var.owner}"
+    api_group = "rbac.authorization.k8s.io"
+  }
 
   depends_on = [
     ansible_playbook.configure_microk8s_oidc,

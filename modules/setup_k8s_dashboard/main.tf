@@ -45,6 +45,19 @@ resource "helm_release" "headlamp" {
   })]
 }
 
+# oauth2-proxy gates who can open the dashboard and injects the user's
+# id_token as Authorization: Bearer. Headlamp's backend forwards that token
+# to the apiserver as the caller's identity; the in-cluster ServiceAccount
+# bound by the helm chart's clusterRoleBinding is only a fallback that
+# kicks in if no header is set.
+#
+# View-only RBAC is enforced at the apiserver, not here. The apiserver's
+# structured-auth config (in setup_cluster) routes the dashboard's id_token
+# — aud = cluster_monitor app — through a separate JWT authenticator that
+# prefixes the username with "headlamp:". oidc_dashboard_view binds that
+# prefixed username to `view`. So the operator's bare-oid cluster-admin
+# binding from oidc_human_admin (which is what kubelogin tokens map to) is
+# NOT inherited into Headlamp.
 module "headlamp_oauth2_proxy" {
   source = "../setup_oauth2_proxy"
 
@@ -70,29 +83,12 @@ module "headlamp_oauth2_proxy" {
   depends_on = [helm_release.headlamp]
 }
 
-resource "kubernetes_cluster_role_binding_v1" "headlamp_user" {
-  metadata {
-    name = "headlamp-user"
-  }
-
-  subject {
-    kind      = "User"
-    name      = var.valid_email
-    api_group = "rbac.authorization.k8s.io"
-  }
-
-  role_ref {
-    kind      = "ClusterRole"
-    name      = "view"
-    api_group = "rbac.authorization.k8s.io"
-  }
-}
-
-# Read-only cluster-scoped extras Headlamp needs (cluster overview, metrics,
-# CRD discovery, storage). The aggregation label causes the kube-controller-
-# manager to merge these rules into the built-in `view` ClusterRole, so the
-# `headlamp-user` binding above gains them automatically without needing a
-# second binding.
+# Read-only cluster-scoped extras the built-in `view` ClusterRole doesn't
+# grant (nodes, persistent volumes, CRDs, metrics, storage classes). The
+# aggregation label causes the kube-controller-manager to merge these rules
+# into `view`, picked up by every subject bound to `view` — including the
+# dashboard's headlamp:<oid> user (oidc_dashboard_view in setup_cluster) and
+# the helm chart's Headlamp ServiceAccount.
 resource "kubernetes_cluster_role_v1" "headlamp_view_extras" {
   metadata {
     name = "headlamp-view-extras"

@@ -18,3 +18,8 @@ output "hcloud_ssh_private_key" {
   value       = module.provision_hetzner_server.ssh_private_key
   sensitive   = true
 }
+
+output "apiserver_oidc_client_id" {
+  description = "Entra application client_id for the Kubernetes API server. Used as kube-apiserver --oidc-client-id and as the kubelogin --server-id baked into each app's k8s-config kubeconfig."
+  value       = module.setup_cluster.apiserver_oidc_client_id
+}

@@ -39,20 +39,19 @@ variable "azure_tenant_id" {
   type        = string
 }
 
-variable "local_python_interpreter" {
-  description = "Absolute path to the Python interpreter on the Ansible controller (localhost) that has the azure.azcollection requirements installed."
+variable "owner" {
+  description = "Object ID of the owner for the Entra applications this module creates (apiserver app, cluster monitor app)."
   type        = string
 }
 
-variable "apiserver_oidc" {
-  description = "Optional Entra OIDC configuration for kube-apiserver. When set, kube-apiserver validates Bearer tokens whose iss matches issuer_url and aud matches client_id, and uses the username_claim (default 'email') as the Kubernetes user name. Pass groups_claim to also map an Entra claim to Kubernetes groups."
-  type = object({
-    issuer_url     = string
-    client_id      = string
-    username_claim = optional(string, "email")
-    groups_claim   = optional(string)
-  })
-  default = null
+variable "cluster_monitor_redirect_uris" {
+  description = "OAuth2 callback URIs for the cluster monitor (Headlamp) Entra application — typically the oauth2-proxy callback served by the dashboard ingress."
+  type        = list(string)
+}
+
+variable "local_python_interpreter" {
+  description = "Absolute path to the Python interpreter on the Ansible controller (localhost) that has the azure.azcollection requirements installed."
+  type        = string
 }
 
 variable "wait_for" {

@@ -83,3 +83,9 @@ variable "api_resource_object_id" {
   description = "The API application service principal object ID for Key Vault access"
   type        = string
 }
+
+variable "k8s_oidc_config" {
+  description = "Rendered kubelogin kubeconfig (output k8s_oidc_config of setup_cluster). Published as the app's `k8s-config` Key Vault secret."
+  type        = string
+  sensitive   = true
+}
