@@ -1,12 +1,10 @@
-data "kubernetes_service_v1" "traefik" {
-  metadata {
-    name      = helm_release.traefik.name
-    namespace = kubernetes_namespace_v1.traefik.metadata[0].name
-  }
-}
-
 locals {
-  traefik_admin_port           = one([for p in data.kubernetes_service_v1.traefik.spec[0].port : p.port if p.name == "traefik"])
+  # Traefik chart exposes its dashboard / admin API on the port named
+  # `traefik`, which the chart hardcodes to 9000. Inlining the number avoids
+  # a `data "kubernetes_service_v1"` lookup that would otherwise need the
+  # apiserver to be reachable at plan time. If a future chart upgrade changes
+  # the port, update this value to match `ports.traefik.port` in the chart.
+  traefik_admin_port           = 9000
   traefik_dashboard_host       = "traefik.${var.dns_zone}"
   traefik_dashboard_host_regex = replace(local.traefik_dashboard_host, ".", "\\.")
 }
