@@ -11,7 +11,7 @@ module "create_namespace" {
 # application charts don't manage either of those, so the matching ClusterRole
 # is not bound here. Subject name is the SP's `oid` because the apiserver runs
 # with --oidc-username-claim=oid --oidc-username-prefix=-.
-resource "kubernetes_role_binding" "deploy" {
+resource "kubernetes_role_binding_v1" "deploy" {
   metadata {
     name      = "${var.app_name}-deploy"
     namespace = module.create_namespace.k8s_namespace
@@ -28,6 +28,11 @@ resource "kubernetes_role_binding" "deploy" {
     name      = azuread_service_principal.github_deploy.object_id
     api_group = "rbac.authorization.k8s.io"
   }
+}
+
+moved {
+  from = kubernetes_role_binding.deploy
+  to   = kubernetes_role_binding_v1.deploy
 }
 
 # Kubeconfig that delegates to kubelogin; published to the app KV as `k8s-config`

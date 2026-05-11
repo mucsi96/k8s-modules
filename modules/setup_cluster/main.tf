@@ -213,7 +213,7 @@ resource "helm_release" "workload_identity_webhook" {
 # kubernetes provider is configured in the root from this module's admin-cert
 # outputs, so this resource applies on first bootstrap without any chicken-
 # and-egg with kubelogin.
-resource "kubernetes_cluster_role_binding" "oidc_human_admin" {
+resource "kubernetes_cluster_role_binding_v1" "oidc_human_admin" {
   metadata {
     name = "oidc-human-admin"
   }
@@ -235,4 +235,9 @@ resource "kubernetes_cluster_role_binding" "oidc_human_admin" {
     ansible_playbook.configure_microk8s_apiserver_oidc,
     ansible_playbook.restart_calico,
   ]
+}
+
+moved {
+  from = kubernetes_cluster_role_binding.oidc_human_admin
+  to   = kubernetes_cluster_role_binding_v1.oidc_human_admin
 }
