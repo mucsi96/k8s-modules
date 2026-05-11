@@ -45,14 +45,17 @@ resource "helm_release" "headlamp" {
   })]
 }
 
-# oauth2-proxy gates sign-in (Entra confidential client = cluster_monitor app)
-# and forwards the resulting id_token to Headlamp as Authorization: Bearer.
-# Headlamp passes that token straight to the apiserver, which trusts it
-# because cluster_monitor's client_id == apiserver --oidc-client-id (set in
-# setup_cluster). The Kubernetes user is derived from the token's `oid` claim
-# (apiserver --oidc-username-claim=oid), so the same oidc_human_admin
-# ClusterRoleBinding that grants the operator kubectl access also grants them
-# access through Headlamp — no separate dashboard-user CRB is needed.
+# oauth2-proxy gates who can open the dashboard and injects the user's
+# id_token as Authorization: Bearer so Headlamp's UI shows a signed-in
+# session instead of prompting for a token.
+#
+# RBAC is intentionally NOT driven by that injected token. Headlamp talks
+# to the apiserver as its own in-cluster ServiceAccount (the helm chart
+# above creates the SA and binds it to the built-in `view` ClusterRole),
+# so the dashboard is read-only regardless of the operator's kubectl-side
+# RBAC. The id_token's audience (cluster_monitor app) is also not the
+# audience the apiserver trusts (apiserver app — see setup_cluster), so
+# even a session leak can't be replayed as a cluster-admin bearer.
 module "headlamp_oauth2_proxy" {
   source = "../setup_oauth2_proxy"
 
@@ -78,13 +81,11 @@ module "headlamp_oauth2_proxy" {
   depends_on = [helm_release.headlamp]
 }
 
-# Read-only cluster-scoped extras Headlamp's `view` permissions don't cover
-# out of the box (nodes, persistent volumes, CRDs, metrics, storage classes).
-# The aggregation label causes the kube-controller-manager to merge these
-# rules into the built-in `view` ClusterRole, picked up by every subject
-# bound to it — including operator users authenticating through Headlamp
-# (whose oid maps to the cluster-admin binding) and any future read-only
-# bindings keyed against `view`.
+# Read-only cluster-scoped extras the built-in `view` ClusterRole doesn't
+# grant (nodes, persistent volumes, CRDs, metrics, storage classes). The
+# aggregation label causes the kube-controller-manager to merge these rules
+# into `view`, which the Headlamp ServiceAccount is bound to via the helm
+# chart's clusterRoleBinding.create / clusterRoleName = "view" settings.
 resource "kubernetes_cluster_role_v1" "headlamp_view_extras" {
   metadata {
     name = "headlamp-view-extras"
