@@ -85,6 +85,6 @@ variable "api_resource_object_id" {
 }
 
 variable "apiserver_client_id" {
-  description = "Entra application client_id of the Kubernetes API server (see module register_k8s_apiserver). Baked into the kubelogin exec block as --server-id so the per-app deploy SP can mint tokens with the apiserver as the audience."
+  description = "Entra application client_id of the Kubernetes API server (output apiserver_oidc_client_id of setup_cluster). Baked into the kubelogin exec block as --server-id so the per-app deploy SP can mint tokens with the apiserver as the audience."
   type        = string
 }

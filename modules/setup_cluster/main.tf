@@ -118,33 +118,34 @@ resource "ansible_playbook" "configure_microk8s_oidc" {
   depends_on = [ansible_playbook.publish_microk8s_oidc]
 }
 
-resource "terraform_data" "apiserver_oidc_args" {
-  count = var.apiserver_oidc == null ? 0 : 1
+locals {
+  apiserver_oidc_issuer_url     = "https://login.microsoftonline.com/${var.azure_tenant_id}/v2.0"
+  apiserver_oidc_client_id      = azuread_application.apiserver.client_id
+  apiserver_oidc_username_claim = "oid"
+}
 
+resource "terraform_data" "apiserver_oidc_args" {
   triggers_replace = {
-    issuer_url     = var.apiserver_oidc.issuer_url
-    client_id      = var.apiserver_oidc.client_id
-    username_claim = var.apiserver_oidc.username_claim
-    groups_claim   = var.apiserver_oidc.groups_claim == null ? "" : var.apiserver_oidc.groups_claim
+    issuer_url     = local.apiserver_oidc_issuer_url
+    client_id      = local.apiserver_oidc_client_id
+    username_claim = local.apiserver_oidc_username_claim
   }
 }
 
 resource "ansible_playbook" "configure_microk8s_apiserver_oidc" {
-  count = var.apiserver_oidc == null ? 0 : 1
-
   name       = var.host
   playbook   = "${path.module}/configure_microk8s_apiserver_oidc.yaml"
   replayable = false
 
   extra_vars = merge(local.ansible_connection_vars, {
-    oidc_issuer_url     = var.apiserver_oidc.issuer_url
-    oidc_client_id      = var.apiserver_oidc.client_id
-    oidc_username_claim = var.apiserver_oidc.username_claim
-    oidc_groups_claim   = var.apiserver_oidc.groups_claim == null ? "" : var.apiserver_oidc.groups_claim
+    oidc_issuer_url     = local.apiserver_oidc_issuer_url
+    oidc_client_id      = local.apiserver_oidc_client_id
+    oidc_username_claim = local.apiserver_oidc_username_claim
+    oidc_groups_claim   = ""
   })
 
   lifecycle {
-    replace_triggered_by = [terraform_data.apiserver_oidc_args[0]]
+    replace_triggered_by = [terraform_data.apiserver_oidc_args]
   }
 
   depends_on = [ansible_playbook.configure_microk8s_oidc]
@@ -160,7 +161,7 @@ resource "terraform_data" "calico_restart_trigger" {
   triggers_replace = {
     install_microk8s_id         = ansible_playbook.install_microk8s.id
     configure_microk8s_oidc_id  = ansible_playbook.configure_microk8s_oidc.id
-    configure_apiserver_oidc_id = try(ansible_playbook.configure_microk8s_apiserver_oidc[0].id, "")
+    configure_apiserver_oidc_id = ansible_playbook.configure_microk8s_apiserver_oidc.id
   }
 }
 

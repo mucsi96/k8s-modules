@@ -162,28 +162,17 @@ module "setup_cluster" {
   azure_subscription_id    = var.azure_subscription_id
   storage_account_name     = var.storage_account_name
   azure_tenant_id          = data.azurerm_client_config.current.tenant_id
+  owner                    = local.owner
   local_python_interpreter = var.local_python_interpreter
   wait_for                 = module.provision_hetzner_server.ssh_ready
-
-  apiserver_oidc = {
-    issuer_url     = "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/v2.0"
-    client_id      = module.register_k8s_apiserver.client_id
-    username_claim = "oid"
-  }
-}
-
-module "register_k8s_apiserver" {
-  source       = "./modules/register_k8s_apiserver"
-  display_name = "Kubernetes API server - ${var.environment_name}"
-  owner        = local.owner
 }
 
 # Cluster-admin binding for the human running Terraform. App deploy SPs are
 # bound per-namespace inside setup_app_base, not here. The kubernetes provider
 # above still authenticates with the admin client cert pulled from Key Vault,
 # so this resource applies on first bootstrap without any chicken-and-egg with
-# kubelogin. Subject names are the raw `oid` claim because setup_cluster passes
-# username_claim = "oid" and the apiserver has --oidc-username-prefix=-.
+# kubelogin. Subject names are the raw `oid` claim because setup_cluster runs
+# the apiserver with --oidc-username-claim=oid --oidc-username-prefix=-.
 resource "kubernetes_cluster_role_binding" "oidc_human_admin" {
   metadata {
     name = "oidc-human-admin"
@@ -376,7 +365,7 @@ module "setup_backup_app" {
   hostname                   = data.azurerm_key_vault_secret.dns_zone.value
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   azure_subscription_id      = var.azure_subscription_id
-  apiserver_client_id        = module.register_k8s_apiserver.client_id
+  apiserver_client_id        = module.setup_cluster.apiserver_oidc_client_id
   twingate_service_key       = module.setup_twingate.service_key
   wait_for                   = module.setup_ingress_controller.traefik_ready
 
@@ -433,7 +422,7 @@ module "setup_learn_language_app" {
   hostname                   = data.azurerm_key_vault_secret.dns_zone.value
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   azure_subscription_id      = var.azure_subscription_id
-  apiserver_client_id        = module.register_k8s_apiserver.client_id
+  apiserver_client_id        = module.setup_cluster.apiserver_oidc_client_id
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password
@@ -452,7 +441,7 @@ module "setup_hello_app" {
   hostname                   = data.azurerm_key_vault_secret.dns_zone.value
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   azure_subscription_id      = var.azure_subscription_id
-  apiserver_client_id        = module.register_k8s_apiserver.client_id
+  apiserver_client_id        = module.setup_cluster.apiserver_oidc_client_id
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password
@@ -555,7 +544,7 @@ module "setup_training_log_app" {
   hostname                   = data.azurerm_key_vault_secret.dns_zone.value
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   azure_subscription_id      = var.azure_subscription_id
-  apiserver_client_id        = module.register_k8s_apiserver.client_id
+  apiserver_client_id        = module.setup_cluster.apiserver_oidc_client_id
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password

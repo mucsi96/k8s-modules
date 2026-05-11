@@ -81,7 +81,7 @@ resource "azurerm_key_vault_secret" "k8s_oidc_config" {
           args = [
             "get-token",
             "--login=azurecli",
-            "--server-id=${module.register_k8s_apiserver.client_id}",
+            "--server-id=${module.setup_cluster.apiserver_oidc_client_id}",
             "--tenant-id=${data.azurerm_client_config.current.tenant_id}",
           ]
         }

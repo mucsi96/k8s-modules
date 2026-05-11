@@ -19,7 +19,7 @@ output "hcloud_ssh_private_key" {
   sensitive   = true
 }
 
-output "k8s_oidc_apiserver_client_id" {
+output "apiserver_oidc_client_id" {
   description = "Entra application client_id for the Kubernetes API server. Used as kube-apiserver --oidc-client-id and as the kubelogin --server-id baked into each app's k8s-config kubeconfig."
-  value       = module.register_k8s_apiserver.client_id
+  value       = module.setup_cluster.apiserver_oidc_client_id
 }

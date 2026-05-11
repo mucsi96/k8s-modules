@@ -63,7 +63,17 @@ output "k8s_cluster_ca_certificate" {
 }
 
 output "oidc_issuer_url" {
-  description = "Public issuer URL exposing the MicroK8s OIDC discovery document."
+  description = "Public issuer URL exposing the MicroK8s OIDC discovery document (workload-identity issuer for in-cluster pod tokens; NOT the Entra issuer that the apiserver trusts)."
   value       = data.azurerm_storage_account.oidc.primary_web_endpoint
   depends_on  = [ansible_playbook.publish_microk8s_oidc]
+}
+
+output "apiserver_oidc_client_id" {
+  description = "Entra application client_id that kube-apiserver uses as --oidc-client-id. Pass to kubelogin as --server-id; matches the `aud` claim in tokens minted for the cluster."
+  value       = local.apiserver_oidc_client_id
+}
+
+output "apiserver_oidc_issuer_url" {
+  description = "Entra v2 issuer URL trusted by kube-apiserver (--oidc-issuer-url). Derived from azure_tenant_id; exposed so callers don't have to recompute it."
+  value       = local.apiserver_oidc_issuer_url
 }
