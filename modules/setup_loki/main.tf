@@ -1,16 +1,22 @@
 locals {
-  loki_release         = "loki"
-  alloy_release        = "alloy"
-  loki_pv_label        = "loki"
-  loki_port            = 3100
-  loki_url             = "http://${local.loki_release}.${kubernetes_namespace_v1.logging.metadata[0].name}.svc.cluster.local:${local.loki_port}"
-  openobserve_name     = "openobserve"
-  openobserve_pv_label = "openobserve"
-  openobserve_http     = 5080
-  openobserve_grpc     = 5081
-  openobserve_org      = "default"
-  openobserve_url      = "http://${local.openobserve_name}.${kubernetes_namespace_v1.logging.metadata[0].name}.svc.cluster.local:${local.openobserve_http}"
+  loki_release               = "loki"
+  alloy_release              = "alloy"
+  loki_pv_label              = "loki"
+  loki_port                  = 3100
+  loki_url                   = "http://${local.loki_release}.${kubernetes_namespace_v1.logging.metadata[0].name}.svc.cluster.local:${local.loki_port}"
+  openobserve_release        = "openobserve"
+  openobserve_service_name   = local.openobserve_release
+  openobserve_http           = 5080
+  openobserve_org            = "default"
+  openobserve_url            = "http://${local.openobserve_service_name}.${kubernetes_namespace_v1.logging.metadata[0].name}.svc.cluster.local:${local.openobserve_http}"
   openobserve_loki_push_path = "/api/${local.openobserve_org}/loki/api/v1/push"
+  # The openobserve-standalone chart deploys a StatefulSet named after the
+  # release (with fullnameOverride below) and a volumeClaimTemplate named
+  # 'data', producing the PVC 'data-openobserve-0'. The PV below pre-binds
+  # itself to that exact PVC via claimRef so the chart's auto-provisioned
+  # PVC lands on the hostPath volume we want without depending on storage
+  # class matching alone.
+  openobserve_pvc_name = "data-${local.openobserve_release}-0"
 }
 
 resource "terraform_data" "wait_for" {
@@ -320,21 +326,25 @@ resource "helm_release" "alloy" {
 
   depends_on = [
     helm_release.loki,
-    kubernetes_stateful_set_v1.openobserve,
+    helm_release.openobserve,
   ]
 }
 
-# OpenObserve runs as a single-node StatefulSet alongside Loki, sharing the
-# 'logging' namespace so the two pipelines can be operated and torn down
-# together. OpenObserve provides a Splunk-style log viewer with first-class
-# JSON field extraction; Alloy dual-writes to both backends so Grafana stays
-# usable for LogQL while OpenObserve serves as the primary explorer.
+# OpenObserve runs as a single-node deployment from the official
+# openobserve-standalone chart, sharing the 'logging' namespace with Loki so
+# the two pipelines can be operated and torn down together. OpenObserve
+# provides a Splunk-style log viewer with first-class JSON field extraction;
+# Alloy dual-writes to both backends so Grafana stays usable for LogQL while
+# OpenObserve serves as the primary explorer.
 
 resource "random_password" "openobserve_root" {
   length  = 24
   special = false
 }
 
+# Kept as a Terraform-managed Secret (instead of relying on the chart's
+# auto-generated one) so Alloy and the oauth2-proxy basic_auth_password
+# parameter can reference the exact same credentials by a stable name.
 resource "kubernetes_secret_v1" "openobserve_root" {
   metadata {
     name      = "openobserve-root"
@@ -349,15 +359,13 @@ resource "kubernetes_secret_v1" "openobserve_root" {
   type = "Opaque"
 }
 
-# Pre-created hostPath PV bound to the StatefulSet's volumeClaimTemplate via
-# the selector below. Mirrors the Loki PV pattern so OpenObserve's data
-# directory survives pod restarts and lives at a known location on the node.
+# Pre-created hostPath PV pinned to the chart's volumeClaimTemplate via
+# claimRef. claimRef beats label/selector here because the chart owns the
+# PVC spec and may not expose a selector field; a namespace+name claimRef
+# binds unambiguously regardless of how the PVC is declared.
 resource "kubernetes_persistent_volume_v1" "openobserve" {
   metadata {
     name = "openobserve"
-    labels = {
-      app = local.openobserve_pv_label
-    }
   }
 
   spec {
@@ -372,158 +380,66 @@ resource "kubernetes_persistent_volume_v1" "openobserve" {
         path = var.openobserve_host_path
       }
     }
-  }
-}
-
-resource "kubernetes_service_v1" "openobserve" {
-  metadata {
-    name      = local.openobserve_name
-    namespace = kubernetes_namespace_v1.logging.metadata[0].name
-    labels = {
-      app = local.openobserve_name
-    }
-  }
-
-  spec {
-    type = "ClusterIP"
-    selector = {
-      app = local.openobserve_name
-    }
-    port {
-      name        = "http"
-      port        = local.openobserve_http
-      target_port = local.openobserve_http
-      protocol    = "TCP"
-    }
-    port {
-      name        = "grpc"
-      port        = local.openobserve_grpc
-      target_port = local.openobserve_grpc
-      protocol    = "TCP"
+    claim_ref {
+      namespace = kubernetes_namespace_v1.logging.metadata[0].name
+      name      = local.openobserve_pvc_name
     }
   }
 }
 
-resource "kubernetes_stateful_set_v1" "openobserve" {
-  metadata {
-    name      = local.openobserve_name
-    namespace = kubernetes_namespace_v1.logging.metadata[0].name
-    labels = {
-      app = local.openobserve_name
-    }
-  }
+resource "helm_release" "openobserve" {
+  name       = local.openobserve_release
+  repository = "https://charts.openobserve.ai/"
+  chart      = "openobserve-standalone"
+  version    = var.openobserve_chart_version
+  namespace  = kubernetes_namespace_v1.logging.metadata[0].name
+  wait       = true
+  timeout    = 600
 
-  spec {
-    service_name = kubernetes_service_v1.openobserve.metadata[0].name
-    replicas     = 1
+  values = [yamlencode(merge(
+    {
+      # Make every chart-owned resource (StatefulSet, Service, PVC, ...)
+      # use the bare release name. This keeps the in-cluster service URL
+      # predictable ('openobserve.logging.svc') and produces the PVC name
+      # 'data-openobserve-0' that the PV above claimRefs.
+      fullnameOverride = local.openobserve_release
+      replicaCount     = 1
 
-    selector {
-      match_labels = {
-        app = local.openobserve_name
+      # ZO_ROOT_USER_* are read by the chart from the auth block and turned
+      # into env vars on the pod. The same values land in the Terraform
+      # Secret above so Alloy can authenticate to the Loki ingest endpoint.
+      auth = {
+        ZO_ROOT_USER_EMAIL    = var.valid_email
+        ZO_ROOT_USER_PASSWORD = random_password.openobserve_root.result
       }
-    }
 
-    template {
-      metadata {
-        labels = {
-          app = local.openobserve_name
-        }
+      config = {
+        ZO_LOCAL_MODE = "true"
+        ZO_DATA_DIR   = "/data"
       }
 
-      spec {
-        # OpenObserve writes its WAL, indices and files store under
-        # ZO_DATA_DIR. The container runs as a non-root user, so the
-        # hostPath-backed PV needs to be writable; an fsGroup ensures the
-        # mounted volume is chowned to the container's group on attach.
-        security_context {
-          fs_group = 2000
-        }
-
-        container {
-          name  = local.openobserve_name
-          image = "public.ecr.aws/zinclabs/openobserve:${var.openobserve_image_version}"
-
-          env_from {
-            secret_ref {
-              name = kubernetes_secret_v1.openobserve_root.metadata[0].name
-            }
-          }
-
-          env {
-            name  = "ZO_DATA_DIR"
-            value = "/data"
-          }
-
-          env {
-            name  = "ZO_LOCAL_MODE"
-            value = "true"
-          }
-
-          env {
-            name  = "ZO_HTTP_PORT"
-            value = tostring(local.openobserve_http)
-          }
-
-          env {
-            name  = "ZO_GRPC_PORT"
-            value = tostring(local.openobserve_grpc)
-          }
-
-          port {
-            name           = "http"
-            container_port = local.openobserve_http
-          }
-          port {
-            name           = "grpc"
-            container_port = local.openobserve_grpc
-          }
-
-          volume_mount {
-            name       = "data"
-            mount_path = "/data"
-          }
-
-          readiness_probe {
-            http_get {
-              path = "/healthz"
-              port = local.openobserve_http
-            }
-            initial_delay_seconds = 5
-            period_seconds        = 10
-          }
-
-          liveness_probe {
-            http_get {
-              path = "/healthz"
-              port = local.openobserve_http
-            }
-            initial_delay_seconds = 30
-            period_seconds        = 30
-          }
-        }
+      service = {
+        type = "ClusterIP"
+        port = local.openobserve_http
       }
-    }
 
-    volume_claim_template {
-      metadata {
-        name = "data"
+      ingress = {
+        enabled = false
       }
-      spec {
-        access_modes       = ["ReadWriteOnce"]
-        storage_class_name = ""
-        resources {
-          requests = {
-            storage = var.openobserve_storage_size
-          }
-        }
-        selector {
-          match_labels = {
-            app = local.openobserve_pv_label
-          }
-        }
+
+      persistence = {
+        enabled      = true
+        storageClass = ""
+        accessModes  = ["ReadWriteOnce"]
+        size         = var.openobserve_storage_size
       }
-    }
-  }
+    },
+    var.openobserve_image_version == "" ? {} : {
+      image = {
+        tag = var.openobserve_image_version
+      }
+    },
+  ))]
 
   depends_on = [kubernetes_persistent_volume_v1.openobserve]
 }
@@ -538,7 +454,7 @@ resource "kubernetes_stateful_set_v1" "openobserve" {
 module "openobserve_oauth2_proxy" {
   source = "../setup_oauth2_proxy"
 
-  name                       = local.openobserve_name
+  name                       = local.openobserve_release
   namespace                  = kubernetes_namespace_v1.logging.metadata[0].name
   client_id                  = var.openobserve_client_id
   client_secret              = var.openobserve_client_secret
@@ -546,11 +462,11 @@ module "openobserve_oauth2_proxy" {
   valid_email                = var.valid_email
   oauth2_proxy_chart_version = var.oauth2_proxy_chart_version
   oauth2_proxy_image_version = var.oauth2_proxy_image_version
-  upstream_uri               = "http://${kubernetes_service_v1.openobserve.metadata[0].name}.${kubernetes_namespace_v1.logging.metadata[0].name}.svc.cluster.local:${local.openobserve_http}"
+  upstream_uri               = local.openobserve_url
   session_redis              = var.session_redis
   basic_auth_password        = random_password.openobserve_root.result
 
-  depends_on = [kubernetes_stateful_set_v1.openobserve]
+  depends_on = [helm_release.openobserve]
 }
 
 resource "kubectl_manifest" "openobserve_ingressroute" {
@@ -558,7 +474,7 @@ resource "kubectl_manifest" "openobserve_ingressroute" {
     apiVersion = "traefik.io/v1alpha1"
     kind       = "IngressRoute"
     metadata = {
-      name      = local.openobserve_name
+      name      = local.openobserve_release
       namespace = kubernetes_namespace_v1.logging.metadata[0].name
     }
     spec = {

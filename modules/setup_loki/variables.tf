@@ -43,9 +43,15 @@ variable "wait_for" {
   default     = null
 }
 
-variable "openobserve_image_version" {
-  description = "Container image tag for openobserve/openobserve. OpenObserve is a Splunk-style log viewer with first-class JSON field extraction; it shares the 'logging' namespace with Loki so the two pipelines can be operated together."
+variable "openobserve_chart_version" {
+  description = "Helm chart version for openobserve/openobserve-standalone. OpenObserve is a Splunk-style log viewer with first-class JSON field extraction; it shares the 'logging' namespace with Loki so the two pipelines can be operated together."
   type        = string
+}
+
+variable "openobserve_image_version" {
+  description = "Container image tag override for openobserve. Leave empty to use the appVersion pinned by the Helm chart."
+  type        = string
+  default     = ""
 }
 
 variable "openobserve_storage_size" {

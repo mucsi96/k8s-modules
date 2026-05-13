@@ -479,9 +479,9 @@ module "setup_prometheus_operator" {
 
 module "setup_loki" {
   source                     = "./modules/setup_loki"
-  loki_chart_version         = "7.0.0"   #https://github.com/grafana/loki/blob/main/production/helm/loki/Chart.yaml
-  alloy_chart_version        = "1.8.1"   #https://github.com/grafana/helm-charts/releases?q=alloy
-  openobserve_image_version  = "v0.14.7" #https://github.com/openobserve/openobserve/releases
+  loki_chart_version         = "7.0.0"  #https://github.com/grafana/loki/blob/main/production/helm/loki/Chart.yaml
+  alloy_chart_version        = "1.8.1"  #https://github.com/grafana/helm-charts/releases?q=alloy
+  openobserve_chart_version  = "0.14.7" #https://github.com/openobserve/openobserve-helm-chart/releases
   grafana_namespace          = module.setup_prometheus_operator.namespace
   openobserve_hostname       = local.openobserve_hostname
   tenant_id                  = data.azurerm_client_config.current.tenant_id
