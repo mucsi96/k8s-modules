@@ -10,13 +10,6 @@ locals {
   openobserve_org            = "default"
   openobserve_url            = "http://${local.openobserve_service_name}.${kubernetes_namespace_v1.logging.metadata[0].name}.svc.cluster.local:${local.openobserve_http}"
   openobserve_loki_push_path = "/api/${local.openobserve_org}/loki/api/v1/push"
-  # The openobserve-standalone chart deploys a StatefulSet named after the
-  # release (with fullnameOverride below) and a volumeClaimTemplate named
-  # 'data', producing the PVC 'data-openobserve-0'. The PV below pre-binds
-  # itself to that exact PVC via claimRef so the chart's auto-provisioned
-  # PVC lands on the hostPath volume we want without depending on storage
-  # class matching alone.
-  openobserve_pvc_name = "data-${local.openobserve_release}-0"
 }
 
 resource "terraform_data" "wait_for" {
@@ -359,34 +352,6 @@ resource "kubernetes_secret_v1" "openobserve_root" {
   type = "Opaque"
 }
 
-# Pre-created hostPath PV pinned to the chart's volumeClaimTemplate via
-# claimRef. claimRef beats label/selector here because the chart owns the
-# PVC spec and may not expose a selector field; a namespace+name claimRef
-# binds unambiguously regardless of how the PVC is declared.
-resource "kubernetes_persistent_volume_v1" "openobserve" {
-  metadata {
-    name = "openobserve"
-  }
-
-  spec {
-    storage_class_name = ""
-    access_modes       = ["ReadWriteOnce"]
-    capacity = {
-      storage = var.openobserve_storage_size
-    }
-    persistent_volume_reclaim_policy = "Retain"
-    persistent_volume_source {
-      host_path {
-        path = var.openobserve_host_path
-      }
-    }
-    claim_ref {
-      namespace = kubernetes_namespace_v1.logging.metadata[0].name
-      name      = local.openobserve_pvc_name
-    }
-  }
-}
-
 resource "helm_release" "openobserve" {
   name       = local.openobserve_release
   repository = "https://charts.openobserve.ai/"
@@ -399,9 +364,8 @@ resource "helm_release" "openobserve" {
   values = [yamlencode(merge(
     {
       # Make every chart-owned resource (StatefulSet, Service, PVC, ...)
-      # use the bare release name. This keeps the in-cluster service URL
-      # predictable ('openobserve.logging.svc') and produces the PVC name
-      # 'data-openobserve-0' that the PV above claimRefs.
+      # use the bare release name so the in-cluster service URL stays
+      # predictable as 'openobserve.logging.svc'.
       fullnameOverride = local.openobserve_release
       replicaCount     = 1
 
@@ -427,11 +391,12 @@ resource "helm_release" "openobserve" {
         enabled = false
       }
 
+      # Chart provisions the PVC dynamically against the cluster's default
+      # StorageClass (MicroK8s' hostpath-storage addon in this homelab).
       persistence = {
-        enabled      = true
-        storageClass = ""
-        accessModes  = ["ReadWriteOnce"]
-        size         = var.openobserve_storage_size
+        enabled     = true
+        accessModes = ["ReadWriteOnce"]
+        size        = var.openobserve_storage_size
       }
     },
     var.openobserve_image_version == "" ? {} : {
@@ -440,8 +405,6 @@ resource "helm_release" "openobserve" {
       }
     },
   ))]
-
-  depends_on = [kubernetes_persistent_volume_v1.openobserve]
 }
 
 # Same SSO front-door pattern as Grafana/Prometheus/pgweb: oauth2-proxy

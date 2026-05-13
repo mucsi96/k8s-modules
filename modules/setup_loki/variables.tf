@@ -55,15 +55,9 @@ variable "openobserve_image_version" {
 }
 
 variable "openobserve_storage_size" {
-  description = "Persistent volume size for OpenObserve's local data directory (WAL, index, files store). The single-node deployment keeps everything on disk under ZO_DATA_DIR."
+  description = "Persistent volume size for OpenObserve's local data directory (WAL, index, files store). The single-node deployment keeps everything on disk under ZO_DATA_DIR; the chart provisions the PVC dynamically against the cluster's default StorageClass."
   type        = string
   default     = "20Gi"
-}
-
-variable "openobserve_host_path" {
-  description = "Host path on the node used to back OpenObserve's persistent volume. Mirrors the Loki/Redis/Postgres pattern of pre-creating a hostPath PV."
-  type        = string
-  default     = "/data/openobserve"
 }
 
 variable "openobserve_hostname" {
