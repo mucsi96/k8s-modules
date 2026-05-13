@@ -66,7 +66,7 @@ resource "helm_release" "loki" {
   version    = var.loki_chart_version
   namespace  = kubernetes_namespace_v1.logging.metadata[0].name
   wait       = true
-  timeout    = 600
+  timeout    = 120
 
   values = [yamlencode({
     deploymentMode = "SingleBinary"
@@ -195,7 +195,7 @@ resource "helm_release" "alloy" {
   version    = var.alloy_chart_version
   namespace  = kubernetes_namespace_v1.logging.metadata[0].name
   wait       = true
-  timeout    = 600
+  timeout    = 120
 
   values = [yamlencode({
     # The 'crds' subchart installs CRDs used by the Alloy operator. We deploy
@@ -367,7 +367,7 @@ resource "helm_release" "openobserve" {
   version    = var.openobserve_chart_version
   namespace  = kubernetes_namespace_v1.logging.metadata[0].name
   wait       = true
-  timeout    = 600
+  timeout    = 120
 
   values = [yamlencode(merge(
     {

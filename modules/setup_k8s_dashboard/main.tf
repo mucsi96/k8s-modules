@@ -22,7 +22,7 @@ resource "helm_release" "headlamp" {
   version    = var.headlamp_chart_version
   namespace  = kubernetes_namespace_v1.k8s_dashboard.metadata[0].name
   wait       = true
-  timeout    = 600
+  timeout    = 120
 
   values = [yamlencode({
     image = {

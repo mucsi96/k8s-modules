@@ -11,7 +11,7 @@ resource "helm_release" "traefik" {
   version    = var.traefik_chart_version
   namespace  = kubernetes_namespace_v1.traefik.metadata[0].name
   wait       = true
-  timeout    = 600
+  timeout    = 120
   #https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml
   values = [yamlencode({
     versionOverride = var.traefik_version

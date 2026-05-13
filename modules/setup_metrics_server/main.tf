@@ -9,7 +9,7 @@ resource "helm_release" "metrics_server" {
   version    = var.metrics_server_chart_version
   namespace  = "kube-system"
   wait       = true
-  timeout    = 600
+  timeout    = 120
 
   values = [yamlencode({
     image = {

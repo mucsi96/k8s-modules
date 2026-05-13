@@ -145,7 +145,7 @@ resource "helm_release" "kube_prometheus_stack" {
   version    = var.kube_prometheus_stack_chart_version
   namespace  = kubernetes_namespace_v1.monitoring.metadata[0].name
   wait       = true
-  timeout    = 600
+  timeout    = 120
 
   values = [yamlencode({
     crds = {
