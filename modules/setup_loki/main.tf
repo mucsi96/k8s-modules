@@ -529,11 +529,12 @@ resource "kubernetes_stateful_set_v1" "openobserve" {
 }
 
 # Same SSO front-door pattern as Grafana/Prometheus/pgweb: oauth2-proxy
-# terminates the Entra OIDC flow, restricts sign-in to var.valid_email and
-# proxies authenticated requests to OpenObserve's ClusterIP service. The
-# OpenObserve UI itself still asks for credentials once on first visit
-# (browser cookie persists after); those bootstrap credentials are the same
-# ones Alloy uses to ingest, stored in the openobserve-root Secret.
+# terminates the Entra OIDC flow and restricts sign-in to var.valid_email.
+# OpenObserve OSS has no OIDC support of its own, so pass_basic_auth makes
+# oauth2-proxy translate the authenticated session into
+# 'Authorization: Basic base64(<email>:<root-password>)' on every upstream
+# request. OpenObserve treats those requests as the root user and the SPA
+# skips its own login form -- the browser never sees a credentials prompt.
 module "openobserve_oauth2_proxy" {
   source = "../setup_oauth2_proxy"
 
@@ -547,6 +548,7 @@ module "openobserve_oauth2_proxy" {
   oauth2_proxy_image_version = var.oauth2_proxy_image_version
   upstream_uri               = "http://${kubernetes_service_v1.openobserve.metadata[0].name}.${kubernetes_namespace_v1.logging.metadata[0].name}.svc.cluster.local:${local.openobserve_http}"
   session_redis              = var.session_redis
+  basic_auth_password        = random_password.openobserve_root.result
 
   depends_on = [kubernetes_stateful_set_v1.openobserve]
 }

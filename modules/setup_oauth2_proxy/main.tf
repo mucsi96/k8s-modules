@@ -21,11 +21,17 @@ locals {
   # when we're already keeping tokens around to forward upstream. This is what
   # keeps Headlamp's Authorization: Bearer id_token from going stale and being
   # rejected by kube-apiserver as "oidc: token is expired".
+  needs_session_tokens = length(var.inject_request_headers) > 0 || var.basic_auth_password != ""
+
+  basic_auth_lines = var.basic_auth_password == "" ? [] : [
+    "pass_basic_auth = true",
+    "basic_auth_password = \"${var.basic_auth_password}\"",
+  ]
+
   config_file = join("\n", concat(
     local.base_config_lines,
-    length(var.inject_request_headers) == 0
-    ? ["session_cookie_minimal = true"]
-    : ["cookie_refresh = \"30m\""],
+    local.needs_session_tokens ? ["cookie_refresh = \"30m\""] : ["session_cookie_minimal = true"],
+    local.basic_auth_lines,
   ))
 
   session_storage = {

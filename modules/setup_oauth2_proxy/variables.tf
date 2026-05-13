@@ -71,3 +71,10 @@ variable "session_redis" {
   })
   sensitive = true
 }
+
+variable "basic_auth_password" {
+  description = "When non-empty, oauth2-proxy injects 'Authorization: Basic base64(<authenticated-email>:<this-password>)' on upstream requests (pass_basic_auth). Used to translate an Entra SSO session into a static Basic-auth identity for apps like OpenObserve that don't speak OIDC but accept a reverse-proxy-supplied Authorization header."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
