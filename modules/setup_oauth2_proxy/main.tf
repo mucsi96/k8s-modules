@@ -23,16 +23,45 @@ locals {
   # rejected by kube-apiserver as "oidc: token is expired".
   needs_session_tokens = length(var.inject_request_headers) > 0 || var.basic_auth_password != ""
 
-  basic_auth_lines = var.basic_auth_password == "" ? [] : [
-    "pass_basic_auth = true",
-    "basic_auth_password = \"${var.basic_auth_password}\"",
-  ]
-
   config_file = join("\n", concat(
     local.base_config_lines,
     local.needs_session_tokens ? ["cookie_refresh = \"30m\""] : ["session_cookie_minimal = true"],
-    local.basic_auth_lines,
   ))
+
+  user_inject_request_headers = [
+    for header in var.inject_request_headers : {
+      name = header.name
+      values = [
+        for value in header.values : merge(
+          { claim = value.claim },
+          value.prefix == null ? {} : { prefix = value.prefix },
+        )
+      ]
+    }
+  ]
+
+  # alphaConfig replacement for the legacy pass_basic_auth /
+  # basic_auth_password cfg keys, which oauth2-proxy 7.x rejects with
+  # "invalid keys" at startup. Setting basicAuthPassword on a header value
+  # tells oauth2-proxy to construct 'Authorization: Basic
+  # base64(<email>:<password>)' upstream by combining the email claim with
+  # the static password defined here. The chart's YAML marshaller turns
+  # the base64-encoded value into the right []byte representation that
+  # oauth2-proxy expects for SecretSource.Value.
+  basic_auth_inject_headers = var.basic_auth_password == "" ? [] : [{
+    name = "Authorization"
+    values = [{
+      claim = "email"
+      basicAuthPassword = {
+        value = base64encode(var.basic_auth_password)
+      }
+    }]
+  }]
+
+  inject_request_headers = concat(
+    local.user_inject_request_headers,
+    local.basic_auth_inject_headers,
+  )
 
   session_storage = {
     type = "redis"
@@ -69,19 +98,7 @@ resource "helm_release" "oauth2_proxy" {
     alphaConfig = {
       enabled = true
       configFile = yamlencode({
-        injectRequestHeaders = [
-          for header in var.inject_request_headers : {
-            name = header.name
-            values = [
-              for value in header.values : {
-                claimSource = merge(
-                  { claim = value.claim },
-                  value.prefix == null ? {} : { prefix = value.prefix },
-                )
-              }
-            ]
-          }
-        ]
+        injectRequestHeaders = local.inject_request_headers
         providers = [{
           id           = "entra"
           provider     = "oidc"
