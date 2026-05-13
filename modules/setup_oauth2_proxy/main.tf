@@ -81,7 +81,7 @@ resource "helm_release" "oauth2_proxy" {
   version    = var.oauth2_proxy_chart_version
   namespace  = var.namespace
   wait       = true
-  timeout    = 600
+  timeout    = 120
 
   values = [yamlencode({
     image = {
