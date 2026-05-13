@@ -281,8 +281,8 @@ module "setup_ingress_controller" {
   authorized_as              = data.azurerm_key_vault_secret.authorized_as.value
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   owner                      = local.owner
-  oauth2_proxy_chart_version = "7.12.6"  #https://github.com/oauth2-proxy/manifests/releases
-  oauth2_proxy_image_version = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
+  oauth2_proxy_chart_version = "10.4.3"  #https://github.com/oauth2-proxy/manifests/releases
+  oauth2_proxy_image_version = "v7.15.2" #https://github.com/oauth2-proxy/oauth2-proxy/releases
   valid_email                = data.azurerm_key_vault_secret.letsencrypt_email.value
   session_redis = {
     connection_url = module.create_redis.connection_url
@@ -441,8 +441,8 @@ module "setup_k8s_dashboard" {
   valid_email                = data.azurerm_key_vault_secret.letsencrypt_email.value
   headlamp_chart_version     = "0.41.0"  #https://github.com/headlamp-k8s/headlamp/releases
   headlamp_image_version     = "v0.41.0" #https://github.com/headlamp-k8s/headlamp/releases
-  oauth2_proxy_chart_version = "7.12.6"  #https://github.com/oauth2-proxy/manifests/releases
-  oauth2_proxy_image_version = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
+  oauth2_proxy_chart_version = "10.4.3"  #https://github.com/oauth2-proxy/manifests/releases
+  oauth2_proxy_image_version = "v7.15.2" #https://github.com/oauth2-proxy/oauth2-proxy/releases
   session_redis = {
     connection_url = module.create_redis.connection_url
     password       = module.create_redis.password
@@ -461,8 +461,8 @@ module "setup_prometheus_operator" {
   prometheus_client_secret            = module.register_prometheus_dashboard.client_secret
   valid_email                         = data.azurerm_key_vault_secret.letsencrypt_email.value
   kube_prometheus_stack_chart_version = "84.5.0"  #https://github.com/prometheus-community/helm-charts/releases?q=kube-prometheus-stack
-  oauth2_proxy_chart_version          = "7.12.6"  #https://github.com/oauth2-proxy/manifests/releases
-  oauth2_proxy_image_version          = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
+  oauth2_proxy_chart_version          = "10.4.3"  #https://github.com/oauth2-proxy/manifests/releases
+  oauth2_proxy_image_version          = "v7.15.2" #https://github.com/oauth2-proxy/oauth2-proxy/releases
   session_redis = {
     connection_url = module.create_redis.connection_url
     password       = module.create_redis.password
@@ -488,8 +488,8 @@ module "setup_loki" {
   openobserve_client_id      = module.register_openobserve_dashboard.client_id
   openobserve_client_secret  = module.register_openobserve_dashboard.client_secret
   valid_email                = data.azurerm_key_vault_secret.letsencrypt_email.value
-  oauth2_proxy_chart_version = "7.12.6"  #https://github.com/oauth2-proxy/manifests/releases
-  oauth2_proxy_image_version = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
+  oauth2_proxy_chart_version = "10.4.3"  #https://github.com/oauth2-proxy/manifests/releases
+  oauth2_proxy_image_version = "v7.15.2" #https://github.com/oauth2-proxy/oauth2-proxy/releases
   session_redis = {
     connection_url = module.create_redis.connection_url
     password       = module.create_redis.password
@@ -505,8 +505,8 @@ module "setup_pgweb" {
   client_secret              = module.register_pgweb_dashboard.client_secret
   valid_email                = data.azurerm_key_vault_secret.letsencrypt_email.value
   pgweb_image_version        = "0.16.2"  #https://github.com/sosedoff/pgweb/releases
-  oauth2_proxy_chart_version = "7.12.6"  #https://github.com/oauth2-proxy/manifests/releases
-  oauth2_proxy_image_version = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
+  oauth2_proxy_chart_version = "10.4.3"  #https://github.com/oauth2-proxy/manifests/releases
+  oauth2_proxy_image_version = "v7.15.2" #https://github.com/oauth2-proxy/oauth2-proxy/releases
   session_redis = {
     connection_url = module.create_redis.connection_url
     password       = module.create_redis.password

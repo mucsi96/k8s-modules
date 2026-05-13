@@ -32,28 +32,32 @@ locals {
     for header in var.inject_request_headers : {
       name = header.name
       values = [
-        for value in header.values : merge(
-          { claim = value.claim },
-          value.prefix == null ? {} : { prefix = value.prefix },
-        )
+        for value in header.values : {
+          claimSource = merge(
+            { claim = value.claim },
+            value.prefix == null ? {} : { prefix = value.prefix },
+          )
+        }
       ]
     }
   ]
 
   # alphaConfig replacement for the legacy pass_basic_auth /
   # basic_auth_password cfg keys, which oauth2-proxy 7.x rejects with
-  # "invalid keys" at startup. Setting basicAuthPassword on a header value
-  # tells oauth2-proxy to construct 'Authorization: Basic
-  # base64(<email>:<password>)' upstream by combining the email claim with
-  # the static password defined here. The chart's YAML marshaller turns
-  # the base64-encoded value into the right []byte representation that
+  # "invalid keys" at startup. Setting basicAuthPassword inside the
+  # claimSource block tells oauth2-proxy to construct 'Authorization:
+  # Basic base64(<email>:<password>)' upstream by combining the email
+  # claim with the static password defined here. The chart's YAML
+  # marshaller turns the base64-encoded value into the []byte form that
   # oauth2-proxy expects for SecretSource.Value.
   basic_auth_inject_headers = var.basic_auth_password == "" ? [] : [{
     name = "Authorization"
     values = [{
-      claim = "email"
-      basicAuthPassword = {
-        value = base64encode(var.basic_auth_password)
+      claimSource = {
+        claim = "email"
+        basicAuthPassword = {
+          value = base64encode(var.basic_auth_password)
+        }
       }
     }]
   }]
