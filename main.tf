@@ -172,7 +172,8 @@ locals {
   k8s_dashboard_hostname = "k8s.${data.azurerm_key_vault_secret.dns_zone.value}"
   grafana_hostname       = "grafana.${data.azurerm_key_vault_secret.dns_zone.value}"
   prometheus_hostname    = "prometheus.${data.azurerm_key_vault_secret.dns_zone.value}"
-  pgweb_hostname       = "db.${data.azurerm_key_vault_secret.dns_zone.value}"
+  pgweb_hostname         = "db.${data.azurerm_key_vault_secret.dns_zone.value}"
+  openobserve_hostname   = "logs.${data.azurerm_key_vault_secret.dns_zone.value}"
 }
 
 module "register_grafana_dashboard" {
@@ -197,6 +198,14 @@ module "register_pgweb_dashboard" {
   display_name  = "pgweb - ${var.environment_name}"
   owner         = local.owner
   redirect_uris = ["https://${local.pgweb_hostname}/oauth2/callback"]
+}
+
+module "register_openobserve_dashboard" {
+  source = "./modules/register_webapp"
+
+  display_name  = "OpenObserve - ${var.environment_name}"
+  owner         = local.owner
+  redirect_uris = ["https://${local.openobserve_hostname}/oauth2/callback"]
 }
 
 data "azurerm_key_vault_secret" "dns_zone" {
@@ -469,11 +478,23 @@ module "setup_prometheus_operator" {
 }
 
 module "setup_loki" {
-  source              = "./modules/setup_loki"
-  loki_chart_version  = "7.0.0" #https://github.com/grafana/loki/blob/main/production/helm/loki/Chart.yaml
-  alloy_chart_version = "1.8.1" #https://github.com/grafana/helm-charts/releases?q=alloy
-  grafana_namespace   = module.setup_prometheus_operator.namespace
-  wait_for            = module.setup_prometheus_operator.kube_prometheus_stack_ready
+  source                     = "./modules/setup_loki"
+  loki_chart_version         = "7.0.0"   #https://github.com/grafana/loki/blob/main/production/helm/loki/Chart.yaml
+  alloy_chart_version        = "1.8.1"   #https://github.com/grafana/helm-charts/releases?q=alloy
+  openobserve_image_version  = "v0.14.7" #https://github.com/openobserve/openobserve/releases
+  grafana_namespace          = module.setup_prometheus_operator.namespace
+  openobserve_hostname       = local.openobserve_hostname
+  tenant_id                  = data.azurerm_client_config.current.tenant_id
+  openobserve_client_id      = module.register_openobserve_dashboard.client_id
+  openobserve_client_secret  = module.register_openobserve_dashboard.client_secret
+  valid_email                = data.azurerm_key_vault_secret.letsencrypt_email.value
+  oauth2_proxy_chart_version = "7.12.6"  #https://github.com/oauth2-proxy/manifests/releases
+  oauth2_proxy_image_version = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
+  session_redis = {
+    connection_url = module.create_redis.connection_url
+    password       = module.create_redis.password
+  }
+  wait_for = module.setup_prometheus_operator.kube_prometheus_stack_ready
 }
 
 module "setup_pgweb" {
