@@ -10,6 +10,7 @@ locals {
   openobserve_org            = "default"
   openobserve_url            = "http://${local.openobserve_service_name}.${kubernetes_namespace_v1.logging.metadata[0].name}.svc.cluster.local:${local.openobserve_http}"
   openobserve_loki_push_path = "/api/${local.openobserve_org}/loki/api/v1/push"
+  openobserve_secret_name    = "openobserve-root"
 }
 
 resource "terraform_data" "wait_for" {
@@ -296,7 +297,7 @@ resource "helm_release" "alloy" {
           name = "ZO_ROOT_USER_EMAIL"
           valueFrom = {
             secretKeyRef = {
-              name = kubernetes_secret_v1.openobserve_root.metadata[0].name
+              name = local.openobserve_secret_name
               key  = "ZO_ROOT_USER_EMAIL"
             }
           }
@@ -305,7 +306,7 @@ resource "helm_release" "alloy" {
           name = "ZO_ROOT_USER_PASSWORD"
           valueFrom = {
             secretKeyRef = {
-              name = kubernetes_secret_v1.openobserve_root.metadata[0].name
+              name = local.openobserve_secret_name
               key  = "ZO_ROOT_USER_PASSWORD"
             }
           }
@@ -320,6 +321,7 @@ resource "helm_release" "alloy" {
   depends_on = [
     helm_release.loki,
     helm_release.openobserve,
+    kubectl_manifest.openobserve_root,
   ]
 }
 
@@ -338,18 +340,24 @@ resource "random_password" "openobserve_root" {
 # Kept as a Terraform-managed Secret (instead of relying on the chart's
 # auto-generated one) so Alloy and the oauth2-proxy basic_auth_password
 # parameter can reference the exact same credentials by a stable name.
-resource "kubernetes_secret_v1" "openobserve_root" {
-  metadata {
-    name      = "openobserve-root"
-    namespace = kubernetes_namespace_v1.logging.metadata[0].name
-  }
+# sensitive_fields keeps the password out of plan output and state-dump
+# diffs; the values still land in the Secret on the cluster.
+resource "kubectl_manifest" "openobserve_root" {
+  sensitive_fields = ["stringData.ZO_ROOT_USER_PASSWORD"]
 
-  data = {
-    ZO_ROOT_USER_EMAIL    = var.valid_email
-    ZO_ROOT_USER_PASSWORD = random_password.openobserve_root.result
-  }
-
-  type = "Opaque"
+  yaml_body = yamlencode({
+    apiVersion = "v1"
+    kind       = "Secret"
+    type       = "Opaque"
+    metadata = {
+      name      = local.openobserve_secret_name
+      namespace = kubernetes_namespace_v1.logging.metadata[0].name
+    }
+    stringData = {
+      ZO_ROOT_USER_EMAIL    = var.valid_email
+      ZO_ROOT_USER_PASSWORD = random_password.openobserve_root.result
+    }
+  })
 }
 
 resource "helm_release" "openobserve" {
