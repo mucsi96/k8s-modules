@@ -173,7 +173,7 @@ locals {
   grafana_hostname       = "grafana.${data.azurerm_key_vault_secret.dns_zone.value}"
   prometheus_hostname    = "prometheus.${data.azurerm_key_vault_secret.dns_zone.value}"
   pgweb_hostname         = "db.${data.azurerm_key_vault_secret.dns_zone.value}"
-  openobserve_hostname   = "logs.${data.azurerm_key_vault_secret.dns_zone.value}"
+  parseable_hostname     = "logs.${data.azurerm_key_vault_secret.dns_zone.value}"
 }
 
 module "register_grafana_dashboard" {
@@ -200,12 +200,12 @@ module "register_pgweb_dashboard" {
   redirect_uris = ["https://${local.pgweb_hostname}/oauth2/callback"]
 }
 
-module "register_openobserve_dashboard" {
+module "register_parseable_dashboard" {
   source = "./modules/register_webapp"
 
-  display_name  = "OpenObserve - ${var.environment_name}"
+  display_name  = "Parseable - ${var.environment_name}"
   owner         = local.owner
-  redirect_uris = ["https://${local.openobserve_hostname}/oauth2/callback"]
+  redirect_uris = ["https://${local.parseable_hostname}/oauth2/callback"]
 }
 
 data "azurerm_key_vault_secret" "dns_zone" {
@@ -479,14 +479,14 @@ module "setup_prometheus_operator" {
 
 module "setup_loki" {
   source                     = "./modules/setup_loki"
-  loki_chart_version         = "7.0.0"  #https://github.com/grafana/loki/blob/main/production/helm/loki/Chart.yaml
-  alloy_chart_version        = "1.8.1"  #https://github.com/grafana/helm-charts/releases?q=alloy
-  openobserve_chart_version  = "0.14.7" #https://github.com/openobserve/openobserve-helm-chart/releases
+  loki_chart_version         = "7.0.0" #https://github.com/grafana/loki/blob/main/production/helm/loki/Chart.yaml
+  alloy_chart_version        = "1.8.1" #https://github.com/grafana/helm-charts/releases?q=alloy
+  parseable_chart_version    = "1.6.5" #https://github.com/parseablehq/helm-charts/releases
   grafana_namespace          = module.setup_prometheus_operator.namespace
-  openobserve_hostname       = local.openobserve_hostname
+  parseable_hostname         = local.parseable_hostname
   tenant_id                  = data.azurerm_client_config.current.tenant_id
-  openobserve_client_id      = module.register_openobserve_dashboard.client_id
-  openobserve_client_secret  = module.register_openobserve_dashboard.client_secret
+  parseable_client_id        = module.register_parseable_dashboard.client_id
+  parseable_client_secret    = module.register_parseable_dashboard.client_secret
   valid_email                = data.azurerm_key_vault_secret.letsencrypt_email.value
   oauth2_proxy_chart_version = "10.4.3"  #https://github.com/oauth2-proxy/manifests/releases
   oauth2_proxy_image_version = "v7.15.2" #https://github.com/oauth2-proxy/oauth2-proxy/releases

@@ -43,47 +43,47 @@ variable "wait_for" {
   default     = null
 }
 
-variable "openobserve_chart_version" {
-  description = "Helm chart version for openobserve/openobserve-standalone. OpenObserve is a Splunk-style log viewer with first-class JSON field extraction; it shares the 'logging' namespace with Loki so the two pipelines can be operated together."
+variable "parseable_chart_version" {
+  description = "Helm chart version for parseable/parseable (Community Edition). Parseable is a logs-only, AGPL explorer with a modern UI and native JSON field extraction; it shares the 'logging' namespace with Loki so the two pipelines can be operated together."
   type        = string
 }
 
-variable "openobserve_image_version" {
-  description = "Container image tag override for openobserve. Leave empty to use the appVersion pinned by the Helm chart."
+variable "parseable_image_version" {
+  description = "Container image tag override for parseable. Leave empty to use the appVersion pinned by the Helm chart."
   type        = string
   default     = ""
 }
 
-variable "openobserve_storage_size" {
-  description = "Persistent volume size for OpenObserve's local data directory (WAL, index, files store). The single-node deployment keeps everything on disk under ZO_DATA_DIR; the chart provisions the PVC dynamically against the cluster's default StorageClass."
+variable "parseable_storage_size" {
+  description = "Persistent volume size for Parseable's local-store data directory (WAL, staging, column store). The single-node deployment keeps everything on disk; the chart provisions the PVC dynamically against the cluster's default StorageClass."
   type        = string
   default     = "20Gi"
 }
 
-variable "openobserve_hostname" {
-  description = "Public hostname where the OpenObserve UI is exposed (e.g. logs.example.com)."
+variable "parseable_hostname" {
+  description = "Public hostname where the Parseable UI is exposed (e.g. logs.example.com)."
   type        = string
   sensitive   = true
 }
 
 variable "tenant_id" {
-  description = "Azure AD tenant ID used as the OIDC issuer for oauth2-proxy in front of OpenObserve."
+  description = "Azure AD tenant ID used as the OIDC issuer for oauth2-proxy in front of Parseable."
   type        = string
 }
 
-variable "openobserve_client_id" {
-  description = "OIDC client ID of the Entra application used by oauth2-proxy in front of OpenObserve."
+variable "parseable_client_id" {
+  description = "OIDC client ID of the Entra application used by oauth2-proxy in front of Parseable."
   type        = string
 }
 
-variable "openobserve_client_secret" {
-  description = "OIDC client secret of the Entra application used by oauth2-proxy in front of OpenObserve."
+variable "parseable_client_secret" {
+  description = "OIDC client secret of the Entra application used by oauth2-proxy in front of Parseable."
   type        = string
   sensitive   = true
 }
 
 variable "valid_email" {
-  description = "Email address allowed to sign in to OpenObserve via Entra. Also used as the OpenObserve root user email so the same identity authenticates at both layers."
+  description = "Email address allowed to sign in to Parseable via Entra."
   type        = string
   sensitive   = true
 }
@@ -98,11 +98,11 @@ variable "session_redis" {
 }
 
 variable "oauth2_proxy_chart_version" {
-  description = "Helm chart version for oauth2-proxy in front of OpenObserve."
+  description = "Helm chart version for oauth2-proxy in front of Parseable."
   type        = string
 }
 
 variable "oauth2_proxy_image_version" {
-  description = "Container image tag for oauth2-proxy in front of OpenObserve."
+  description = "Container image tag for oauth2-proxy in front of Parseable."
   type        = string
 }
