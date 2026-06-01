@@ -37,6 +37,30 @@ variable "loki_host_path" {
   default     = "/data/loki"
 }
 
+variable "faro_hostname" {
+  description = "Public hostname where the Grafana Faro receiver is exposed (e.g. faro.example.com). Browsers running the Faro Web SDK POST telemetry to https://<hostname>/collect."
+  type        = string
+  sensitive   = true
+}
+
+variable "faro_cors_allowed_origins" {
+  description = "Origins permitted to push to the Faro receiver. Defaults to '*' so any SPA can ship logs; lock this down to specific app origins for a tighter trust boundary."
+  type        = list(string)
+  default     = ["*"]
+}
+
+variable "faro_rate_limit_rps" {
+  description = "Maximum requests-per-second the Faro receiver accepts before shedding. Protects against a buggy SPA or hostile client flooding Loki."
+  type        = number
+  default     = 50
+}
+
+variable "faro_rate_limit_burst" {
+  description = "Burst size for the Faro receiver's token-bucket rate limiter."
+  type        = number
+  default     = 100
+}
+
 variable "wait_for" {
   description = "Optional dependency to wait for before deploying (e.g., kube-prometheus-stack readiness so the datasource ConfigMap can land in the Grafana namespace)."
   type        = string

@@ -79,40 +79,6 @@ variable "database" {
   sensitive = true
 }
 
-variable "faro_hostname" {
-  description = "Public hostname where the Grafana Faro receiver is exposed (e.g. faro.example.com). Browsers running the Faro Web SDK POST telemetry to https://<hostname>/collect."
-  type        = string
-  sensitive   = true
-}
-
-variable "faro_alloy_chart_version" {
-  description = "Helm chart version for grafana/alloy used by the Faro receiver. Kept separate from the chart version used by setup_loki's pod-log DaemonSet so the two can be upgraded independently."
-  type        = string
-}
-
-variable "faro_loki_url" {
-  description = "In-cluster base URL of the Loki HTTP API the Faro receiver forwards to (e.g. http://loki.logging.svc.cluster.local:3100). Passed as a literal rather than referenced from setup_loki to avoid a dependency cycle (setup_loki depends on this module's kube-prometheus-stack readiness)."
-  type        = string
-}
-
-variable "faro_cors_allowed_origins" {
-  description = "Origins permitted to push to the Faro receiver. Defaults to '*' so any SPA can ship logs; lock this down to specific app origins for a tighter trust boundary."
-  type        = list(string)
-  default     = ["*"]
-}
-
-variable "faro_rate_limit_rps" {
-  description = "Maximum requests-per-second the Faro receiver accepts before shedding. Protects against a buggy SPA or hostile client flooding Loki."
-  type        = number
-  default     = 50
-}
-
-variable "faro_rate_limit_burst" {
-  description = "Burst size for the Faro receiver's token-bucket rate limiter."
-  type        = number
-  default     = 100
-}
-
 variable "wait_for" {
   description = "Optional dependency to wait for before deploying (e.g., ingress controller readiness)"
   type        = string
