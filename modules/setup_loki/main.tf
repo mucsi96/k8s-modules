@@ -378,7 +378,7 @@ resource "kubernetes_config_map_v1" "faro_alloy_config" {
 
         stage.template {
           source   = "output_line"
-          template = "{{ .timestamp }}{{ if .level }} [{{ .level | upper }}]{{ end }} {{ .message }}"
+          template = "{{ .timestamp | toDate `2006-01-02 15:04:05 -0700 MST` | date `02/Jan/2006:15:04:05` }}{{ if .level }} [{{ .level | upper }}]{{ end }} {{ .message }}"
         }
 
         stage.output {
