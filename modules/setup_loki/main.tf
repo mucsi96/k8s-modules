@@ -324,7 +324,33 @@ resource "helm_release" "faro_alloy" {
             }
 
             output {
-              logs = [loki.write.default.receiver]
+              logs = [loki.process.faro.receiver]
+            }
+          }
+
+          // The Faro receiver emits each log line as logfmt with app_name,
+          // kind and level inlined, but only attaches service_name as a
+          // real Loki label (and Loki defaults missing values to
+          // "unknown_service"). Parse the line, lift app_name/kind/level
+          // out, and promote app_name to an "app" label so dashboards can
+          // do label_values(app) and {app="..."} just like for pod logs.
+          loki.process "faro" {
+            forward_to = [loki.write.default.receiver]
+
+            stage.logfmt {
+              mapping = {
+                app_name = "",
+                kind     = "",
+                level    = "",
+              }
+            }
+
+            stage.labels {
+              values = {
+                app   = "app_name",
+                kind  = "kind",
+                level = "level",
+              }
             }
           }
 
