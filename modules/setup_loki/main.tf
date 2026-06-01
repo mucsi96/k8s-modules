@@ -352,6 +352,7 @@ resource "helm_release" "faro_alloy" {
                 kind            = "",
                 level           = "",
                 message         = "",
+                timestamp       = "",
                 event_name      = "",
                 event_domain    = "",
                 type            = "",
@@ -394,8 +395,17 @@ resource "helm_release" "faro_alloy" {
               }
             }
 
+            // Prefix the line with the SDK-reported timestamp and level so
+            // they're visible while scrolling logs, not only as a label /
+            // entry-timestamp column. `level` is empty for non-log kinds,
+            // so the [LEVEL] bracket is suppressed in that case.
+            stage.template {
+              source   = "_line"
+              template = "{{ .timestamp }}{{ if .level }} [{{ .level | upper }}]{{ end }} {{ .message }}"
+            }
+
             stage.output {
-              source = "message"
+              source = "_line"
             }
           }
 
