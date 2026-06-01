@@ -172,8 +172,11 @@ locals {
   k8s_dashboard_hostname = "k8s.${data.azurerm_key_vault_secret.dns_zone.value}"
   grafana_hostname       = "grafana.${data.azurerm_key_vault_secret.dns_zone.value}"
   prometheus_hostname    = "prometheus.${data.azurerm_key_vault_secret.dns_zone.value}"
-  pgweb_hostname       = "db.${data.azurerm_key_vault_secret.dns_zone.value}"
+  pgweb_hostname         = "db.${data.azurerm_key_vault_secret.dns_zone.value}"
   faro_hostname          = "faro.${data.azurerm_key_vault_secret.dns_zone.value}"
+  # /collect is the path the Faro Web SDK POSTs telemetry to. Stored verbatim
+  # in each app's Key Vault so the SPA can use it without further URL juggling.
+  client_log_url = "https://${local.faro_hostname}/collect"
 }
 
 module "register_grafana_dashboard" {
@@ -334,6 +337,7 @@ module "setup_backup_app" {
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   azure_subscription_id      = var.azure_subscription_id
   k8s_oidc_config            = module.setup_cluster.k8s_oidc_config
+  client_log_url             = local.client_log_url
   twingate_service_key       = module.setup_twingate.service_key
   wait_for                   = module.setup_ingress_controller.traefik_ready
 
@@ -391,6 +395,7 @@ module "setup_learn_language_app" {
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   azure_subscription_id      = var.azure_subscription_id
   k8s_oidc_config            = module.setup_cluster.k8s_oidc_config
+  client_log_url             = local.client_log_url
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password
@@ -410,6 +415,7 @@ module "setup_hello_app" {
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   azure_subscription_id      = var.azure_subscription_id
   k8s_oidc_config            = module.setup_cluster.k8s_oidc_config
+  client_log_url             = local.client_log_url
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password
@@ -522,6 +528,7 @@ module "setup_training_log_app" {
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   azure_subscription_id      = var.azure_subscription_id
   k8s_oidc_config            = module.setup_cluster.k8s_oidc_config
+  client_log_url             = local.client_log_url
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password

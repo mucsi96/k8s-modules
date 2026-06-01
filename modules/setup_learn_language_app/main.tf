@@ -21,6 +21,7 @@ module "app_base" {
   spa_client_id              = module.setup_learn_language_spa.client_id
   api_resource_object_id     = module.setup_learn_language_api.resource_object_id
   k8s_oidc_config            = var.k8s_oidc_config
+  client_log_url             = var.client_log_url
 }
 
 module "setup_learn_language_api" {
