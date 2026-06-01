@@ -331,17 +331,36 @@ resource "helm_release" "faro_alloy" {
           // The Faro receiver emits each log line as logfmt with app_name,
           // kind and level inlined, but only attaches service_name as a
           // real Loki label (and Loki defaults missing values to
-          // "unknown_service"). Parse the line, lift app_name/kind/level
-          // out, and promote app_name to an "app" label so dashboards can
-          // do label_values(app) and {app="..."} just like for pod logs.
+          // "unknown_service"). The pipeline below:
+          //   1. parses the logfmt line into extracted fields;
+          //   2. promotes app_name/kind/level to real Loki labels so
+          //      dashboards can do label_values(app) and {app="..."} just
+          //      like for pod logs;
+          //   3. moves the noisy browser/sdk/session context to Loki
+          //      structured metadata (still queryable with `| key="value"`
+          //      and expandable in Grafana, but no longer in the log line);
+          //   4. rewrites the log line per kind into a one-line summary.
           loki.process "faro" {
             forward_to = [loki.write.default.receiver]
 
             stage.logfmt {
               mapping = {
-                app_name = "",
-                kind     = "",
-                level    = "",
+                app_name        = "",
+                kind            = "",
+                level           = "",
+                message         = "",
+                event_name      = "",
+                type            = "",
+                exception_type  = "",
+                exception_value = "",
+                sdk_name        = "",
+                sdk_version     = "",
+                app_version     = "",
+                session_id      = "",
+                page_url        = "",
+                browser_name    = "",
+                browser_version = "",
+                browser_os      = "",
               }
             }
 
@@ -350,6 +369,62 @@ resource "helm_release" "faro_alloy" {
                 app   = "app_name",
                 kind  = "kind",
                 level = "level",
+              }
+            }
+
+            stage.structured_metadata {
+              values = {
+                sdk_name        = "sdk_name",
+                sdk_version     = "sdk_version",
+                app_version     = "app_version",
+                session_id      = "session_id",
+                page_url        = "page_url",
+                browser_name    = "browser_name",
+                browser_version = "browser_version",
+                browser_os      = "browser_os",
+              }
+            }
+
+            // Per-kind log line rewriting. Each match runs only on entries
+            // whose kind label equals the selector value; the inner
+            // stage.output replaces the rendered line.
+            stage.match {
+              selector = "{kind=\"log\"}"
+              stage.output {
+                source = "message"
+              }
+            }
+
+            stage.match {
+              selector = "{kind=\"event\"}"
+              stage.template {
+                source   = "_line"
+                template = "event {{ .event_name }}"
+              }
+              stage.output {
+                source = "_line"
+              }
+            }
+
+            stage.match {
+              selector = "{kind=\"exception\"}"
+              stage.template {
+                source   = "_line"
+                template = "{{ .exception_type }}: {{ .exception_value }}"
+              }
+              stage.output {
+                source = "_line"
+              }
+            }
+
+            stage.match {
+              selector = "{kind=\"measurement\"}"
+              stage.template {
+                source   = "_line"
+                template = "measurement {{ .type }}"
+              }
+              stage.output {
+                source = "_line"
               }
             }
           }
