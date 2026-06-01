@@ -277,6 +277,124 @@ resource "helm_release" "alloy" {
   depends_on = [helm_release.loki]
 }
 
+# Alloy config for the Faro receiver, managed directly as a Kubernetes
+# ConfigMap rather than rendered by the chart. The chart pipes
+# .Values.alloy.configMap.content through Helm's `tpl` function, which
+# re-evaluates any `{{ ... }}` it finds against the chart's context — the
+# stage.template Go-template syntax below would otherwise collapse to empty
+# strings (we observed `template = " "` in the deployed ConfigMap). Owning
+# the ConfigMap from Terraform sidesteps that round-trip entirely.
+resource "kubernetes_config_map_v1" "faro_alloy_config" {
+  metadata {
+    name      = "${local.faro_alloy_release}-config"
+    namespace = kubernetes_namespace_v1.logging.metadata[0].name
+  }
+
+  data = {
+    "config.alloy" = <<-RIVER
+      faro.receiver "default" {
+        server {
+          listen_address           = "0.0.0.0"
+          listen_port              = ${local.faro_port}
+          cors_allowed_origins     = ${jsonencode(var.faro_cors_allowed_origins)}
+          max_allowed_payload_size = "10MiB"
+
+          rate_limiting {
+            enabled    = true
+            rate       = ${var.faro_rate_limit_rps}
+            burst_size = ${var.faro_rate_limit_burst}
+          }
+        }
+
+        output {
+          logs = [loki.process.faro.receiver]
+        }
+      }
+
+      // The Faro receiver emits each log line as a logfmt blob with every
+      // browser/sdk/session field inlined, and only sets service_name as a
+      // real Loki label (Loki defaults missing values to "unknown_service").
+      // The pipeline below:
+      //   1. parses the logfmt line into extracted fields;
+      //   2. promotes app_name/kind/level to real Loki labels so dashboards
+      //      can do label_values(app) and {app="..."} just like for pod logs;
+      //   3. moves every other extracted field into structured metadata —
+      //      still queryable with `| key="value"` and expandable in Grafana,
+      //      but out of the log line;
+      //   4. rewrites the log line as `<timestamp> [LEVEL] <message>`.
+      //      The [LEVEL] bracket is suppressed when level is empty (events,
+      //      measurements, exceptions don't have one).
+      loki.process "faro" {
+        forward_to = [loki.write.default.receiver]
+
+        stage.logfmt {
+          mapping = {
+            app_name        = "",
+            kind            = "",
+            level           = "",
+            message         = "",
+            timestamp       = "",
+            event_name      = "",
+            event_domain    = "",
+            type            = "",
+            exception_type  = "",
+            exception_value = "",
+            sdk_name        = "",
+            sdk_version     = "",
+            app_version     = "",
+            session_id      = "",
+            page_url        = "",
+            browser_name    = "",
+            browser_version = "",
+            browser_os      = "",
+          }
+        }
+
+        stage.labels {
+          values = {
+            app   = "app_name",
+            kind  = "kind",
+            level = "level",
+          }
+        }
+
+        stage.structured_metadata {
+          values = {
+            event_name      = "event_name",
+            event_domain    = "event_domain",
+            type            = "type",
+            exception_type  = "exception_type",
+            exception_value = "exception_value",
+            sdk_name        = "sdk_name",
+            sdk_version     = "sdk_version",
+            app_version     = "app_version",
+            session_id      = "session_id",
+            page_url        = "page_url",
+            browser_name    = "browser_name",
+            browser_version = "browser_version",
+            browser_os      = "browser_os",
+          }
+        }
+
+        stage.template {
+          source   = "output_line"
+          template = "{{ .timestamp }}{{ if .level }} [{{ .level | upper }}]{{ end }} {{ .message }}"
+        }
+
+        stage.output {
+          source = "output_line"
+        }
+      }
+
+      loki.write "default" {
+        endpoint {
+          url = "${local.loki_url}/loki/api/v1/push"
+        }
+      }
+    RIVER
+  }
+}
+
 # Grafana Faro: a second Alloy instance running as a faro.receiver. The
 # receiver exposes an HTTP endpoint that the Faro Web SDK (running in users'
 # browsers) POSTs logs, events, exceptions and measurements to, and forwards
@@ -306,115 +424,12 @@ resource "helm_release" "faro_alloy" {
     }
 
     alloy = {
+      # Reference the externally-managed ConfigMap so the chart's `tpl`
+      # round-trip leaves the Go-template syntax in stage.template alone.
       configMap = {
-        create  = true
-        content = <<-RIVER
-          faro.receiver "default" {
-            server {
-              listen_address           = "0.0.0.0"
-              listen_port              = ${local.faro_port}
-              cors_allowed_origins     = ${jsonencode(var.faro_cors_allowed_origins)}
-              max_allowed_payload_size = "10MiB"
-
-              rate_limiting {
-                enabled    = true
-                rate       = ${var.faro_rate_limit_rps}
-                burst_size = ${var.faro_rate_limit_burst}
-              }
-            }
-
-            output {
-              logs = [loki.process.faro.receiver]
-            }
-          }
-
-          // The Faro receiver emits each log line as a logfmt blob with
-          // every browser/sdk/session field inlined, and only sets
-          // service_name as a real Loki label (Loki defaults missing
-          // values to "unknown_service"). The pipeline below:
-          //   1. parses the logfmt line into extracted fields;
-          //   2. promotes app_name/kind/level to real Loki labels so
-          //      dashboards can do label_values(app) and {app="..."} just
-          //      like for pod logs;
-          //   3. moves every other extracted field into structured
-          //      metadata — still queryable with `| key="value"` and
-          //      expandable in Grafana, but out of the log line;
-          //   4. replaces the log line with the bare `message` field.
-          //      For non-log kinds (event/exception/measurement) message
-          //      is empty, so the line stays blank — labels and metadata
-          //      carry the meaning.
-          loki.process "faro" {
-            forward_to = [loki.write.default.receiver]
-
-            stage.logfmt {
-              mapping = {
-                app_name        = "",
-                kind            = "",
-                level           = "",
-                message         = "",
-                timestamp       = "",
-                event_name      = "",
-                event_domain    = "",
-                type            = "",
-                exception_type  = "",
-                exception_value = "",
-                sdk_name        = "",
-                sdk_version     = "",
-                app_version     = "",
-                session_id      = "",
-                page_url        = "",
-                browser_name    = "",
-                browser_version = "",
-                browser_os      = "",
-              }
-            }
-
-            stage.labels {
-              values = {
-                app   = "app_name",
-                kind  = "kind",
-                level = "level",
-              }
-            }
-
-            stage.structured_metadata {
-              values = {
-                event_name      = "event_name",
-                event_domain    = "event_domain",
-                type            = "type",
-                exception_type  = "exception_type",
-                exception_value = "exception_value",
-                sdk_name        = "sdk_name",
-                sdk_version     = "sdk_version",
-                app_version     = "app_version",
-                session_id      = "session_id",
-                page_url        = "page_url",
-                browser_name    = "browser_name",
-                browser_version = "browser_version",
-                browser_os      = "browser_os",
-              }
-            }
-
-            // Prefix the line with the SDK-reported timestamp and level so
-            // they're visible while scrolling logs, not only as a label /
-            // entry-timestamp column. `level` is empty for non-log kinds,
-            // so the [LEVEL] bracket is suppressed in that case.
-            stage.template {
-              source   = "_line"
-              template = "{{ .timestamp }}{{ if .level }} [{{ .level | upper }}]{{ end }} {{ .message }}"
-            }
-
-            stage.output {
-              source = "_line"
-            }
-          }
-
-          loki.write "default" {
-            endpoint {
-              url = "${local.loki_url}/loki/api/v1/push"
-            }
-          }
-        RIVER
+        create = false
+        name   = kubernetes_config_map_v1.faro_alloy_config.metadata[0].name
+        key    = "config.alloy"
       }
       # Expose the Faro HTTP port through the Service the chart renders so
       # the Traefik IngressRoute below can route to it.
@@ -437,7 +452,7 @@ resource "helm_release" "faro_alloy" {
     }
   })]
 
-  depends_on = [helm_release.loki]
+  depends_on = [helm_release.loki, kubernetes_config_map_v1.faro_alloy_config]
 }
 
 # Public route to the Faro receiver. Browsers cannot authenticate against
