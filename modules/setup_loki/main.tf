@@ -307,7 +307,7 @@ resource "helm_release" "faro_alloy" {
 
     alloy = {
       configMap = {
-        create = true
+        create  = true
         content = <<-RIVER
           faro.receiver "default" {
             server {
