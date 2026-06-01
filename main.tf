@@ -475,7 +475,20 @@ module "setup_loki" {
   alloy_chart_version = "1.8.1" #https://github.com/grafana/helm-charts/releases?q=alloy
   grafana_namespace   = module.setup_prometheus_operator.namespace
   faro_hostname       = local.faro_hostname
-  wait_for            = module.setup_prometheus_operator.kube_prometheus_stack_ready
+  # Restricted to the 4 apps' public hostnames and the localhost dev ports
+  # listed in each app's OIDC redirect_uris. Tightens the trust boundary from
+  # the default '*' so random origins cannot push into Loki.
+  faro_cors_allowed_origins = [
+    "https://hello.${data.azurerm_key_vault_secret.dns_zone.value}",
+    "https://language.${data.azurerm_key_vault_secret.dns_zone.value}",
+    "https://training.${data.azurerm_key_vault_secret.dns_zone.value}",
+    "https://backup.${data.azurerm_key_vault_secret.dns_zone.value}",
+    "http://localhost:4200",
+    "http://localhost:4201",
+    "http://localhost:4202",
+    "http://localhost:4203",
+  ]
+  wait_for = module.setup_prometheus_operator.kube_prometheus_stack_ready
 }
 
 module "setup_pgweb" {
