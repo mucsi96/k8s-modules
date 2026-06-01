@@ -455,6 +455,12 @@ module "setup_prometheus_operator" {
   kube_prometheus_stack_chart_version = "84.5.0"  #https://github.com/prometheus-community/helm-charts/releases?q=kube-prometheus-stack
   oauth2_proxy_chart_version          = "7.12.6"  #https://github.com/oauth2-proxy/manifests/releases
   oauth2_proxy_image_version          = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
+  faro_hostname                       = local.faro_hostname
+  faro_alloy_chart_version            = "1.8.1" #https://github.com/grafana/helm-charts/releases?q=alloy
+  # Literal to break the cycle with module.setup_loki, which waits on this
+  # module's readiness. Matches the URL setup_loki computes from its defaults
+  # (k8s_namespace = "logging", service name "loki", port 3100).
+  faro_loki_url = "http://loki.logging.svc.cluster.local:3100"
   session_redis = {
     connection_url = module.create_redis.connection_url
     password       = module.create_redis.password
@@ -475,15 +481,6 @@ module "setup_loki" {
   alloy_chart_version = "1.8.1" #https://github.com/grafana/helm-charts/releases?q=alloy
   grafana_namespace   = module.setup_prometheus_operator.namespace
   wait_for            = module.setup_prometheus_operator.kube_prometheus_stack_ready
-}
-
-module "setup_faro" {
-  source              = "./modules/setup_faro"
-  alloy_chart_version = "1.8.1" #https://github.com/grafana/helm-charts/releases?q=alloy
-  k8s_namespace       = module.setup_prometheus_operator.namespace
-  loki_url            = module.setup_loki.loki_url
-  hostname            = local.faro_hostname
-  wait_for            = module.setup_loki.loki_ready
 }
 
 module "setup_pgweb" {
