@@ -481,7 +481,6 @@ module "setup_faro" {
   source              = "./modules/setup_faro"
   alloy_chart_version = "1.8.1" #https://github.com/grafana/helm-charts/releases?q=alloy
   k8s_namespace       = module.setup_prometheus_operator.namespace
-  grafana_namespace   = module.setup_prometheus_operator.namespace
   loki_url            = module.setup_loki.loki_url
   hostname            = local.faro_hostname
   wait_for            = module.setup_loki.loki_ready

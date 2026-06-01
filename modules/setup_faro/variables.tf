@@ -1,12 +1,7 @@
 variable "k8s_namespace" {
-  description = "Namespace where the Faro receiver (Alloy) is deployed. Defaults to 'monitoring' so it sits alongside Grafana/Prometheus, which is also where the auto-loaded dashboard ConfigMap needs to live."
+  description = "Namespace where the Faro receiver (Alloy) is deployed. Defaults to 'monitoring' so it sits alongside Grafana/Prometheus."
   type        = string
   default     = "monitoring"
-}
-
-variable "grafana_namespace" {
-  description = "Namespace where Grafana (kube-prometheus-stack) is installed. The Loki-backed logs dashboard ConfigMap is created here so the kiwigrid sidecar discovers it; the sidecar only watches its own release namespace by default."
-  type        = string
 }
 
 variable "alloy_chart_version" {
@@ -44,7 +39,7 @@ variable "rate_limit_burst" {
 }
 
 variable "wait_for" {
-  description = "Optional dependency to wait for before deploying (Loki readiness so the receiver has somewhere to push, plus kube-prometheus-stack so the dashboard ConfigMap is picked up)."
+  description = "Optional dependency to wait for before deploying (typically Loki readiness so the receiver has somewhere to push)."
   type        = string
   default     = null
 }
