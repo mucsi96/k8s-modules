@@ -173,6 +173,7 @@ locals {
   grafana_hostname       = "grafana.${data.azurerm_key_vault_secret.dns_zone.value}"
   prometheus_hostname    = "prometheus.${data.azurerm_key_vault_secret.dns_zone.value}"
   pgweb_hostname       = "db.${data.azurerm_key_vault_secret.dns_zone.value}"
+  faro_hostname          = "faro.${data.azurerm_key_vault_secret.dns_zone.value}"
 }
 
 module "register_grafana_dashboard" {
@@ -474,6 +475,16 @@ module "setup_loki" {
   alloy_chart_version = "1.8.1" #https://github.com/grafana/helm-charts/releases?q=alloy
   grafana_namespace   = module.setup_prometheus_operator.namespace
   wait_for            = module.setup_prometheus_operator.kube_prometheus_stack_ready
+}
+
+module "setup_faro" {
+  source              = "./modules/setup_faro"
+  alloy_chart_version = "1.8.1" #https://github.com/grafana/helm-charts/releases?q=alloy
+  k8s_namespace       = module.setup_prometheus_operator.namespace
+  grafana_namespace   = module.setup_prometheus_operator.namespace
+  loki_url            = module.setup_loki.loki_url
+  hostname            = local.faro_hostname
+  wait_for            = module.setup_loki.loki_ready
 }
 
 module "setup_pgweb" {
