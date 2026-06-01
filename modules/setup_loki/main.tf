@@ -315,12 +315,12 @@ resource "helm_release" "faro_alloy" {
               listen_port              = ${local.faro_port}
               cors_allowed_origins     = ${jsonencode(var.faro_cors_allowed_origins)}
               max_allowed_payload_size = "10MiB"
-            }
 
-            rate_limiting {
-              enabled    = true
-              rate       = ${var.faro_rate_limit_rps}
-              burst_size = ${var.faro_rate_limit_burst}
+              rate_limiting {
+                enabled    = true
+                rate       = ${var.faro_rate_limit_rps}
+                burst_size = ${var.faro_rate_limit_burst}
+              }
             }
 
             output {
