@@ -328,18 +328,21 @@ resource "helm_release" "faro_alloy" {
             }
           }
 
-          // The Faro receiver emits each log line as logfmt with app_name,
-          // kind and level inlined, but only attaches service_name as a
-          // real Loki label (and Loki defaults missing values to
-          // "unknown_service"). The pipeline below:
+          // The Faro receiver emits each log line as a logfmt blob with
+          // every browser/sdk/session field inlined, and only sets
+          // service_name as a real Loki label (Loki defaults missing
+          // values to "unknown_service"). The pipeline below:
           //   1. parses the logfmt line into extracted fields;
           //   2. promotes app_name/kind/level to real Loki labels so
           //      dashboards can do label_values(app) and {app="..."} just
           //      like for pod logs;
-          //   3. moves the noisy browser/sdk/session context to Loki
-          //      structured metadata (still queryable with `| key="value"`
-          //      and expandable in Grafana, but no longer in the log line);
-          //   4. rewrites the log line per kind into a one-line summary.
+          //   3. moves every other extracted field into structured
+          //      metadata — still queryable with `| key="value"` and
+          //      expandable in Grafana, but out of the log line;
+          //   4. replaces the log line with the bare `message` field.
+          //      For non-log kinds (event/exception/measurement) message
+          //      is empty, so the line stays blank — labels and metadata
+          //      carry the meaning.
           loki.process "faro" {
             forward_to = [loki.write.default.receiver]
 
@@ -350,6 +353,7 @@ resource "helm_release" "faro_alloy" {
                 level           = "",
                 message         = "",
                 event_name      = "",
+                event_domain    = "",
                 type            = "",
                 exception_type  = "",
                 exception_value = "",
@@ -374,6 +378,11 @@ resource "helm_release" "faro_alloy" {
 
             stage.structured_metadata {
               values = {
+                event_name      = "event_name",
+                event_domain    = "event_domain",
+                type            = "type",
+                exception_type  = "exception_type",
+                exception_value = "exception_value",
                 sdk_name        = "sdk_name",
                 sdk_version     = "sdk_version",
                 app_version     = "app_version",
@@ -385,47 +394,8 @@ resource "helm_release" "faro_alloy" {
               }
             }
 
-            // Per-kind log line rewriting. Each match runs only on entries
-            // whose kind label equals the selector value; the inner
-            // stage.output replaces the rendered line.
-            stage.match {
-              selector = "{kind=\"log\"}"
-              stage.output {
-                source = "message"
-              }
-            }
-
-            stage.match {
-              selector = "{kind=\"event\"}"
-              stage.template {
-                source   = "_line"
-                template = "event {{ .event_name }}"
-              }
-              stage.output {
-                source = "_line"
-              }
-            }
-
-            stage.match {
-              selector = "{kind=\"exception\"}"
-              stage.template {
-                source   = "_line"
-                template = "{{ .exception_type }}: {{ .exception_value }}"
-              }
-              stage.output {
-                source = "_line"
-              }
-            }
-
-            stage.match {
-              selector = "{kind=\"measurement\"}"
-              stage.template {
-                source   = "_line"
-                template = "measurement {{ .type }}"
-              }
-              stage.output {
-                source = "_line"
-              }
+            stage.output {
+              source = "message"
             }
           }
 
