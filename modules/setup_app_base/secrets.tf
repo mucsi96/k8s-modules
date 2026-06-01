@@ -74,3 +74,10 @@ resource "azurerm_key_vault_secret" "twingate_service_key" {
   value        = var.twingate_service_key
   depends_on   = [azurerm_role_assignment.allow_owner_to_manage_kv]
 }
+
+resource "azurerm_key_vault_secret" "client_log_url" {
+  key_vault_id = azurerm_key_vault.app_kv.id
+  name         = "client-log-url"
+  value        = var.client_log_url
+  depends_on   = [azurerm_role_assignment.allow_owner_to_manage_kv]
+}

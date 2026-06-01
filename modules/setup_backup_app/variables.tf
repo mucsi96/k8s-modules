@@ -85,6 +85,11 @@ variable "k8s_oidc_config" {
   sensitive   = true
 }
 
+variable "client_log_url" {
+  description = "URL the app's SPA POSTs client-side telemetry to. Forwarded to setup_app_base, which stores it in this app's Key Vault as `client-log-url`."
+  type        = string
+}
+
 variable "wait_for" {
   description = "Optional dependency to wait for before setting up app (e.g., ingress controller status)"
   type        = string

@@ -1,9 +1,11 @@
 locals {
-  loki_release  = "loki"
-  alloy_release = "alloy"
-  loki_pv_label = "loki"
-  loki_port     = 3100
-  loki_url      = "http://${local.loki_release}.${kubernetes_namespace_v1.logging.metadata[0].name}.svc.cluster.local:${local.loki_port}"
+  loki_release       = "loki"
+  alloy_release      = "alloy"
+  faro_alloy_release = "faro"
+  faro_port          = 12347
+  loki_pv_label      = "loki"
+  loki_port          = 3100
+  loki_url           = "http://${local.loki_release}.${kubernetes_namespace_v1.logging.metadata[0].name}.svc.cluster.local:${local.loki_port}"
 }
 
 resource "terraform_data" "wait_for" {
@@ -273,6 +275,213 @@ resource "helm_release" "alloy" {
   })]
 
   depends_on = [helm_release.loki]
+}
+
+# Alloy config for the Faro receiver, managed directly as a Kubernetes
+# ConfigMap rather than rendered by the chart. The chart pipes
+# .Values.alloy.configMap.content through Helm's `tpl` function, which
+# re-evaluates any `{{ ... }}` it finds against the chart's context — the
+# stage.template Go-template syntax below would otherwise collapse to empty
+# strings (we observed `template = " "` in the deployed ConfigMap). Owning
+# the ConfigMap from Terraform sidesteps that round-trip entirely.
+resource "kubernetes_config_map_v1" "faro_alloy_config" {
+  metadata {
+    name      = "${local.faro_alloy_release}-config"
+    namespace = kubernetes_namespace_v1.logging.metadata[0].name
+  }
+
+  data = {
+    "config.alloy" = <<-RIVER
+      faro.receiver "default" {
+        server {
+          listen_address           = "0.0.0.0"
+          listen_port              = ${local.faro_port}
+          cors_allowed_origins     = ${jsonencode(var.faro_cors_allowed_origins)}
+          max_allowed_payload_size = "10MiB"
+
+          rate_limiting {
+            enabled    = true
+            rate       = ${var.faro_rate_limit_rps}
+            burst_size = ${var.faro_rate_limit_burst}
+          }
+        }
+
+        output {
+          logs = [loki.process.faro.receiver]
+        }
+      }
+
+      // The Faro receiver emits each log line as a logfmt blob with every
+      // browser/sdk/session field inlined, and only sets service_name as a
+      // real Loki label (Loki defaults missing values to "unknown_service").
+      // The pipeline below:
+      //   1. parses the logfmt line into extracted fields;
+      //   2. promotes app_name/kind/level to real Loki labels so dashboards
+      //      can do label_values(app) and {app="..."} just like for pod logs;
+      //   3. moves every other extracted field into structured metadata —
+      //      still queryable with `| key="value"` and expandable in Grafana,
+      //      but out of the log line;
+      //   4. rewrites the log line as `<timestamp> [LEVEL] <message>`.
+      //      The [LEVEL] bracket is suppressed when level is empty (events,
+      //      measurements, exceptions don't have one).
+      loki.process "faro" {
+        forward_to = [loki.write.default.receiver]
+
+        stage.logfmt {
+          mapping = {
+            app_name        = "",
+            kind            = "",
+            level           = "",
+            message         = "",
+            timestamp       = "",
+            event_name      = "",
+            event_domain    = "",
+            type            = "",
+            exception_type  = "",
+            exception_value = "",
+            sdk_name        = "",
+            sdk_version     = "",
+            app_version     = "",
+            session_id      = "",
+            page_url        = "",
+            browser_name    = "",
+            browser_version = "",
+            browser_os      = "",
+          }
+        }
+
+        stage.labels {
+          values = {
+            app   = "app_name",
+            kind  = "kind",
+            level = "level",
+          }
+        }
+
+        stage.structured_metadata {
+          values = {
+            event_name      = "event_name",
+            event_domain    = "event_domain",
+            type            = "type",
+            exception_type  = "exception_type",
+            exception_value = "exception_value",
+            sdk_name        = "sdk_name",
+            sdk_version     = "sdk_version",
+            app_version     = "app_version",
+            session_id      = "session_id",
+            page_url        = "page_url",
+            browser_name    = "browser_name",
+            browser_version = "browser_version",
+            browser_os      = "browser_os",
+          }
+        }
+
+        stage.template {
+          source   = "output_line"
+          template = "{{ .timestamp | toDate `2006-01-02 15:04:05 -0700 MST` | date `02/Jan/2006:15:04:05` }}{{ if .level }} [{{ .level | upper }}]{{ end }} {{ .message }}"
+        }
+
+        stage.output {
+          source = "output_line"
+        }
+      }
+
+      loki.write "default" {
+        endpoint {
+          url = "${local.loki_url}/loki/api/v1/push"
+        }
+      }
+    RIVER
+  }
+}
+
+# Grafana Faro: a second Alloy instance running as a faro.receiver. The
+# receiver exposes an HTTP endpoint that the Faro Web SDK (running in users'
+# browsers) POSTs logs, events, exceptions and measurements to, and forwards
+# them as Loki log streams. faro.receiver attaches a 'kind' label
+# (log/event/exception/measurement) and an 'app' label sourced from the Faro
+# SDK's meta.app.name — the 'app' label matches the pod label promoted by
+# the DaemonSet above, so the same Loki query filters span backend pod logs
+# and frontend SPA telemetry.
+#
+# Separate Helm release from the DaemonSet because the two need different
+# controller types (DaemonSet for per-node log scraping vs. single-replica
+# Deployment for an HTTP receiver).
+resource "helm_release" "faro_alloy" {
+  name       = local.faro_alloy_release
+  repository = "https://grafana.github.io/helm-charts"
+  chart      = "alloy"
+  version    = var.alloy_chart_version
+  namespace  = kubernetes_namespace_v1.logging.metadata[0].name
+  wait       = true
+  timeout    = 600
+
+  values = [yamlencode({
+    fullnameOverride = local.faro_alloy_release
+
+    crds = {
+      create = false
+    }
+
+    alloy = {
+      # Reference the externally-managed ConfigMap so the chart's `tpl`
+      # round-trip leaves the Go-template syntax in stage.template alone.
+      configMap = {
+        create = false
+        name   = kubernetes_config_map_v1.faro_alloy_config.metadata[0].name
+        key    = "config.alloy"
+      }
+      # Expose the Faro HTTP port through the Service the chart renders so
+      # the Traefik IngressRoute below can route to it.
+      extraPorts = [{
+        name       = "faro"
+        port       = local.faro_port
+        targetPort = local.faro_port
+        protocol   = "TCP"
+      }]
+      # Faro receiver is a single HTTP server — no need for DaemonSet
+      # semantics or host log mounts.
+      mounts = {
+        varlog           = false
+        dockercontainers = false
+      }
+    }
+    controller = {
+      type     = "deployment"
+      replicas = 1
+    }
+  })]
+
+  depends_on = [helm_release.loki, kubernetes_config_map_v1.faro_alloy_config]
+}
+
+# Public route to the Faro receiver. Browsers cannot authenticate against
+# oauth2-proxy the way a server-to-server call would, so the endpoint stays
+# anonymous and relies on CORS + the receiver's rate limiter to bound abuse.
+# Lock down var.faro_cors_allowed_origins to specific SPA origins in
+# production.
+resource "kubectl_manifest" "faro_ingressroute" {
+  yaml_body = yamlencode({
+    apiVersion = "traefik.io/v1alpha1"
+    kind       = "IngressRoute"
+    metadata = {
+      name      = "faro"
+      namespace = kubernetes_namespace_v1.logging.metadata[0].name
+    }
+    spec = {
+      entryPoints = ["web"]
+      routes = [{
+        match = "Host(`${var.faro_hostname}`)"
+        kind  = "Rule"
+        services = [{
+          name = local.faro_alloy_release
+          port = local.faro_port
+        }]
+      }]
+    }
+  })
+
+  depends_on = [helm_release.faro_alloy]
 }
 
 # Grafana auto-discovers datasources from any ConfigMap in its namespace

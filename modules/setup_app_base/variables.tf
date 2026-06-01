@@ -89,3 +89,8 @@ variable "k8s_oidc_config" {
   type        = string
   sensitive   = true
 }
+
+variable "client_log_url" {
+  description = "URL the app's frontend SPA POSTs client-side telemetry to (e.g. https://faro.example.com/collect). Stored as the `client-log-url` secret in the app's Key Vault so the SPA build/runtime can pick it up. Implementation-agnostic — kept generic so the underlying collector can be swapped without changing app-facing naming."
+  type        = string
+}
