@@ -14,6 +14,11 @@ variable "alloy_chart_version" {
   type        = string
 }
 
+variable "faro_alloy_chart_version" {
+  description = "Helm chart version for the grafana/alloy release that runs the Faro receiver. Tracked separately from alloy_chart_version (the pod-log DaemonSet) so the two Alloy installs can be upgraded independently."
+  type        = string
+}
+
 variable "grafana_namespace" {
   description = "Namespace where Grafana (kube-prometheus-stack) is installed. Loki provisions its datasource ConfigMap there so the kiwigrid sidecar discovers it; the sidecar only watches its own release namespace by default."
   type        = string

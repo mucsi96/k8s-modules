@@ -293,7 +293,7 @@ resource "helm_release" "faro_alloy" {
   name       = local.faro_alloy_release
   repository = "https://grafana.github.io/helm-charts"
   chart      = "alloy"
-  version    = var.alloy_chart_version
+  version    = var.faro_alloy_chart_version
   namespace  = kubernetes_namespace_v1.logging.metadata[0].name
   wait       = true
   timeout    = 600

@@ -470,11 +470,12 @@ module "setup_prometheus_operator" {
 }
 
 module "setup_loki" {
-  source              = "./modules/setup_loki"
-  loki_chart_version  = "7.0.0" #https://github.com/grafana/loki/blob/main/production/helm/loki/Chart.yaml
-  alloy_chart_version = "1.8.1" #https://github.com/grafana/helm-charts/releases?q=alloy
-  grafana_namespace   = module.setup_prometheus_operator.namespace
-  faro_hostname       = local.faro_hostname
+  source                   = "./modules/setup_loki"
+  loki_chart_version       = "7.0.0" #https://github.com/grafana/loki/blob/main/production/helm/loki/Chart.yaml
+  alloy_chart_version      = "1.8.1" #https://github.com/grafana/helm-charts/releases?q=alloy
+  faro_alloy_chart_version = "1.8.1" #https://github.com/grafana/helm-charts/releases?q=alloy
+  grafana_namespace        = module.setup_prometheus_operator.namespace
+  faro_hostname            = local.faro_hostname
   # Production hostnames of the 4 apps only. Local dev origins are
   # intentionally excluded — Faro is a production-only signal.
   faro_cors_allowed_origins = [
