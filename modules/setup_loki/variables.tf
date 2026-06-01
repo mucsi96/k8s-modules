@@ -44,9 +44,8 @@ variable "faro_hostname" {
 }
 
 variable "faro_cors_allowed_origins" {
-  description = "Origins permitted to push to the Faro receiver. Defaults to '*' so any SPA can ship logs; lock this down to specific app origins for a tighter trust boundary."
+  description = "Origins permitted to push to the Faro receiver. Required with no default so callers cannot accidentally inherit a wildcard — pass the explicit list of SPA origins (production hostnames + any dev origins) that should be able to ship telemetry."
   type        = list(string)
-  default     = ["*"]
 }
 
 variable "faro_rate_limit_rps" {
