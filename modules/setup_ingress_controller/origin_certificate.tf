@@ -22,6 +22,17 @@ resource "cloudflare_origin_ca_certificate" "origin" {
   hostnames          = [var.dns_zone, "*.${var.dns_zone}"]
   request_type       = "origin-rsa"
   requested_validity = 5475
+
+  # The Origin CA API does not echo csr/requested_validity back on reads, so
+  # provider v5 sees them as null after refresh and force-replaces the
+  # certificate on every apply (cloudflare/terraform-provider-cloudflare#5392).
+  # Ignoring them suppresses the churn; replace_triggered_by keeps the one
+  # change that genuinely requires reissuing — a rotated private key — from
+  # being swallowed by the ignore.
+  lifecycle {
+    ignore_changes       = [csr, requested_validity]
+    replace_triggered_by = [tls_private_key.origin]
+  }
 }
 
 resource "kubernetes_secret_v1" "origin_tls" {
