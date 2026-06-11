@@ -140,13 +140,18 @@ data "azurerm_key_vault_secret" "hcloud_token" {
   name         = "hcloud-token"
 }
 
+# Cloudflare's published edge ranges, shared by the hcloud firewall (only
+# the edge may reach port 443) and Traefik's trusted X-Forwarded-* sources.
+data "cloudflare_ip_ranges" "cloudflare" {}
+
 module "provision_hetzner_server" {
-  source      = "./modules/provision_hetzner_server"
-  server_name = var.environment_name
-  server_type = var.hcloud_server_type
-  location    = var.hcloud_location
-  image       = var.hcloud_image
-  username    = var.hcloud_username
+  source           = "./modules/provision_hetzner_server"
+  server_name      = var.environment_name
+  server_type      = var.hcloud_server_type
+  location         = var.hcloud_location
+  image            = var.hcloud_image
+  username         = var.hcloud_username
+  https_source_ips = concat(data.cloudflare_ip_ranges.cloudflare.ipv4_cidrs, data.cloudflare_ip_ranges.cloudflare.ipv6_cidrs)
   labels = {
     environment = var.environment_name
   }
@@ -213,11 +218,6 @@ data "azurerm_key_vault_secret" "cloudflare_zone_id" {
   name         = "cloudflare-zone-id"
 }
 
-data "azurerm_key_vault_secret" "cloudflare_account_id" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "cloudflare-account-id"
-}
-
 data "azurerm_key_vault_secret" "cloudflare_api_token" {
   key_vault_id = data.azurerm_key_vault.kv.id
   name         = "cloudflare-api-token"
@@ -270,9 +270,10 @@ module "setup_ingress_controller" {
   dns_zone                   = data.azurerm_key_vault_secret.dns_zone.value
   traefik_chart_version      = "39.0.8"  #https://github.com/traefik/traefik-helm-chart/releases
   traefik_version            = "v3.6.14" #https://github.com/traefik/traefik/releases
-  cloudflare_api_token       = data.azurerm_key_vault_secret.cloudflare_api_token.value
-  cloudflare_account_id      = data.azurerm_key_vault_secret.cloudflare_account_id.value
   cloudflare_zone_id         = data.azurerm_key_vault_secret.cloudflare_zone_id.value
+  origin_ipv4                = module.provision_hetzner_server.ipv4_address
+  cloudflare_ipv4_cidrs      = data.cloudflare_ip_ranges.cloudflare.ipv4_cidrs
+  cloudflare_ipv6_cidrs      = data.cloudflare_ip_ranges.cloudflare.ipv6_cidrs
   authorized_as              = data.azurerm_key_vault_secret.authorized_as.value
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   owner                      = local.owner

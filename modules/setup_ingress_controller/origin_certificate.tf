@@ -1,0 +1,59 @@
+# Cloudflare Origin CA certificate served by Traefik. Only the Cloudflare
+# edge trusts this CA, which is fine: with the proxied DNS record and the
+# hcloud firewall, the edge is the only client that ever reaches port 443.
+# 5475 days (15 years) is the maximum validity, so no renewal automation is
+# needed.
+
+resource "tls_private_key" "origin" {
+  algorithm = "RSA"
+  rsa_bits  = 2048
+}
+
+resource "tls_cert_request" "origin" {
+  private_key_pem = tls_private_key.origin.private_key_pem
+
+  subject {
+    common_name = var.dns_zone
+  }
+}
+
+resource "cloudflare_origin_ca_certificate" "origin" {
+  csr                = tls_cert_request.origin.cert_request_pem
+  hostnames          = [var.dns_zone, "*.${var.dns_zone}"]
+  request_type       = "origin-rsa"
+  requested_validity = 5475
+}
+
+resource "kubernetes_secret_v1" "origin_tls" {
+  metadata {
+    name      = "cloudflare-origin-tls"
+    namespace = kubernetes_namespace_v1.traefik.metadata[0].name
+  }
+
+  type = "kubernetes.io/tls"
+
+  data = {
+    "tls.crt" = cloudflare_origin_ca_certificate.origin.certificate
+    "tls.key" = tls_private_key.origin.private_key_pem
+  }
+}
+
+# Traefik only honors a TLSStore named "default". Routers on the "web"
+# entrypoint pick up this certificate without any per-IngressRoute tls block.
+resource "kubectl_manifest" "default_tls_store" {
+  yaml_body = yamlencode({
+    apiVersion = "traefik.io/v1alpha1"
+    kind       = "TLSStore"
+    metadata = {
+      name      = "default"
+      namespace = kubernetes_namespace_v1.traefik.metadata[0].name
+    }
+    spec = {
+      defaultCertificate = {
+        secretName = kubernetes_secret_v1.origin_tls.metadata[0].name
+      }
+    }
+  })
+
+  depends_on = [helm_release.traefik]
+}

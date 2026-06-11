@@ -32,3 +32,8 @@ variable "labels" {
   type        = map(string)
   default     = {}
 }
+
+variable "https_source_ips" {
+  description = "CIDRs allowed to reach port 443 — the Cloudflare edge ranges. All other inbound HTTPS is dropped by the hcloud firewall."
+  type        = list(string)
+}
