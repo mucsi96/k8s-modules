@@ -13,10 +13,8 @@ The following secrets must exist in the Azure Key Vault (named after the `enviro
 | `dns-zone` | DNS zone domain used by all applications |
 | `letsencrypt-email` | Email address for Let's Encrypt certificate registration |
 | `cloudflare-zone-id` | Cloudflare zone ID for DNS management |
-| `cloudflare-account-id` | Cloudflare account ID |
-| `cloudflare-api-token` | Cloudflare API token for DNS and tunnel management |
-| `cloudflare-team-domain` | Cloudflare Zero Trust team domain |
-| `authorized-as` | Authorized identity/email for SSO access policies |
+| `cloudflare-api-token` | Cloudflare API token for DNS records, zone settings, Origin CA certificates and rulesets |
+| `authorized-as` | Autonomous system number (ASN) allowed through the Cloudflare firewall rules |
 | `twingate-api-token` | Twingate API token with Read, Write & Provision permissions |
 | `twingate-network` | Twingate network name (e.g. `mynetwork` from `mynetwork.twingate.com`) |
 | `github-token` | GitHub personal access token with `repo` scope for setting Actions secrets |

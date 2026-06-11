@@ -25,6 +25,7 @@
 
 # Cloudflare
 
-- [Deploy Cloudflare Tunnel with Terraform](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/deployment-guides/terraform/)
+- [Cloudflare Origin CA certificates](https://developers.cloudflare.com/ssl/origin-configuration/origin-ca/)
+- [Hetzner Cloud Firewalls](https://docs.hetzner.com/cloud/firewalls/overview/)
 - [SSO integration](https://developers.cloudflare.com/cloudflare-one/identity/idp-integration/)
 - [Configure Cloudflare with Microsoft Entra ID for secure hybrid access](https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/cloudflare-integration)

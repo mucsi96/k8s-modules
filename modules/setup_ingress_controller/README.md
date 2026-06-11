@@ -1,16 +1,34 @@
-# Ingress Controller with Cloudflare Tunnel
+# Ingress Controller behind the Cloudflare proxy
 
-This module sets up Traefik as an ingress controller and exposes it to the public internet using Cloudflare tunnels.
+This module sets up Traefik as an ingress controller and exposes it to the public
+internet through the Cloudflare proxy (orange-cloud DNS), with the origin reachable
+only from Cloudflare's edge.
+
+## How traffic flows
+
+1. The wildcard DNS record `*.<dns_zone>` is a **proxied A record** pointing at the
+   cluster server's public IPv4.
+2. Every request passes the Cloudflare edge, where the zone rulesets are enforced:
+   rate limiting, ASN restriction, bot and threat-score blocking
+   (`cloudflare_ruleset.tf`).
+3. The edge connects to the origin on port 443 (SSL mode **Full (strict)**,
+   `always_use_https` on, so port 80 is never used).
+4. Traefik terminates TLS on the `web` entrypoint (host port 443) with a
+   **Cloudflare Origin CA certificate** (15-year validity, no renewal automation
+   needed) set as the default certificate via a `TLSStore`.
+5. The Hetzner Cloud firewall (`provision_hetzner_server` module) only admits
+   Cloudflare's published IP ranges on port 443, so the edge — and its security
+   rules — cannot be bypassed by connecting to the server IP directly.
+
+Traefik only honors `X-Forwarded-*` headers from Cloudflare's IP ranges, so apps
+and access logs see real client IPs that cannot be spoofed.
 
 ## Features
 
 - Deploys Traefik using the official Helm chart
-- Creates a dedicated "cloudflare" namespace for Cloudflare resources
-- Deploys cloudflared using the official Cloudflare Helm chart
-- Configures Cloudflare tunnel to expose Traefik services
-- Stores all sensitive credentials in Azure Key Vault
-- Creates wildcard DNS records for the domain
-- Runs cloudflared with high availability (2 replicas)
+- Creates the proxied wildcard DNS record and zone SSL settings
+- Issues a Cloudflare Origin CA certificate and wires it as Traefik's default
+- Protects the Traefik dashboard with oauth2-proxy (Microsoft Entra ID SSO)
 
 ## Prerequisites
 
@@ -28,18 +46,13 @@ Before using this module, you need to perform these manual steps in the Cloudfla
    - Follow the instructions to update your nameservers at your domain registrar
    - Wait for the nameserver changes to propagate (can take up to 24 hours)
 
-3. **Get Your Account ID**
-   - In the Cloudflare dashboard, go to the right sidebar and scroll down
-   - Your Account ID will be listed there
-   - Copy this value for later use
-
-4. **Get Your Zone ID**
+3. **Get Your Zone ID**
    - In the Cloudflare dashboard, select your domain
    - Go to the Overview tab
    - Your Zone ID will be displayed on the right side
    - Copy this value for later use
 
-5. **Create API Token**
+4. **Create API Token**
    - In the Cloudflare dashboard, go to "My Profile" → "API Tokens"
    - Click "Create Token"
    - Use the "Custom token" template
@@ -47,17 +60,17 @@ Before using this module, you need to perform these manual steps in the Cloudfla
 
    | Resource Type | Permission | Access Level |
    |---------------|------------|--------------|
-   | Account | Cloudflare Tunnel | Edit |
    | Zone | DNS | Edit |
+   | Zone | Zone Settings | Edit |
+   | Zone | SSL and Certificates | Edit |
    | Account | Account Rulesets | Edit |
 
    - Set "Zone Resources" to "Include" → "Specific zone" → select your domain
    - Click "Continue to summary" and then "Create Token"
    - Copy the token value immediately as it won't be shown again
 
-6. **Store Secrets in Azure Key Vault**
+5. **Store Secrets in Azure Key Vault**
    After completing the steps above, store these values in Azure Key Vault:
-   - `cloudflare-zone-id` - Your Zone ID from step 4
-   - `cloudflare-account-id` - Your Account ID from step 3
+   - `cloudflare-zone-id` - Your Zone ID from step 3
    - `cloudflare-api-token` - The API token you just created
    - `dns-zone` - Your domain name (e.g., example.com)
