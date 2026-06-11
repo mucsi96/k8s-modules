@@ -1,10 +1,11 @@
 locals {
   # Traefik chart exposes its dashboard / admin API on the port named
-  # `traefik`, which the chart hardcodes to 9000. Inlining the number avoids
-  # a `data "kubernetes_service_v1"` lookup that would otherwise need the
-  # apiserver to be reachable at plan time. If a future chart upgrade changes
-  # the port, update this value to match `ports.traefik.port` in the chart.
-  traefik_admin_port           = 9000
+  # `traefik`, which chart v39 sets to 8080 (older chart generations used
+  # 9000). Inlining the number avoids a `data "kubernetes_service_v1"`
+  # lookup that would otherwise need the apiserver to be reachable at plan
+  # time. If a future chart upgrade changes the port, update this value to
+  # match `ports.traefik.port` in the chart.
+  traefik_admin_port           = 8080
   traefik_dashboard_host       = "traefik.${var.dns_zone}"
   traefik_dashboard_host_regex = replace(local.traefik_dashboard_host, ".", "\\.")
 }
