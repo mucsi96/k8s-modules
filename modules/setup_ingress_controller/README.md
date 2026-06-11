@@ -58,12 +58,19 @@ Before using this module, you need to perform these manual steps in the Cloudfla
    - Use the "Custom token" template
    - Configure the token with the following permissions:
 
-   | Resource Type | Permission | Access Level |
-   |---------------|------------|--------------|
-   | Zone | DNS | Edit |
-   | Zone | Zone Settings | Edit |
-   | Zone | SSL and Certificates | Edit |
-   | Account | Account Rulesets | Edit |
+   | Resource Type | Permission | Access Level | Used for |
+   |---------------|------------|--------------|----------|
+   | Zone | DNS | Edit | Proxied wildcard A record |
+   | Zone | Zone Settings | Edit | SSL mode Full (strict), Always Use HTTPS |
+   | Zone | SSL and Certificates | Edit | Origin CA certificate issuance |
+   | Account | Account Rulesets | Edit | Rate limiting, ASN restriction, bot blocking rulesets |
+
+   Tokens created for the previous Cloudflare Tunnel setup may still carry
+   permissions that are no longer used and can be removed:
+
+   - Account / Cloudflare Tunnel
+   - Account / Access: Organizations, Identity Providers, and Groups
+   - Account / Access: Apps and Policies
 
    - Set "Zone Resources" to "Include" → "Specific zone" → select your domain
    - Click "Continue to summary" and then "Create Token"
