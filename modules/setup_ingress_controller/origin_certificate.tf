@@ -17,21 +17,31 @@ resource "tls_cert_request" "origin" {
   }
 }
 
+# hostnames is in ignore_changes below, so a dns_zone change would no longer
+# reissue the certificate on its own; this sentinel routes it through
+# replace_triggered_by instead.
+resource "terraform_data" "origin_cert_hostnames" {
+  input = var.dns_zone
+}
+
 resource "cloudflare_origin_ca_certificate" "origin" {
   csr                = tls_cert_request.origin.cert_request_pem
   hostnames          = [var.dns_zone, "*.${var.dns_zone}"]
   request_type       = "origin-rsa"
   requested_validity = 5475
 
-  # The Origin CA API does not echo csr/requested_validity back on reads, so
-  # provider v5 sees them as null after refresh and force-replaces the
-  # certificate on every apply (cloudflare/terraform-provider-cloudflare#5392).
-  # Ignoring them suppresses the churn; replace_triggered_by keeps the one
-  # change that genuinely requires reissuing — a rotated private key — from
-  # being swallowed by the ignore.
+  # Provider v5 force-replaces this resource on every apply
+  # (cloudflare/terraform-provider-cloudflare#5392): the Origin CA API does
+  # not echo csr/requested_validity back on reads and returns hostnames in
+  # its own order, so refresh always produces a phantom diff. Every input
+  # that genuinely requires reissuing is covered by replace_triggered_by:
+  # a rotated private key and a changed dns_zone.
   lifecycle {
-    ignore_changes       = [csr, requested_validity]
-    replace_triggered_by = [tls_private_key.origin]
+    ignore_changes = [csr, requested_validity, hostnames]
+    replace_triggered_by = [
+      tls_private_key.origin,
+      terraform_data.origin_cert_hostnames,
+    ]
   }
 }
 
