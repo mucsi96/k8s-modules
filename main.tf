@@ -314,6 +314,19 @@ module "setup_twingate_access" {
   ssh_port          = module.provision_hetzner_server.ssh_port
 }
 
+# Prometheus Operator CRDs are installed on their own, before any chart that
+# ships a ServiceMonitor / PodMonitor / PrometheusRule. create_database below
+# does (the postgres-db chart bundles a ServiceMonitor), and the full
+# kube-prometheus-stack in setup_prometheus_operator can't install these CRDs
+# early because it depends on the database for Grafana's metadata.
+module "setup_prometheus_operator_crds" {
+  source = "./modules/setup_prometheus_operator_crds"
+  # Matches the Prometheus Operator version (v0.90.1) shipped by
+  # kube-prometheus-stack 84.5.0 in setup_prometheus_operator.
+  prometheus_operator_crds_chart_version = "28.0.1"  #https://github.com/prometheus-community/helm-charts/releases?q=prometheus-operator-crds
+  wait_for                               = module.setup_ingress_controller.traefik_ready
+}
+
 module "create_database_namespace" {
   source           = "./modules/create_app_namespace"
   environment_name = var.environment_name
@@ -329,6 +342,9 @@ module "create_database" {
   k8s_name      = "postgres1"
   k8s_namespace = module.create_database_namespace.k8s_namespace
   db_name       = "postgres1"
+  # The postgres-db chart ships a ServiceMonitor, so the Prometheus Operator
+  # CRDs must be installed before this release is built.
+  wait_for = module.setup_prometheus_operator_crds.crds_ready
 }
 
 data "azurerm_client_config" "current" {}
@@ -477,6 +493,10 @@ module "setup_prometheus_operator" {
   prometheus_client_id                = module.register_prometheus_dashboard.client_id
   prometheus_client_secret            = module.register_prometheus_dashboard.client_secret
   valid_email                         = data.azurerm_key_vault_secret.letsencrypt_email.value
+  # When bumping this, update prometheus_operator_crds_chart_version in the
+  # setup_prometheus_operator_crds module above to the CRDs release matching this
+  # chart's Prometheus Operator appVersion — they are installed separately and
+  # must stay in sync (this chart runs with crds.enabled = false).
   kube_prometheus_stack_chart_version = "84.5.0"  #https://github.com/prometheus-community/helm-charts/releases?q=kube-prometheus-stack
   oauth2_proxy_chart_version          = "7.12.6"  #https://github.com/oauth2-proxy/manifests/releases
   oauth2_proxy_image_version          = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
@@ -492,6 +512,12 @@ module "setup_prometheus_operator" {
     admin_password = module.create_database.password
   }
   wait_for = module.setup_ingress_controller.traefik_ready
+
+  # This stack runs with crds.enabled = false, so the Prometheus Operator CRDs
+  # must already exist. A full apply gets that transitively (database depends on
+  # the CRDs module), but an explicit dependency keeps the contract clear in the
+  # graph and protects targeted applies that skip create_database.
+  depends_on = [module.setup_prometheus_operator_crds]
 }
 
 module "setup_loki" {
