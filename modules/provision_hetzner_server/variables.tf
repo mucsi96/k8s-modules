@@ -4,9 +4,9 @@ variable "server_name" {
 }
 
 variable "server_type" {
-  description = "Hetzner Cloud server type. CX42 = 8 vCPU shared Intel, 16 GB RAM, 160 GB SSD (~€16/month)."
+  description = "Hetzner Cloud server type. cpx32 = 4 vCPU shared AMD, 8 GB RAM, 160 GB NVMe. (The old cx42 was retired by Hetzner; the current shared-Intel line is cx33/cx43.)"
   type        = string
-  default     = "cx42"
+  default     = "cpx32"
 }
 
 variable "location" {
