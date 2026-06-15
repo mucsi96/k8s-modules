@@ -45,6 +45,14 @@ from the Cloudflare edge. SSH (the randomized port), the Kubernetes API
 exposed solely through Twingate. Only traffic on the public interface is
 policed; loopback and the Calico pod/cluster interfaces are left untouched.
 
+> **Operational note:** the Cloudflare edge ranges are baked into the cloud-init
+> ruleset at provision time. Unlike the previous cloud firewall, a `terraform
+> apply` does **not** refresh them on the running host (the server's `user_data`
+> is held by `ignore_changes`). Cloudflare changes its published ranges rarely;
+> when it does, update the live host by editing the `set` in `/etc/nftables.conf`
+> and running `nft -f /etc/nftables.conf` (over Twingate), or `-replace` the
+> server to re-provision.
+
 - A host-level Twingate connector (systemd unit `twingate-connector`) is installed
   by cloud-init on first boot (`setup_twingate_connector` provides the tokens). It
   dials out to Twingate; its traffic to the node's own public IP is delivered over

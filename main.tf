@@ -327,7 +327,7 @@ module "setup_prometheus_operator_crds" {
   source = "./modules/setup_prometheus_operator_crds"
   # Matches the Prometheus Operator version (v0.90.1) shipped by
   # kube-prometheus-stack 84.5.0 in setup_prometheus_operator.
-  prometheus_operator_crds_chart_version = "28.0.1" #https://github.com/prometheus-community/helm-charts/releases?q=prometheus-operator-crds
+  prometheus_operator_crds_chart_version = "28.0.1"  #https://github.com/prometheus-community/helm-charts/releases?q=prometheus-operator-crds
   wait_for                               = module.setup_ingress_controller.traefik_ready
 }
 
@@ -516,6 +516,12 @@ module "setup_prometheus_operator" {
     admin_password = module.create_database.password
   }
   wait_for = module.setup_ingress_controller.traefik_ready
+
+  # This stack runs with crds.enabled = false, so the Prometheus Operator CRDs
+  # must already exist. A full apply gets that transitively (database depends on
+  # the CRDs module), but an explicit dependency keeps the contract clear in the
+  # graph and protects targeted applies that skip create_database.
+  depends_on = [module.setup_prometheus_operator_crds]
 }
 
 module "setup_loki" {

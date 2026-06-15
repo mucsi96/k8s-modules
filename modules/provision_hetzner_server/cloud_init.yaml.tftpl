@@ -94,6 +94,19 @@ runcmd:
   # Ansible workflow accidentally papered over this by setting a fresh root
   # password; here we just clear the expiry — root remains unloginable.
   - chage -d $(date +%Y-%m-%d) -E -1 -M -1 root
+  # Bring up the host firewall first — before SSH (or anything else) starts
+  # listening — so the custom SSH port is never briefly exposed to the public
+  # internet on a fresh boot. Resolve the public interface from the default
+  # route (Hetzner Cloud images use eth0; fall back to it if detection fails)
+  # and substitute it into the ruleset, then load and enable nftables so the
+  # rules survive reboots.
+  - PUB_IF="$(ip -o route show default 2>/dev/null | awk '{print $5; exit}')"; sed -i "s/__PUB_IF__/$${PUB_IF:-eth0}/g" /etc/nftables.conf
+  - systemctl enable --now nftables
+  # Explicit reload after enabling: if nftables.service was already active,
+  # `enable --now` would not reload it, so this guarantees our substituted
+  # ruleset is the one in force. Loading the whole file is a single atomic
+  # nftables transaction (the delete+recreate never leaves an open window).
+  - nft -f /etc/nftables.conf
   # Ubuntu 24.04 cloud images ship a socket-activated SSH (ssh.socket listens
   # on :22 and starts ssh.service on connect). That bypasses the Port directive
   # in our sshd_config drop-in: ssh.service never opens the custom port even
@@ -104,17 +117,6 @@ runcmd:
   - systemctl disable --now ssh.socket 2>/dev/null || true
   - systemctl enable ssh.service
   - systemctl restart ssh.service
-  # Bring up the host firewall before anything else opens a socket. Resolve the
-  # public interface from the default route (Hetzner Cloud images use eth0;
-  # fall back to it if detection fails) and substitute it into the ruleset, then
-  # load and enable nftables so the rules survive reboots.
-  - PUB_IF="$(ip -o route show default 2>/dev/null | awk '{print $5; exit}')"; sed -i "s/__PUB_IF__/$${PUB_IF:-eth0}/g" /etc/nftables.conf
-  - systemctl enable --now nftables
-  # Explicit reload after enabling: if nftables.service was already active,
-  # `enable --now` would not reload it, so this guarantees our substituted
-  # ruleset is the one in force. Loading the whole file is a single atomic
-  # nftables transaction (the delete+recreate never leaves an open window).
-  - nft -f /etc/nftables.conf
   # Install the Twingate connector at the host level (systemd: twingate-connector).
   # The connector only dials out to Twingate — no inbound ports — and its traffic
   # to the node's own public IP is delivered over loopback, so it matches the
