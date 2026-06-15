@@ -17,7 +17,6 @@ The following secrets must exist in the Azure Key Vault (named after the `enviro
 | `authorized-as` | Autonomous system number (ASN) allowed through the Cloudflare firewall rules |
 | `twingate-api-token` | Twingate API token with Read, Write & Provision permissions |
 | `twingate-network` | Twingate network name (e.g. `mynetwork` from `mynetwork.twingate.com`) |
-| `operator-email` | Email of the Twingate user granted operator (SSH + K8s API) access. Must resolve to exactly one Twingate user. |
 | `github-token` | GitHub personal access token with `repo` scope for setting Actions secrets |
 
 The cluster server is provisioned on Hetzner Cloud by Terraform. SSH keys, port,
@@ -49,9 +48,9 @@ from the public internet — they are exposed solely through Twingate.
   dials out to Twingate; its traffic to the node's own public IP is delivered
   locally and never crosses the cloud firewall, so `https://<publicIP>:16443` and
   SSH keep working for anyone on the Twingate network.
-- Humans get access via the terraform-managed `<env>-operators` Twingate group,
-  whose sole member is the `operator-email` user. GitHub Actions reach the K8s API
-  via a Twingate service account (`twingate-service-key`).
+- Humans get access via Twingate's built-in **Everyone** group (every user in the
+  network), which is granted the SSH and K8s API resources. GitHub Actions reach
+  the K8s API via a Twingate service account (`twingate-service-key`).
 - **You must have the Twingate client connected** to run `terraform apply`
   (the bootstrap keyscan, Ansible, and `remote-exec` all go over Twingate),
   `scripts/ssh_to_server.sh`, or `kubectl`. Both scripts fail fast with a clear

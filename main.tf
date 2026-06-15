@@ -247,13 +247,6 @@ data "azurerm_key_vault_secret" "twingate_network" {
   name         = "twingate-network"
 }
 
-# Email of the Twingate user granted operator (SSH + K8s API) access. Seeded
-# manually in Key Vault before the first apply (see README), like letsencrypt-email.
-data "azurerm_key_vault_secret" "operator_email" {
-  key_vault_id = data.azurerm_key_vault.kv.id
-  name         = "operator-email"
-}
-
 data "azurerm_key_vault_secret" "github_token" {
   key_vault_id = data.azurerm_key_vault.kv.id
   name         = "github-token"
@@ -315,7 +308,6 @@ module "setup_twingate_connector" {
 module "setup_twingate_access" {
   source            = "./modules/setup_twingate_access"
   environment_name  = var.environment_name
-  operator_email    = data.azurerm_key_vault_secret.operator_email.value
   remote_network_id = module.setup_twingate_connector.remote_network_id
   k8s_host          = module.provision_hetzner_server.ipv4_address
   ssh_address       = module.provision_hetzner_server.ipv4_address

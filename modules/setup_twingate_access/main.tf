@@ -3,23 +3,14 @@
 # (via field references — never a module-level depends_on, which would form a
 # cycle with the ssh_ready_wait_for edge back into that module).
 
-# Resolve the operator's Twingate user by email so they can be put in the
-# operators group. The precondition guards against a typo'd or unsynced email
-# silently producing an empty group that locks every human out.
-data "twingate_users" "operator" {
-  email = var.operator_email
-}
-
-resource "twingate_group" "operators" {
-  name     = "${var.environment_name}-operators"
-  user_ids = [for user in data.twingate_users.operator.users : user.id]
-
-  lifecycle {
-    precondition {
-      condition     = length(data.twingate_users.operator.users) == 1
-      error_message = "Expected exactly one Twingate user with email ${var.operator_email}, found ${length(data.twingate_users.operator.users)}."
-    }
-  }
+# Reference Twingate's built-in "Everyone" system group (every user in the
+# network) and grant it operator access to SSH + the K8s API. Using the
+# precreated group avoids managing membership in Terraform; in this single-
+# operator tenant "everyone" is the operator. types is pinned to SYSTEM so we
+# match the built-in group, never a manually-created group of the same name.
+data "twingate_groups" "everyone" {
+  name  = "Everyone"
+  types = ["SYSTEM"]
 }
 
 # Service account for GitHub Actions (app deploy workflows reach the K8s API
@@ -34,8 +25,8 @@ resource "twingate_service_account_key" "github_actions" {
   name               = "${var.environment_name}-github-actions-key"
 }
 
-# K8s API: operators (humans, via the group) and GitHub Actions (via the
-# service account).
+# K8s API: operators (humans, via the Everyone group) and GitHub Actions (via
+# the service account).
 resource "twingate_resource" "k8s_api" {
   name              = "${var.environment_name} Kubernetes API"
   remote_network_id = var.remote_network_id
@@ -53,7 +44,7 @@ resource "twingate_resource" "k8s_api" {
   }
 
   access_group {
-    group_id = twingate_group.operators.id
+    group_id = data.twingate_groups.everyone.groups[0].id
   }
 
   access_service {
@@ -61,8 +52,8 @@ resource "twingate_resource" "k8s_api" {
   }
 }
 
-# SSH: operators only — no service account. ICMP allowed so operators can ping
-# the host for diagnostics (the public ICMP firewall rule is removed).
+# SSH: operators only (Everyone group) — no service account. ICMP allowed so
+# operators can ping the host for diagnostics (the public ICMP rule is removed).
 resource "twingate_resource" "ssh" {
   name              = "${var.environment_name} SSH"
   remote_network_id = var.remote_network_id
@@ -80,6 +71,6 @@ resource "twingate_resource" "ssh" {
   }
 
   access_group {
-    group_id = twingate_group.operators.id
+    group_id = data.twingate_groups.everyone.groups[0].id
   }
 }

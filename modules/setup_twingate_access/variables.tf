@@ -3,12 +3,6 @@ variable "environment_name" {
   type        = string
 }
 
-variable "operator_email" {
-  description = "Email of the Twingate user granted operator (SSH + K8s API) access. Must resolve to exactly one Twingate user."
-  type        = string
-  sensitive   = true
-}
-
 variable "remote_network_id" {
   description = "Twingate remote network ID from setup_twingate_connector."
   type        = string
