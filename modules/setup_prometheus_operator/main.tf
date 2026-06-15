@@ -136,8 +136,11 @@ resource "kubernetes_job_v1" "grafana_database_init" {
 # kube-prometheus-stack bundles the Prometheus Operator together with
 # Prometheus, Alertmanager, Grafana, node-exporter and kube-state-metrics. The
 # Operator's CRDs (ServiceMonitor, PodMonitor, PrometheusRule, ...) are
-# installed by the chart so other modules can ship their own scrape configs and
-# alerting rules without managing CRDs separately.
+# installed separately and earlier by setup_prometheus_operator_crds, because
+# create_postgres_database — which this module depends on for Grafana's
+# metadata — ships a ServiceMonitor and therefore needs the CRDs before this
+# stack ever runs. crds.enabled is false here so the chart neither re-templates
+# nor fights over ownership of those already-present CRDs.
 resource "helm_release" "kube_prometheus_stack" {
   name       = local.release_name
   repository = "https://prometheus-community.github.io/helm-charts"
@@ -149,7 +152,7 @@ resource "helm_release" "kube_prometheus_stack" {
 
   values = [yamlencode({
     crds = {
-      enabled = true
+      enabled = false
     }
     grafana = {
       service = {

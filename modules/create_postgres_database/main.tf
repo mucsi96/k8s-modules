@@ -24,6 +24,10 @@ resource "random_password" "exporter_password" {
   override_special = "-_=+:[]{}" // verified: []
 }
 
+resource "terraform_data" "wait_for" {
+  input = var.wait_for
+}
+
 resource "kubernetes_persistent_volume_v1" "database_pv" {
   metadata {
     name = "database"
@@ -64,4 +68,8 @@ resource "helm_release" "database" {
     exporterUsername = random_string.exporter_username.result
     exporterPassword = random_password.exporter_password.result
   })]
+
+  # The chart ships a ServiceMonitor (monitoring.coreos.com/v1); the Prometheus
+  # Operator CRDs must already exist or the release fails at manifest build.
+  depends_on = [terraform_data.wait_for]
 }
