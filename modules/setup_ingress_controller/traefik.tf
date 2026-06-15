@@ -26,6 +26,10 @@ resource "helm_release" "traefik" {
     # All routing is via the Gateway API. Both of Traefik's own routing
     # providers are explicitly disabled — kubernetesIngress defaults to enabled
     # in the chart, so leaving it unset would keep the Ingress provider on.
+    # The chart ships the standard-channel Gateway API CRDs in its crds/
+    # directory (crds/gateway-standard-install.yaml), which Helm installs with
+    # the release — so no separate CRD install is needed, same as Traefik's own
+    # traefik.io CRDs.
     providers = {
       kubernetesCRD = {
         enabled = false
@@ -89,8 +93,4 @@ resource "helm_release" "traefik" {
       }
     }
   })]
-
-  # The kubernetesGateway provider and the chart-created GatewayClass both need
-  # the Gateway API CRDs to already exist when Traefik starts.
-  depends_on = [kubectl_manifest.gateway_api_crds]
 }

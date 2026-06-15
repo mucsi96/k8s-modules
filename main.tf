@@ -93,8 +93,8 @@ provider "helm" {
   }
 }
 
-# Used in place of hashicorp/kubernetes's kubernetes_manifest for CRDs (Gateway
-# API CRDs, Gateway, HTTPRoute). kubernetes_manifest opens a REST client at plan
+# Used in place of hashicorp/kubernetes's kubernetes_manifest for CRD-based
+# objects (Gateway, HTTPRoute). kubernetes_manifest opens a REST client at plan
 # time and breaks the from-scratch apply because the cluster does not exist
 # yet; kubectl_manifest defers the connection to apply time.
 provider "kubectl" {

@@ -5,8 +5,9 @@ internet through the Cloudflare proxy (orange-cloud DNS), with the origin reacha
 only from Cloudflare's edge.
 
 Routing uses the Kubernetes **Gateway API** (`Gateway` + `HTTPRoute`), not Traefik's
-own `IngressRoute`/`Ingress` providers — both of those are disabled. The Gateway API
-CRDs (standard channel) are vendored under `files/` and applied before Traefik starts.
+own `IngressRoute`/`Ingress` providers — both of those are disabled. The standard-channel
+Gateway API CRDs ship with the Traefik chart (its `crds/` directory) and are installed by
+Helm with the release, so there is no separate CRD step.
 
 ## How traffic flows
 
@@ -31,8 +32,9 @@ and access logs see real client IPs that cannot be spoofed.
 ## Features
 
 - Deploys Traefik using the official Helm chart, with the Gateway API provider
-  enabled and the IngressRoute/Ingress providers disabled
-- Installs the Gateway API CRDs and defines the shared `Gateway` (one HTTPS listener)
+  enabled and the IngressRoute/Ingress providers disabled (the chart installs the
+  Gateway API CRDs from its `crds/` directory)
+- Defines the shared `Gateway` (one HTTPS listener)
 - Creates the proxied wildcard DNS record and zone SSL settings
 - Issues a Cloudflare Origin CA certificate and wires it into the Gateway listener
 - Protects the Traefik dashboard with oauth2-proxy (Microsoft Entra ID SSO), routed
