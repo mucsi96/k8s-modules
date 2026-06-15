@@ -32,3 +32,31 @@ variable "labels" {
   type        = map(string)
   default     = {}
 }
+
+variable "https_source_ips" {
+  description = "CIDRs allowed to reach port 443 — the Cloudflare edge ranges. All other inbound HTTPS is dropped by the hcloud firewall."
+  type        = list(string)
+}
+
+variable "twingate_network" {
+  description = "Twingate network name (e.g. 'mynetwork' from mynetwork.twingate.com). Written to the host connector config as TWINGATE_NETWORK by cloud-init."
+  type        = string
+}
+
+variable "twingate_access_token" {
+  description = "Twingate host connector access token, baked into cloud-init user_data."
+  type        = string
+  sensitive   = true
+}
+
+variable "twingate_refresh_token" {
+  description = "Twingate host connector refresh token, baked into cloud-init user_data."
+  type        = string
+  sensitive   = true
+}
+
+variable "ssh_ready_wait_for" {
+  description = "Optional ordering barrier folded into the ssh_ready provisioner environment so the Twingate SSH resource exists before the keyscan poll runs over Twingate. Pass module.setup_twingate_access.ssh_resource_id."
+  type        = string
+  default     = null
+}

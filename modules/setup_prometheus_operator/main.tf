@@ -220,7 +220,7 @@ resource "helm_release" "kube_prometheus_stack" {
         # HTTP Basic Auth as the chart's auto-generated admin user; disabling
         # basic auth makes those calls 401 and the bundled Prometheus
         # datasource never gets provisioned. External access is already gated
-        # by the IngressRoute in front of oauth2-proxy, so leaving basic auth
+        # by the HTTPRoute in front of oauth2-proxy, so leaving basic auth
         # on doesn't widen the attack surface.
         users = {
           auto_assign_org      = true
@@ -232,7 +232,7 @@ resource "helm_release" "kube_prometheus_stack" {
     prometheus = {
       # The Prometheus UI exposed by the operator-managed StatefulSet has no
       # built-in auth, so we front it with oauth2-proxy below. The Service is
-      # ClusterIP-only; external access happens through the IngressRoute.
+      # ClusterIP-only; external access happens through the HTTPRoute.
       service = {
         type = "ClusterIP"
         port = local.prometheus_port
@@ -303,52 +303,54 @@ module "prometheus_oauth2_proxy" {
   depends_on = [helm_release.kube_prometheus_stack]
 }
 
-resource "kubectl_manifest" "grafana_ingressroute" {
+resource "kubectl_manifest" "grafana_httproute" {
   yaml_body = yamlencode({
-    apiVersion = "traefik.io/v1alpha1"
-    kind       = "IngressRoute"
+    apiVersion = "gateway.networking.k8s.io/v1"
+    kind       = "HTTPRoute"
     metadata = {
       name      = "grafana"
       namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
     }
     spec = {
-      entryPoints = ["web"]
-      routes = [
-        {
-          match = "Host(`${var.grafana_hostname}`)"
-          kind  = "Rule"
-          services = [{
-            name = module.grafana_oauth2_proxy.service_name
-            port = 80
-          }]
-        },
-      ]
+      parentRefs = [{
+        name        = "traefik"
+        namespace   = "traefik"
+        sectionName = "websecure"
+      }]
+      hostnames = [var.grafana_hostname]
+      rules = [{
+        backendRefs = [{
+          name = module.grafana_oauth2_proxy.service_name
+          port = 80
+        }]
+      }]
     }
   })
 
   depends_on = [module.grafana_oauth2_proxy]
 }
 
-resource "kubectl_manifest" "prometheus_ingressroute" {
+resource "kubectl_manifest" "prometheus_httproute" {
   yaml_body = yamlencode({
-    apiVersion = "traefik.io/v1alpha1"
-    kind       = "IngressRoute"
+    apiVersion = "gateway.networking.k8s.io/v1"
+    kind       = "HTTPRoute"
     metadata = {
       name      = "prometheus"
       namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
     }
     spec = {
-      entryPoints = ["web"]
-      routes = [
-        {
-          match = "Host(`${var.prometheus_hostname}`)"
-          kind  = "Rule"
-          services = [{
-            name = module.prometheus_oauth2_proxy.service_name
-            port = 80
-          }]
-        },
-      ]
+      parentRefs = [{
+        name        = "traefik"
+        namespace   = "traefik"
+        sectionName = "websecure"
+      }]
+      hostnames = [var.prometheus_hostname]
+      rules = [{
+        backendRefs = [{
+          name = module.prometheus_oauth2_proxy.service_name
+          port = 80
+        }]
+      }]
     }
   })
 

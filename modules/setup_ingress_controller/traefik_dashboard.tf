@@ -1,12 +1,12 @@
 locals {
   # Traefik chart exposes its dashboard / admin API on the port named
-  # `traefik`, which the chart hardcodes to 9000. Inlining the number avoids
-  # a `data "kubernetes_service_v1"` lookup that would otherwise need the
-  # apiserver to be reachable at plan time. If a future chart upgrade changes
-  # the port, update this value to match `ports.traefik.port` in the chart.
-  traefik_admin_port           = 9000
-  traefik_dashboard_host       = "traefik.${var.dns_zone}"
-  traefik_dashboard_host_regex = replace(local.traefik_dashboard_host, ".", "\\.")
+  # `traefik`, which chart v39 sets to 8080 (older chart generations used
+  # 9000). Inlining the number avoids a `data "kubernetes_service_v1"`
+  # lookup that would otherwise need the apiserver to be reachable at plan
+  # time. If a future chart upgrade changes the port, update this value to
+  # match `ports.traefik.port` in the chart.
+  traefik_admin_port     = 8080
+  traefik_dashboard_host = "traefik.${var.dns_zone}"
 }
 
 module "register_traefik_dashboard" {
@@ -34,53 +34,53 @@ module "traefik_dashboard_oauth2_proxy" {
   depends_on = [helm_release.traefik]
 }
 
-resource "kubectl_manifest" "traefik_dashboard_redirect_root_middleware" {
+resource "kubectl_manifest" "traefik_dashboard_httproute" {
   yaml_body = yamlencode({
-    apiVersion = "traefik.io/v1alpha1"
-    kind       = "Middleware"
-    metadata = {
-      name      = "traefik-dashboard-redirect-root"
-      namespace = kubernetes_namespace_v1.traefik.metadata[0].name
-    }
-    spec = {
-      redirectRegex = {
-        regex       = "^https?://${local.traefik_dashboard_host_regex}/?$"
-        replacement = "https://${local.traefik_dashboard_host}/dashboard/"
-        permanent   = true
-      }
-    }
-  })
-
-  depends_on = [helm_release.traefik]
-}
-
-resource "kubectl_manifest" "traefik_dashboard_ingressroute" {
-  yaml_body = yamlencode({
-    apiVersion = "traefik.io/v1alpha1"
-    kind       = "IngressRoute"
+    apiVersion = "gateway.networking.k8s.io/v1"
+    kind       = "HTTPRoute"
     metadata = {
       name      = "traefik-dashboard"
       namespace = kubernetes_namespace_v1.traefik.metadata[0].name
     }
     spec = {
-      entryPoints = ["web"]
-      routes = [
+      parentRefs = [{
+        name        = "traefik"
+        namespace   = kubernetes_namespace_v1.traefik.metadata[0].name
+        sectionName = "websecure"
+      }]
+      hostnames = [local.traefik_dashboard_host]
+      rules = [
+        # Root path redirects to /dashboard/ (the dashboard UI lives there).
+        # The Exact `/` match takes precedence over the PathPrefix `/` rule
+        # below, so only the bare root is redirected. Replaces the old Traefik
+        # redirectRegex Middleware.
         {
-          match = "Host(`${local.traefik_dashboard_host}`) && Path(`/`)"
-          kind  = "Rule"
-          middlewares = [{
-            name      = "traefik-dashboard-redirect-root"
-            namespace = kubernetes_namespace_v1.traefik.metadata[0].name
+          matches = [{
+            path = {
+              type  = "Exact"
+              value = "/"
+            }
           }]
-          services = [{
-            name = module.traefik_dashboard_oauth2_proxy.service_name
-            port = 80
+          filters = [{
+            type = "RequestRedirect"
+            requestRedirect = {
+              scheme     = "https"
+              statusCode = 301
+              path = {
+                type            = "ReplaceFullPath"
+                replaceFullPath = "/dashboard/"
+              }
+            }
           }]
         },
         {
-          match = "Host(`${local.traefik_dashboard_host}`)"
-          kind  = "Rule"
-          services = [{
+          matches = [{
+            path = {
+              type  = "PathPrefix"
+              value = "/"
+            }
+          }]
+          backendRefs = [{
             name = module.traefik_dashboard_oauth2_proxy.service_name
             port = 80
           }]
@@ -91,6 +91,6 @@ resource "kubectl_manifest" "traefik_dashboard_ingressroute" {
 
   depends_on = [
     module.traefik_dashboard_oauth2_proxy,
-    kubectl_manifest.traefik_dashboard_redirect_root_middleware,
+    kubectl_manifest.gateway,
   ]
 }

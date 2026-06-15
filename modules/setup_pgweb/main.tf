@@ -140,26 +140,27 @@ module "pgweb_oauth2_proxy" {
   depends_on = [kubernetes_deployment_v1.pgweb]
 }
 
-resource "kubectl_manifest" "pgweb_ingressroute" {
+resource "kubectl_manifest" "pgweb_httproute" {
   yaml_body = yamlencode({
-    apiVersion = "traefik.io/v1alpha1"
-    kind       = "IngressRoute"
+    apiVersion = "gateway.networking.k8s.io/v1"
+    kind       = "HTTPRoute"
     metadata = {
       name      = "pgweb"
       namespace = kubernetes_namespace_v1.pgweb.metadata[0].name
     }
     spec = {
-      entryPoints = ["web"]
-      routes = [
-        {
-          match = "Host(`${var.hostname}`)"
-          kind  = "Rule"
-          services = [{
-            name = module.pgweb_oauth2_proxy.service_name
-            port = 80
-          }]
-        },
-      ]
+      parentRefs = [{
+        name        = "traefik"
+        namespace   = "traefik"
+        sectionName = "websecure"
+      }]
+      hostnames = [var.hostname]
+      rules = [{
+        backendRefs = [{
+          name = module.pgweb_oauth2_proxy.service_name
+          port = 80
+        }]
+      }]
     }
   })
 

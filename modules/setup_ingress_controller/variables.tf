@@ -29,15 +29,19 @@ variable "cloudflare_zone_id" {
   type        = string
 }
 
-variable "cloudflare_account_id" {
-  description = "Cloudflare Account ID"
+variable "origin_ipv4" {
+  description = "Public IPv4 address of the cluster server; target of the proxied wildcard DNS record"
   type        = string
 }
 
-variable "cloudflare_api_token" {
-  description = "Cloudflare API token with Zone:Edit permissions"
-  type        = string
-  sensitive   = true
+variable "cloudflare_ipv4_cidrs" {
+  description = "Cloudflare edge IPv4 ranges trusted for X-Forwarded-* headers"
+  type        = list(string)
+}
+
+variable "cloudflare_ipv6_cidrs" {
+  description = "Cloudflare edge IPv6 ranges trusted for X-Forwarded-* headers"
+  type        = list(string)
 }
 
 variable "authorized_as" {

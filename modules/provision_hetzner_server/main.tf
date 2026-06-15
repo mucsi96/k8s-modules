@@ -9,9 +9,12 @@ resource "random_integer" "ssh_port" {
 
 locals {
   cloud_init = templatefile("${path.module}/cloud_init.yaml.tftpl", {
-    username       = var.username
-    ssh_public_key = trimspace(tls_private_key.user.public_key_openssh)
-    ssh_port       = random_integer.ssh_port.result
+    username               = var.username
+    ssh_public_key         = trimspace(tls_private_key.user.public_key_openssh)
+    ssh_port               = random_integer.ssh_port.result
+    twingate_network       = var.twingate_network
+    twingate_access_token  = var.twingate_access_token
+    twingate_refresh_token = var.twingate_refresh_token
   })
 }
 
@@ -78,10 +81,17 @@ resource "terraform_data" "ssh_ready" {
     environment = {
       HOST     = hcloud_server.this.ipv4_address
       SSH_PORT = tostring(random_integer.ssh_port.result)
+      # Folding the Twingate SSH resource ID into the environment (a value that
+      # cannot be known until twingate_resource.ssh exists) is what actually
+      # serializes the keyscan poll after the resource is created — the poll
+      # now reaches sshd only through Twingate. Same data-flow ordering trick
+      # documented for wait_for in setup_cluster/main.tf. NOT in
+      # triggers_replace, so it does not churn the resource on its own.
+      TWINGATE_SSH_RESOURCE = coalesce(var.ssh_ready_wait_for, "")
     }
     command = <<-EOT
       set -euo pipefail
-      for attempt in $(seq 1 60); do
+      for attempt in $(seq 1 120); do
         keys=$(ssh-keyscan -T 5 -p "$SSH_PORT" "$HOST" 2>/dev/null || true)
         if [ -n "$keys" ]; then
           exit 0

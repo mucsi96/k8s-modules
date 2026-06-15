@@ -432,7 +432,7 @@ resource "helm_release" "faro_alloy" {
         key    = "config.alloy"
       }
       # Expose the Faro HTTP port through the Service the chart renders so
-      # the Traefik IngressRoute below can route to it.
+      # the HTTPRoute below can route to it.
       extraPorts = [{
         name       = "faro"
         port       = local.faro_port
@@ -460,20 +460,23 @@ resource "helm_release" "faro_alloy" {
 # anonymous and relies on CORS + the receiver's rate limiter to bound abuse.
 # Lock down var.faro_cors_allowed_origins to specific SPA origins in
 # production.
-resource "kubectl_manifest" "faro_ingressroute" {
+resource "kubectl_manifest" "faro_httproute" {
   yaml_body = yamlencode({
-    apiVersion = "traefik.io/v1alpha1"
-    kind       = "IngressRoute"
+    apiVersion = "gateway.networking.k8s.io/v1"
+    kind       = "HTTPRoute"
     metadata = {
       name      = "faro"
       namespace = kubernetes_namespace_v1.logging.metadata[0].name
     }
     spec = {
-      entryPoints = ["web"]
-      routes = [{
-        match = "Host(`${var.faro_hostname}`)"
-        kind  = "Rule"
-        services = [{
+      parentRefs = [{
+        name        = "traefik"
+        namespace   = "traefik"
+        sectionName = "websecure"
+      }]
+      hostnames = [var.faro_hostname]
+      rules = [{
+        backendRefs = [{
           name = local.faro_alloy_release
           port = local.faro_port
         }]
