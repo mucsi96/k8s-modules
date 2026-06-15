@@ -3,6 +3,8 @@ disable_root: true
 ssh_pwauth: false
 package_update: true
 package_upgrade: false
+packages:
+  - nftables
 users:
   - name: ${username}
     groups: [sudo]
@@ -12,6 +14,56 @@ users:
     ssh_authorized_keys:
       - ${ssh_public_key}
 write_files:
+  # Host firewall for the single-node MicroK8s box. Replaces the former Hetzner
+  # Cloud firewall (an external hcloud_firewall resource) with an equivalent
+  # ruleset enforced on the host itself. __PUB_IF__ is substituted with the
+  # default-route interface in runcmd; the Cloudflare edge ranges are baked in
+  # by Terraform at provision time.
+  #
+  # Only traffic arriving on the public interface is policed. Loopback, Calico
+  # pod interfaces (cali*, vxlan.calico) and every other internal interface stay
+  # on the default-accept path, so MicroK8s / Calico / kube-proxy networking is
+  # left untouched — the same blind spot the external cloud firewall had, since
+  # it never saw pod or cluster traffic. A dedicated table (deleted then
+  # recreated on every load) keeps `nft -f` idempotent and, crucially, never
+  # flushes the rules Calico installs in its own tables.
+  - path: /etc/nftables.conf
+    owner: root:root
+    permissions: '0600'
+    content: |
+      #!/usr/sbin/nft -f
+      table inet k8s_host_fw
+      delete table inet k8s_host_fw
+      table inet k8s_host_fw {
+        chain input {
+          type filter hook input priority 0; policy accept;
+
+          # Internal traffic (loopback, pod CNI, cluster) is never filtered
+          # here. Twingate's host connector proxies operator/CI connections to
+          # the node's own public IP, which Linux delivers over loopback, so SSH
+          # (custom port) and the Kubernetes API (16443) keep working without a
+          # public rule.
+          iifname != "__PUB_IF__" accept
+
+          # Return traffic for connections the host opened outbound (apt, ACME,
+          # Key Vault, the Twingate connector dialling out); "related" also
+          # covers the ICMP path-MTU messages those flows depend on.
+          ct state established,related accept
+          ct state invalid drop
+
+          # The ONLY public inbound rule: HTTPS/443 from the Cloudflare edge, so
+          # the zone rulesets (rate limiting, ASN restriction, bot blocking)
+          # cannot be bypassed by hitting the origin IP directly. No port 80 —
+          # the edge redirects HTTP to HTTPS before reaching the origin.
+          ip  saddr { ${cloudflare_ipv4_cidrs} } tcp dport 443 accept
+          ip6 saddr { ${cloudflare_ipv6_cidrs} } tcp dport 443 accept
+
+          # Everything else from the public internet is dropped. The SSH port,
+          # the Kubernetes API and ICMP are not exposed publicly — they are
+          # reachable only through Twingate (handled by the loopback accept).
+          drop
+        }
+      }
   - path: /etc/ssh/sshd_config.d/00-k8s-modules.conf
     owner: root:root
     permissions: '0644'
@@ -52,10 +104,18 @@ runcmd:
   - systemctl disable --now ssh.socket 2>/dev/null || true
   - systemctl enable ssh.service
   - systemctl restart ssh.service
+  # Bring up the host firewall before anything else opens a socket. Resolve the
+  # public interface from the default route (Hetzner Cloud images use eth0;
+  # fall back to it if detection fails) and substitute it into the ruleset, then
+  # load and enable nftables so the rules survive reboots.
+  - PUB_IF="$(ip -o route show default 2>/dev/null | awk '{print $5; exit}')"; sed -i "s/__PUB_IF__/$${PUB_IF:-eth0}/g" /etc/nftables.conf
+  - systemctl enable --now nftables
+  - nft -f /etc/nftables.conf
   # Install the Twingate connector at the host level (systemd: twingate-connector).
   # The connector only dials out to Twingate — no inbound ports — and its traffic
-  # to the node's own public IP is delivered locally, never crossing the hcloud
-  # firewall. This is what keeps SSH (custom port) and the K8s API (16443)
-  # reachable for operators/CI once those ports are closed to the public internet.
+  # to the node's own public IP is delivered over loopback, so it matches the
+  # firewall's "iifname != public accept" rule. This is what keeps SSH (custom
+  # port) and the K8s API (16443) reachable for operators/CI even though those
+  # ports are dropped for the public internet.
   - set -a && . /etc/twingate/setup.env && set +a && curl -fsSL https://binaries.twingate.com/connector/setup.sh | bash
   - rm -f /etc/twingate/setup.env

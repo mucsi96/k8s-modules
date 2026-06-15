@@ -1,7 +1,7 @@
 # The wildcard record stays proxied (orange cloud) so every request keeps
 # passing through the Cloudflare edge, where the rulesets in
 # cloudflare_ruleset.tf (rate limiting, ASN restriction, bot blocking) are
-# enforced. The hcloud firewall in provision_hetzner_server only admits
+# enforced. The host firewall in provision_hetzner_server only admits
 # Cloudflare's IP ranges on 443, so the edge cannot be bypassed by hitting
 # the origin IP directly.
 resource "cloudflare_dns_record" "wildcard" {

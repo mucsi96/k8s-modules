@@ -39,15 +39,18 @@ is unset.
 
 ## Operator access (Twingate-only)
 
-The Hetzner firewall admits **only** port 443 from the Cloudflare edge. SSH (the
-randomized port), the Kubernetes API (`16443`), and ICMP are **not** reachable
-from the public internet — they are exposed solely through Twingate.
+A host firewall (nftables, configured in cloud-init) admits **only** port 443
+from the Cloudflare edge. SSH (the randomized port), the Kubernetes API
+(`16443`), and ICMP are **not** reachable from the public internet — they are
+exposed solely through Twingate. Only traffic on the public interface is
+policed; loopback and the Calico pod/cluster interfaces are left untouched.
 
 - A host-level Twingate connector (systemd unit `twingate-connector`) is installed
   by cloud-init on first boot (`setup_twingate_connector` provides the tokens). It
-  dials out to Twingate; its traffic to the node's own public IP is delivered
-  locally and never crosses the cloud firewall, so `https://<publicIP>:16443` and
-  SSH keep working for anyone on the Twingate network.
+  dials out to Twingate; its traffic to the node's own public IP is delivered over
+  loopback (so it bypasses the public-interface drop rule), so
+  `https://<publicIP>:16443` and SSH keep working for anyone on the Twingate
+  network.
 - Humans get access via Twingate's built-in **Everyone** group (every user in the
   network), which is granted the SSH and K8s API resources. GitHub Actions reach
   the K8s API via a Twingate service account (`twingate-service-key`).
@@ -58,9 +61,11 @@ from the public internet — they are exposed solely through Twingate.
 
 ### Break-glass (locked out)
 
-- Open the **Hetzner Cloud Console** web VNC for the server, or add a temporary
-  inbound TCP rule for the SSH port under **Firewalls** in the console. Terraform
-  reverts any console-added rule on the next apply (desired self-healing).
+- Open the **Hetzner Cloud Console** web VNC for the server (the only path that
+  does not depend on Twingate or the host firewall). From the VNC root shell you
+  can drop the firewall temporarily with `systemctl stop nftables` (or
+  `nft delete table inet k8s_host_fw`); the next reboot or `nft -f
+  /etc/nftables.conf` restores it.
 - If bootstrap fails before the connector registers, inspect
   `/var/log/cloud-init-output.log` via the console, or `-replace` the server and
   re-run `scripts/create.sh`.

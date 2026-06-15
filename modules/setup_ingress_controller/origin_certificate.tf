@@ -1,6 +1,6 @@
 # Cloudflare Origin CA certificate served by Traefik. Only the Cloudflare
 # edge trusts this CA, which is fine: with the proxied DNS record and the
-# hcloud firewall, the edge is the only client that ever reaches port 443.
+# host firewall, the edge is the only client that ever reaches port 443.
 # 5475 days (15 years) is the maximum validity, so no renewal automation is
 # needed.
 
