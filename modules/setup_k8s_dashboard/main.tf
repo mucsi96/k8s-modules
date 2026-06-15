@@ -122,26 +122,27 @@ resource "kubernetes_cluster_role_v1" "headlamp_view_extras" {
   }
 }
 
-resource "kubectl_manifest" "headlamp_ingressroute" {
+resource "kubectl_manifest" "headlamp_httproute" {
   yaml_body = yamlencode({
-    apiVersion = "traefik.io/v1alpha1"
-    kind       = "IngressRoute"
+    apiVersion = "gateway.networking.k8s.io/v1"
+    kind       = "HTTPRoute"
     metadata = {
       name      = "headlamp"
       namespace = kubernetes_namespace_v1.k8s_dashboard.metadata[0].name
     }
     spec = {
-      entryPoints = ["web"]
-      routes = [
-        {
-          match = "Host(`${var.hostname}`)"
-          kind  = "Rule"
-          services = [{
-            name = module.headlamp_oauth2_proxy.service_name
-            port = 80
-          }]
-        },
-      ]
+      parentRefs = [{
+        name        = "traefik"
+        namespace   = "traefik"
+        sectionName = "websecure"
+      }]
+      hostnames = [var.hostname]
+      rules = [{
+        backendRefs = [{
+          name = module.headlamp_oauth2_proxy.service_name
+          port = 80
+        }]
+      }]
     }
   })
 

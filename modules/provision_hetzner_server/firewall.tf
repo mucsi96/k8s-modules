@@ -1,9 +1,18 @@
 # Once any inbound rule exists, hcloud drops all other inbound traffic;
 # outbound stays unrestricted (Twingate connector, apt, Key Vault, ACME all
-# connect outward). Port 443 is reachable from the Cloudflare edge only, so
-# the zone rulesets (rate limiting, ASN restriction, bot blocking) cannot be
-# bypassed by connecting to the server IP directly. There is deliberately no
-# port 80 rule: the edge redirects HTTP to HTTPS before reaching the origin.
+# connect outward). The ONLY public inbound rule is port 443 from the Cloudflare
+# edge, so the zone rulesets (rate limiting, ASN restriction, bot blocking)
+# cannot be bypassed by connecting to the server IP directly. There is
+# deliberately no port 80 rule: the edge redirects HTTP to HTTPS before reaching
+# the origin.
+#
+# SSH (the randomized port), the Kubernetes API (16443), and ICMP are NOT exposed
+# publicly — they are reachable only through Twingate. The host connector
+# (installed by cloud-init, see setup_twingate_connector) dials out to Twingate,
+# and connector traffic to the node's own public IP is delivered locally without
+# crossing this firewall, so kubeconfig (https://publicIP:16443) and SSH keep
+# working for operators/CI on the Twingate network. random_integer.ssh_port is
+# kept (defense-in-depth: it still drives sshd and cloud-init).
 resource "hcloud_firewall" "this" {
   name = var.server_name
 
@@ -13,29 +22,6 @@ resource "hcloud_firewall" "this" {
     protocol    = "tcp"
     port        = "443"
     source_ips  = var.https_source_ips
-  }
-
-  rule {
-    description = "SSH on the randomized port"
-    direction   = "in"
-    protocol    = "tcp"
-    port        = tostring(random_integer.ssh_port.result)
-    source_ips  = ["0.0.0.0/0", "::/0"]
-  }
-
-  rule {
-    description = "Kubernetes API (MicroK8s, client certificate auth)"
-    direction   = "in"
-    protocol    = "tcp"
-    port        = "16443"
-    source_ips  = ["0.0.0.0/0", "::/0"]
-  }
-
-  rule {
-    description = "ICMP for diagnostics"
-    direction   = "in"
-    protocol    = "icmp"
-    source_ips  = ["0.0.0.0/0", "::/0"]
   }
 }
 

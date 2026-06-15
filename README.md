@@ -37,6 +37,57 @@ Run `terraform apply` through `scripts/create.sh` (or start your own agent
 with `eval "$(ssh-agent -s)"` first) — applies fail fast if `SSH_AUTH_SOCK`
 is unset.
 
+## Operator access (Twingate-only)
+
+The Hetzner firewall admits **only** port 443 from the Cloudflare edge. SSH (the
+randomized port), the Kubernetes API (`16443`), and ICMP are **not** reachable
+from the public internet — they are exposed solely through Twingate.
+
+- A host-level Twingate connector (systemd unit `twingate-connector`) is installed
+  by cloud-init on first boot (`setup_twingate_connector` provides the tokens). It
+  dials out to Twingate; its traffic to the node's own public IP is delivered
+  locally and never crosses the cloud firewall, so `https://<publicIP>:16443` and
+  SSH keep working for anyone on the Twingate network.
+- Humans get access via Twingate's built-in **Everyone** group (every user in the
+  network), which is granted the SSH and K8s API resources. GitHub Actions reach
+  the K8s API via a Twingate service account (`twingate-service-key`).
+- **You must have the Twingate client connected** to run `terraform apply`
+  (the bootstrap keyscan, Ansible, and `remote-exec` all go over Twingate),
+  `scripts/ssh_to_server.sh`, or `kubectl`. Both scripts fail fast with a clear
+  message if the SSH port is unreachable.
+
+### Break-glass (locked out)
+
+- Open the **Hetzner Cloud Console** web VNC for the server, or add a temporary
+  inbound TCP rule for the SSH port under **Firewalls** in the console. Terraform
+  reverts any console-added rule on the next apply (desired self-healing).
+- If bootstrap fails before the connector registers, inspect
+  `/var/log/cloud-init-output.log` via the console, or `-replace` the server and
+  re-run `scripts/create.sh`.
+
+### Token rotation
+
+The connector tokens are baked into the server's cloud-init `user_data` (which has
+`ignore_changes`), so rotation is done by recreating the server: `-replace` the
+`setup_twingate_connector` connector tokens **and**
+`module.provision_hetzner_server.hcloud_server.this`, then re-run `create.sh` with
+the break-glass console rule handy in case the old connector drops first.
+
+## HTTP routing (Gateway API)
+
+All in-cluster HTTP routing uses the Kubernetes **Gateway API** (`Gateway` +
+`HTTPRoute`). Traefik's own `IngressRoute` and `Ingress` providers are **disabled**
+(`setup_ingress_controller/traefik.tf`); the Gateway API CRDs (standard channel)
+are vendored and applied before Traefik starts. A single `Gateway` in the `traefik`
+namespace terminates TLS on its HTTPS listener with the Cloudflare Origin CA cert
+and accepts `HTTPRoute`s from all namespaces.
+
+> **App repos must migrate too.** The `hello`, `language`, `training`, and `backup`
+> apps define their routes in their **own** Helm chart repos. Because the
+> `IngressRoute` provider is now off, those charts must switch to an `HTTPRoute`
+> (`parentRefs` → `traefik/traefik`, `sectionName: websecure`, with their hostname)
+> or they will 404 after the rebuild.
+
 ## Debugging Commands
 
 Useful commands for debugging Kubernetes (MicroK8s) clusters and authorization issues.

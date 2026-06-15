@@ -21,6 +21,18 @@ write_files:
       PermitRootLogin no
       KbdInteractiveAuthentication no
       PubkeyAuthentication yes
+  # Bootstrap env for the Twingate host connector installer. Deleted in runcmd
+  # right after install so the tokens do not linger on disk (the connector
+  # persists its own copy in /etc/twingate/connector.conf). The tokens are also
+  # visible in the Hetzner API's user_data — accepted, since the hcloud token
+  # already grants full control of the server.
+  - path: /etc/twingate/setup.env
+    owner: root:root
+    permissions: '0600'
+    content: |
+      TWINGATE_NETWORK=${twingate_network}
+      TWINGATE_ACCESS_TOKEN=${twingate_access_token}
+      TWINGATE_REFRESH_TOKEN=${twingate_refresh_token}
 runcmd:
   # Hetzner's Ubuntu cloud image ships root's shadow entry with last-password-
   # change set to 0, which PAM treats as "password expired". Root stays locked
@@ -40,3 +52,10 @@ runcmd:
   - systemctl disable --now ssh.socket 2>/dev/null || true
   - systemctl enable ssh.service
   - systemctl restart ssh.service
+  # Install the Twingate connector at the host level (systemd: twingate-connector).
+  # The connector only dials out to Twingate — no inbound ports — and its traffic
+  # to the node's own public IP is delivered locally, never crossing the hcloud
+  # firewall. This is what keeps SSH (custom port) and the K8s API (16443)
+  # reachable for operators/CI once those ports are closed to the public internet.
+  - set -a && . /etc/twingate/setup.env && set +a && curl -fsSL https://binaries.twingate.com/connector/setup.sh | bash
+  - rm -f /etc/twingate/setup.env
