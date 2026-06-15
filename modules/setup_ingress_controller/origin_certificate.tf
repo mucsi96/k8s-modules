@@ -45,6 +45,9 @@ resource "cloudflare_origin_ca_certificate" "origin" {
   }
 }
 
+# TLS secret referenced by the Gateway's HTTPS listener (gateway.tf). The
+# Gateway listener terminates TLS with this cert; there is no Traefik TLSStore
+# anymore (that was a kubernetesCRD resource, and that provider is disabled).
 resource "kubernetes_secret_v1" "origin_tls" {
   metadata {
     name      = "cloudflare-origin-tls"
@@ -57,24 +60,4 @@ resource "kubernetes_secret_v1" "origin_tls" {
     "tls.crt" = cloudflare_origin_ca_certificate.origin.certificate
     "tls.key" = tls_private_key.origin.private_key_pem
   }
-}
-
-# Traefik only honors a TLSStore named "default". Routers on the "web"
-# entrypoint pick up this certificate without any per-IngressRoute tls block.
-resource "kubectl_manifest" "default_tls_store" {
-  yaml_body = yamlencode({
-    apiVersion = "traefik.io/v1alpha1"
-    kind       = "TLSStore"
-    metadata = {
-      name      = "default"
-      namespace = kubernetes_namespace_v1.traefik.metadata[0].name
-    }
-    spec = {
-      defaultCertificate = {
-        secretName = kubernetes_secret_v1.origin_tls.metadata[0].name
-      }
-    }
-  })
-
-  depends_on = [helm_release.traefik]
 }

@@ -38,6 +38,22 @@ if [ -n "$vault_name" ] && command -v az >/dev/null 2>&1; then
   fi
 fi
 
+# Preflight: if a server already exists in state, this apply will reach it over
+# SSH and the K8s API — both Twingate-only now. Fail fast with a clear message
+# if the operator's Twingate client is not connected. Skipped silently on the
+# very first apply (no state/outputs yet).
+if pre_host=$(terraform output -raw hcloud_ipv4_address 2>/dev/null) \
+  && pre_port=$(terraform output -raw hcloud_ssh_port 2>/dev/null) \
+  && [ -n "$pre_host" ] && [ -n "$pre_port" ] \
+  && command -v nc >/dev/null 2>&1; then
+  if ! nc -z -w 5 "$pre_host" "$pre_port" 2>/dev/null; then
+    echo "Existing server $pre_host:$pre_port is unreachable on SSH." >&2
+    echo "Connect your Twingate client before applying (SSH and the K8s API are Twingate-only)." >&2
+    echo "Break-glass: Hetzner Cloud Console — add a temporary inbound rule; terraform reverts it on the next apply." >&2
+    exit 1
+  fi
+fi
+
 # Forward extra args to plan so callers can do e.g.
 #   scripts/create.sh -replace='module.provision_hetzner_server.hcloud_server.this'
 terraform plan -out=tfplan "$@"

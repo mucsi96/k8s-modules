@@ -21,6 +21,16 @@ if [ -z "$ssh_host" ] || [ -z "$ssh_user" ] || [ -z "$ssh_port" ]; then
   exit 1
 fi
 
+# Fail fast with a clear message if the SSH port is unreachable. Public SSH is
+# closed by the hcloud firewall — the only path in is Twingate — so a timeout
+# here almost always means the Twingate client is not connected.
+if command -v nc >/dev/null 2>&1 && ! nc -z -w 5 "$ssh_host" "$ssh_port" 2>/dev/null; then
+  echo "Cannot reach $ssh_host:$ssh_port." >&2
+  echo "Connect your Twingate client — the server's SSH port is closed to the public internet." >&2
+  echo "Break-glass: Hetzner Cloud Console web VNC." >&2
+  exit 1
+fi
+
 # Use a per-invocation ssh-agent so the private key never lands on disk and
 # the parent shell's agent (if any) is not mutated. Killed on exit.
 eval "$(ssh-agent -s)" >/dev/null

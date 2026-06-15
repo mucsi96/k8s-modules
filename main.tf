@@ -93,8 +93,8 @@ provider "helm" {
   }
 }
 
-# Used in place of hashicorp/kubernetes's kubernetes_manifest for CRDs (Traefik
-# IngressRoute / Middleware). kubernetes_manifest opens a REST client at plan
+# Used in place of hashicorp/kubernetes's kubernetes_manifest for CRDs (Gateway
+# API CRDs, Gateway, HTTPRoute). kubernetes_manifest opens a REST client at plan
 # time and breaks the from-scratch apply because the cluster does not exist
 # yet; kubectl_manifest defers the connection to apply time.
 provider "kubectl" {
@@ -152,6 +152,15 @@ module "provision_hetzner_server" {
   image            = var.hcloud_image
   username         = var.hcloud_username
   https_source_ips = concat(data.cloudflare_ip_ranges.cloudflare.ipv4_cidrs, data.cloudflare_ip_ranges.cloudflare.ipv6_cidrs)
+  # Tokens (from the connector module) are baked into cloud-init so the host
+  # connector comes up on first boot; ssh_ready_wait_for (from the access
+  # module) gates the keyscan poll on the Twingate SSH resource existing. These
+  # are field references, never module-level depends_on — the latter would form
+  # a cycle with setup_twingate_access, which reads this module's IP/port.
+  twingate_network       = data.azurerm_key_vault_secret.twingate_network.value
+  twingate_access_token  = module.setup_twingate_connector.access_token
+  twingate_refresh_token = module.setup_twingate_connector.refresh_token
+  ssh_ready_wait_for     = module.setup_twingate_access.ssh_resource_id
   labels = {
     environment = var.environment_name
   }
@@ -238,6 +247,13 @@ data "azurerm_key_vault_secret" "twingate_network" {
   name         = "twingate-network"
 }
 
+# Email of the Twingate user granted operator (SSH + K8s API) access. Seeded
+# manually in Key Vault before the first apply (see README), like letsencrypt-email.
+data "azurerm_key_vault_secret" "operator_email" {
+  key_vault_id = data.azurerm_key_vault.kv.id
+  name         = "operator-email"
+}
+
 data "azurerm_key_vault_secret" "github_token" {
   key_vault_id = data.azurerm_key_vault.kv.id
   name         = "github-token"
@@ -287,13 +303,23 @@ module "setup_ingress_controller" {
   depends_on = [module.setup_cluster]
 }
 
-module "setup_twingate" {
-  source             = "./modules/setup_twingate"
-  environment_name   = var.environment_name
-  twingate_network   = data.azurerm_key_vault_secret.twingate_network.value
-  twingate_api_token = data.azurerm_key_vault_secret.twingate_api_token.value
-  k8s_host           = module.provision_hetzner_server.ipv4_address
-  depends_on         = [module.setup_cluster]
+# Created before the server: its connector tokens are baked into the server's
+# cloud-init user_data. No depends_on — must NOT order after setup_cluster.
+module "setup_twingate_connector" {
+  source           = "./modules/setup_twingate_connector"
+  environment_name = var.environment_name
+}
+
+# Needs the server's address/port, so it orders after provision_hetzner_server
+# via field references. No depends_on (would cycle with ssh_ready_wait_for).
+module "setup_twingate_access" {
+  source            = "./modules/setup_twingate_access"
+  environment_name  = var.environment_name
+  operator_email    = data.azurerm_key_vault_secret.operator_email.value
+  remote_network_id = module.setup_twingate_connector.remote_network_id
+  k8s_host          = module.provision_hetzner_server.ipv4_address
+  ssh_address       = module.provision_hetzner_server.ipv4_address
+  ssh_port          = module.provision_hetzner_server.ssh_port
 }
 
 module "create_database_namespace" {
@@ -339,7 +365,7 @@ module "setup_backup_app" {
   azure_subscription_id      = var.azure_subscription_id
   k8s_oidc_config            = module.setup_cluster.k8s_oidc_config
   client_log_url             = local.client_log_url
-  twingate_service_key       = module.setup_twingate.service_key
+  twingate_service_key       = module.setup_twingate_access.service_key
   wait_for                   = module.setup_ingress_controller.traefik_ready
 
   azure_storage_account_resource_group_name = "ibari"
@@ -400,7 +426,7 @@ module "setup_learn_language_app" {
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password
-  twingate_service_key       = module.setup_twingate.service_key
+  twingate_service_key       = module.setup_twingate_access.service_key
   wait_for                   = module.setup_ingress_controller.traefik_ready
 }
 
@@ -420,7 +446,7 @@ module "setup_hello_app" {
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password
-  twingate_service_key       = module.setup_twingate.service_key
+  twingate_service_key       = module.setup_twingate_access.service_key
   wait_for                   = module.setup_ingress_controller.traefik_ready
 }
 
@@ -533,6 +559,6 @@ module "setup_training_log_app" {
   db_jdbc_url                = module.create_database.jdbc_url
   db_username                = module.create_database.username
   db_password                = module.create_database.password
-  twingate_service_key       = module.setup_twingate.service_key
+  twingate_service_key       = module.setup_twingate_access.service_key
   wait_for                   = module.setup_ingress_controller.traefik_ready
 }

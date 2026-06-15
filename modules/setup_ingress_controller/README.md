@@ -4,6 +4,10 @@ This module sets up Traefik as an ingress controller and exposes it to the publi
 internet through the Cloudflare proxy (orange-cloud DNS), with the origin reachable
 only from Cloudflare's edge.
 
+Routing uses the Kubernetes **Gateway API** (`Gateway` + `HTTPRoute`), not Traefik's
+own `IngressRoute`/`Ingress` providers — both of those are disabled. The Gateway API
+CRDs (standard channel) are vendored under `files/` and applied before Traefik starts.
+
 ## How traffic flows
 
 1. The wildcard DNS record `*.<dns_zone>` is a **proxied A record** pointing at the
@@ -13,9 +17,10 @@ only from Cloudflare's edge.
    (`cloudflare_ruleset.tf`).
 3. The edge connects to the origin on port 443 (SSL mode **Full (strict)**,
    `always_use_https` on, so port 80 is never used).
-4. Traefik terminates TLS on the `web` entrypoint (host port 443) with a
-   **Cloudflare Origin CA certificate** (15-year validity, no renewal automation
-   needed) set as the default certificate via a `TLSStore`.
+4. Traefik binds host port 443 on the `web` entrypoint; the Gateway's HTTPS
+   listener terminates TLS with a **Cloudflare Origin CA certificate** (15-year
+   validity, no renewal automation needed), referenced from the listener's
+   `certificateRefs`.
 5. The Hetzner Cloud firewall (`provision_hetzner_server` module) only admits
    Cloudflare's published IP ranges on port 443, so the edge — and its security
    rules — cannot be bypassed by connecting to the server IP directly.
@@ -25,10 +30,13 @@ and access logs see real client IPs that cannot be spoofed.
 
 ## Features
 
-- Deploys Traefik using the official Helm chart
+- Deploys Traefik using the official Helm chart, with the Gateway API provider
+  enabled and the IngressRoute/Ingress providers disabled
+- Installs the Gateway API CRDs and defines the shared `Gateway` (one HTTPS listener)
 - Creates the proxied wildcard DNS record and zone SSL settings
-- Issues a Cloudflare Origin CA certificate and wires it as Traefik's default
-- Protects the Traefik dashboard with oauth2-proxy (Microsoft Entra ID SSO)
+- Issues a Cloudflare Origin CA certificate and wires it into the Gateway listener
+- Protects the Traefik dashboard with oauth2-proxy (Microsoft Entra ID SSO), routed
+  via an `HTTPRoute`
 
 ## Prerequisites
 

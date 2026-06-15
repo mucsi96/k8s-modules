@@ -73,5 +73,5 @@ resource "azurerm_key_vault_secret" "db_password" {
 resource "azurerm_key_vault_secret" "twingate_service_key" {
   key_vault_id = data.azurerm_key_vault.kv.id
   name         = "twingate-service-key"
-  value        = module.setup_twingate.service_key
+  value        = module.setup_twingate_access.service_key
 }
