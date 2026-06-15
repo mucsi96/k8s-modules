@@ -9,6 +9,28 @@ locals {
   email_header_name       = "X-Auth-Request-Email"
   grafana_db_user         = "grafana"
   grafana_db_schema       = "grafana"
+
+  # Grafana's server-admin account. Pinned here rather than left to the grafana
+  # subchart's random adminPassword (regenerated on every from-scratch install)
+  # so the credentials stay identical across cluster reprovisions and targeted
+  # destroys. A database backup restored into a fresh cluster then keeps
+  # matching the running config, and the kiwigrid sidecars keep authenticating
+  # after a restore instead of 401-ing once the random password rotates.
+  #
+  # Real user authentication is OIDC through oauth2-proxy and the login form is
+  # disabled, so the human admin signs in via the email header (mapped to this
+  # same account because the login equals their email). This password therefore
+  # only backs the in-cluster sidecar Basic Auth calls and emergency access;
+  # external traffic is gated by the HTTPRoute -> oauth2-proxy in front of
+  # Grafana, so a static value here does not widen the external attack surface.
+  grafana_admin_user     = var.valid_email
+  grafana_admin_password = "Grafana-Admin-Stable-2026"
+
+  # Static key for Grafana's envelope encryption and signed settings. Pinned so
+  # secrets stored in the database (datasource credentials, the data_keys table)
+  # stay decryptable across reprovisions and restores. The subchart otherwise
+  # leaves this at Grafana's well-known built-in default value.
+  grafana_secret_key = "k8sGrafanaEnvelopeKeyStable2026xQ"
 }
 
 resource "terraform_data" "wait_for" {
@@ -162,6 +184,12 @@ resource "helm_release" "kube_prometheus_stack" {
       ingress = {
         enabled = false
       }
+      # Fixed server-admin credentials (see locals). Setting these stops the
+      # subchart from generating a random admin-password into the
+      # kube-prometheus-stack-grafana Secret, so the value survives reprovisions
+      # and a restored database backup stays consistent with the running config.
+      adminUser     = local.grafana_admin_user
+      adminPassword = local.grafana_admin_password
       # Persist Grafana's metadata (dashboards, folders, users, datasources,
       # ...) in the shared PostgreSQL so changes survive pod restarts and
       # chart upgrades. Grafana logs in as a dedicated role whose default
@@ -200,6 +228,11 @@ resource "helm_release" "kube_prometheus_stack" {
       # the Grafana account on first login and auto_assign_org_role gives it
       # Admin so dashboards can be edited.
       "grafana.ini" = {
+        # Pin the envelope-encryption / signing key so database secrets stay
+        # decryptable across reprovisions and restores (see local.grafana_secret_key).
+        security = {
+          secret_key = local.grafana_secret_key
+        }
         database = {
           type = "postgres"
           host = "${var.database.host}:${var.database.port}"
@@ -220,11 +253,11 @@ resource "helm_release" "kube_prometheus_stack" {
         }
         # Leave [auth.basic] at its default (enabled). The kiwigrid sidecars
         # call /api/admin/provisioning/{dashboards,datasources}/reload with
-        # HTTP Basic Auth as the chart's auto-generated admin user; disabling
-        # basic auth makes those calls 401 and the bundled Prometheus
-        # datasource never gets provisioned. External access is already gated
-        # by the HTTPRoute in front of oauth2-proxy, so leaving basic auth
-        # on doesn't widen the attack surface.
+        # HTTP Basic Auth as the pinned admin user (adminUser/adminPassword
+        # above); disabling basic auth makes those calls 401 and the bundled
+        # Prometheus datasource never gets provisioned. External access is
+        # already gated by the HTTPRoute in front of oauth2-proxy, so leaving
+        # basic auth on doesn't widen the attack surface.
         users = {
           auto_assign_org      = true
           auto_assign_org_role = "Admin"
