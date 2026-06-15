@@ -12,12 +12,12 @@ terraform {
 
     helm = {
       source  = "hashicorp/helm"
-      version = ">=2.16.1"
+      version = ">= 2.16.1"
     }
 
     tls = {
       source  = "hashicorp/tls"
-      version = ">=4.0.6"
+      version = ">= 4.0.6"
     }
 
     acme = {
@@ -32,12 +32,12 @@ terraform {
 
     cloudflare = {
       source  = "cloudflare/cloudflare"
-      version = "5.19.1"
+      version = "5.20.0"
     }
 
     twingate = {
       source  = "Twingate/twingate"
-      version = "4.1.1"
+      version = "4.2.1"
     }
 
     github = {
