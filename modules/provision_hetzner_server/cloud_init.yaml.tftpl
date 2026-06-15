@@ -110,6 +110,10 @@ runcmd:
   # load and enable nftables so the rules survive reboots.
   - PUB_IF="$(ip -o route show default 2>/dev/null | awk '{print $5; exit}')"; sed -i "s/__PUB_IF__/$${PUB_IF:-eth0}/g" /etc/nftables.conf
   - systemctl enable --now nftables
+  # Explicit reload after enabling: if nftables.service was already active,
+  # `enable --now` would not reload it, so this guarantees our substituted
+  # ruleset is the one in force. Loading the whole file is a single atomic
+  # nftables transaction (the delete+recreate never leaves an open window).
   - nft -f /etc/nftables.conf
   # Install the Twingate connector at the host level (systemd: twingate-connector).
   # The connector only dials out to Twingate — no inbound ports — and its traffic

@@ -497,6 +497,10 @@ module "setup_prometheus_operator" {
   prometheus_client_id                = module.register_prometheus_dashboard.client_id
   prometheus_client_secret            = module.register_prometheus_dashboard.client_secret
   valid_email                         = data.azurerm_key_vault_secret.letsencrypt_email.value
+  # When bumping this, update prometheus_operator_crds_chart_version in the
+  # setup_prometheus_operator_crds module above to the CRDs release matching this
+  # chart's Prometheus Operator appVersion — they are installed separately and
+  # must stay in sync (this chart runs with crds.enabled = false).
   kube_prometheus_stack_chart_version = "84.5.0"  #https://github.com/prometheus-community/helm-charts/releases?q=kube-prometheus-stack
   oauth2_proxy_chart_version          = "7.12.6"  #https://github.com/oauth2-proxy/manifests/releases
   oauth2_proxy_image_version          = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
