@@ -22,7 +22,7 @@ if [ -z "$ssh_host" ] || [ -z "$ssh_user" ] || [ -z "$ssh_port" ]; then
 fi
 
 # Fail fast with a clear message if the SSH port is unreachable. Public SSH is
-# closed by the host firewall — the only path in is Twingate — so a timeout
+# closed by the hcloud firewall — the only path in is Twingate — so a timeout
 # here almost always means the Twingate client is not connected.
 if command -v nc >/dev/null 2>&1 && ! nc -z -w 5 "$ssh_host" "$ssh_port" 2>/dev/null; then
   echo "Cannot reach $ssh_host:$ssh_port." >&2

@@ -140,8 +140,8 @@ data "azurerm_key_vault_secret" "hcloud_token" {
   name         = "hcloud-token"
 }
 
-# Cloudflare's published edge ranges, shared by the host firewall (only the
-# edge may reach port 443) and Traefik's trusted X-Forwarded-* sources.
+# Cloudflare's published edge ranges, shared by the hcloud firewall (only
+# the edge may reach port 443) and Traefik's trusted X-Forwarded-* sources.
 data "cloudflare_ip_ranges" "cloudflare" {}
 
 module "provision_hetzner_server" {
@@ -151,11 +151,7 @@ module "provision_hetzner_server" {
   location         = var.hcloud_location
   image            = var.hcloud_image
   username         = var.hcloud_username
-  # Baked into the cloud-init host firewall as the only sources allowed to
-  # reach port 443. Split by family because nftables matches them in separate
-  # ip/ip6 rules.
-  cloudflare_ipv4_cidrs = data.cloudflare_ip_ranges.cloudflare.ipv4_cidrs
-  cloudflare_ipv6_cidrs = data.cloudflare_ip_ranges.cloudflare.ipv6_cidrs
+  https_source_ips = concat(data.cloudflare_ip_ranges.cloudflare.ipv4_cidrs, data.cloudflare_ip_ranges.cloudflare.ipv6_cidrs)
   # Tokens (from the connector module) are baked into cloud-init so the host
   # connector comes up on first boot; ssh_ready_wait_for (from the access
   # module) gates the keyscan poll on the Twingate SSH resource existing. These

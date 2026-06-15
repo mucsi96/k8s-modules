@@ -33,13 +33,8 @@ variable "labels" {
   default     = {}
 }
 
-variable "cloudflare_ipv4_cidrs" {
-  description = "Cloudflare edge IPv4 ranges allowed to reach port 443. All other public inbound is dropped by the host nftables firewall configured in cloud-init."
-  type        = list(string)
-}
-
-variable "cloudflare_ipv6_cidrs" {
-  description = "Cloudflare edge IPv6 ranges allowed to reach port 443. All other public inbound is dropped by the host nftables firewall configured in cloud-init."
+variable "https_source_ips" {
+  description = "CIDRs allowed to reach port 443 — the Cloudflare edge ranges. All other inbound HTTPS is dropped by the hcloud firewall."
   type        = list(string)
 }
 

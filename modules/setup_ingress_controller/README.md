@@ -22,10 +22,9 @@ Helm with the release, so there is no separate CRD step.
    listener terminates TLS with a **Cloudflare Origin CA certificate** (15-year
    validity, no renewal automation needed), referenced from the listener's
    `certificateRefs`.
-5. The host firewall (nftables, configured in cloud-init by the
-   `provision_hetzner_server` module) only admits Cloudflare's published IP
-   ranges on port 443, so the edge — and its security rules — cannot be bypassed
-   by connecting to the server IP directly.
+5. The Hetzner Cloud firewall (`provision_hetzner_server` module) only admits
+   Cloudflare's published IP ranges on port 443, so the edge — and its security
+   rules — cannot be bypassed by connecting to the server IP directly.
 
 Traefik only honors `X-Forwarded-*` headers from Cloudflare's IP ranges, so apps
 and access logs see real client IPs that cannot be spoofed.

@@ -15,8 +15,6 @@ locals {
     twingate_network       = var.twingate_network
     twingate_access_token  = var.twingate_access_token
     twingate_refresh_token = var.twingate_refresh_token
-    cloudflare_ipv4_cidrs  = join(", ", var.cloudflare_ipv4_cidrs)
-    cloudflare_ipv6_cidrs  = join(", ", var.cloudflare_ipv6_cidrs)
   })
 }
 
