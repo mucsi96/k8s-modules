@@ -27,7 +27,7 @@ resource "helm_release" "redis" {
   name       = var.k8s_name
   repository = "https://mucsi96.github.io/k8s-helm-charts"
   chart      = "redis"
-  version    = "2.0.0"
+  version    = "3.0.0"
   namespace  = var.k8s_namespace
   wait       = true
   # https://github.com/mucsi96/k8s-helm-charts/tree/main/charts/redis
