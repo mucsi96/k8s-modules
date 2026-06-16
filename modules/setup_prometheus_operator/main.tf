@@ -9,6 +9,11 @@ locals {
   email_header_name       = "X-Auth-Request-Email"
   grafana_db_user         = "grafana"
   grafana_db_schema       = "grafana"
+  # Password for the dedicated 'grafana' Postgres role. Hardcoded (rather than
+  # randomly generated) so it stays identical across reprovisions and targeted
+  # destroys; the role lives inside the shared database network and is created
+  # by the init Job below.
+  grafana_db_password = "123"
 
   # Grafana's server-admin account. Pinned here rather than left to the grafana
   # subchart's random adminPassword (regenerated on every from-scratch install)
@@ -45,10 +50,12 @@ resource "kubernetes_namespace_v1" "monitoring" {
   depends_on = [terraform_data.wait_for]
 }
 
-resource "random_password" "grafana_db_password" {
-  length           = 20
-  special          = true
-  override_special = "-_=+:[]{}"
+# Re-run the database init Job whenever the hardcoded Grafana DB password
+# changes, so the new password is applied to the existing 'grafana' role (the
+# Job's ALTER USER is idempotent). terraform_data tracks the literal value
+# because a plain local can't be referenced from replace_triggered_by.
+resource "terraform_data" "grafana_db_password" {
+  input = local.grafana_db_password
 }
 
 resource "kubernetes_secret_v1" "grafana_database" {
@@ -65,7 +72,7 @@ resource "kubernetes_secret_v1" "grafana_database" {
     PG_ADMIN_PASSWORD = var.database.admin_password
     PG_SCHEMA         = local.grafana_db_schema
     GRAFANA_USER      = local.grafana_db_user
-    GRAFANA_PASSWORD  = random_password.grafana_db_password.result
+    GRAFANA_PASSWORD  = local.grafana_db_password
   }
 
   type = "Opaque"
@@ -151,7 +158,7 @@ resource "kubernetes_job_v1" "grafana_database_init" {
   }
 
   lifecycle {
-    replace_triggered_by = [random_password.grafana_db_password]
+    replace_triggered_by = [terraform_data.grafana_db_password]
   }
 }
 
