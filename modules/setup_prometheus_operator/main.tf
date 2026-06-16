@@ -190,6 +190,16 @@ resource "helm_release" "kube_prometheus_stack" {
       # and a restored database backup stays consistent with the running config.
       adminUser     = local.grafana_admin_user
       adminPassword = local.grafana_admin_password
+      # Pin Grafana's envelope-encryption / signing key via the environment
+      # rather than in grafana.ini: the chart's assertNoLeakedSecrets guard
+      # rejects sensitive keys (secret_key, admin_password, ...) written
+      # literally into grafana.ini. GF_SECURITY_SECRET_KEY maps to
+      # [security] secret_key and keeps database secrets (datasource
+      # credentials, the data_keys table) decryptable across reprovisions and
+      # restores (see local.grafana_secret_key).
+      env = {
+        GF_SECURITY_SECRET_KEY = local.grafana_secret_key
+      }
       # Persist Grafana's metadata (dashboards, folders, users, datasources,
       # ...) in the shared PostgreSQL so changes survive pod restarts and
       # chart upgrades. Grafana logs in as a dedicated role whose default
@@ -228,11 +238,6 @@ resource "helm_release" "kube_prometheus_stack" {
       # the Grafana account on first login and auto_assign_org_role gives it
       # Admin so dashboards can be edited.
       "grafana.ini" = {
-        # Pin the envelope-encryption / signing key so database secrets stay
-        # decryptable across reprovisions and restores (see local.grafana_secret_key).
-        security = {
-          secret_key = local.grafana_secret_key
-        }
         database = {
           type = "postgres"
           host = "${var.database.host}:${var.database.port}"
