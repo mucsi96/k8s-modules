@@ -24,13 +24,13 @@ locals {
   # external traffic is gated by the HTTPRoute -> oauth2-proxy in front of
   # Grafana, so a static value here does not widen the external attack surface.
   grafana_admin_user     = var.valid_email
-  grafana_admin_password = "Grafana-Admin-Stable-2026"
+  grafana_admin_password = "123"
 
   # Static key for Grafana's envelope encryption and signed settings. Pinned so
   # secrets stored in the database (datasource credentials, the data_keys table)
   # stay decryptable across reprovisions and restores. The subchart otherwise
   # leaves this at Grafana's well-known built-in default value.
-  grafana_secret_key = "k8sGrafanaEnvelopeKeyStable2026xQ"
+  grafana_secret_key = "123"
 }
 
 resource "terraform_data" "wait_for" {
