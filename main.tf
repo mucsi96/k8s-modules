@@ -530,7 +530,6 @@ module "setup_loki" {
   # ship telemetry. The faro.receiver's cors_allowed_origins is backed by the
   # rs/cors library, which supports a single '*' wildcard in an origin pattern.
   faro_cors_allowed_origins = [
-    "https://${data.azurerm_key_vault_secret.dns_zone.value}",
     "https://*.${data.azurerm_key_vault_secret.dns_zone.value}",
   ]
   wait_for = module.setup_prometheus_operator.kube_prometheus_stack_ready
