@@ -526,13 +526,12 @@ module "setup_loki" {
   alloy_chart_version = "1.8.1" #https://github.com/grafana/helm-charts/releases?q=alloy
   grafana_namespace   = module.setup_prometheus_operator.namespace
   faro_hostname       = local.faro_hostname
-  # Production hostnames of the 4 apps only. Local dev origins are
-  # intentionally excluded — Faro is a production-only signal.
+  # Allow any subdomain of the DNS zone (e.g. https://language.ibari.ch) to
+  # ship telemetry. The faro.receiver's cors_allowed_origins is backed by the
+  # rs/cors library, which supports a single '*' wildcard in an origin pattern.
   faro_cors_allowed_origins = [
-    "https://hello.${data.azurerm_key_vault_secret.dns_zone.value}",
-    "https://language.${data.azurerm_key_vault_secret.dns_zone.value}",
-    "https://training.${data.azurerm_key_vault_secret.dns_zone.value}",
-    "https://backup.${data.azurerm_key_vault_secret.dns_zone.value}",
+    "https://${data.azurerm_key_vault_secret.dns_zone.value}",
+    "https://*.${data.azurerm_key_vault_secret.dns_zone.value}",
   ]
   wait_for = module.setup_prometheus_operator.kube_prometheus_stack_ready
 }
