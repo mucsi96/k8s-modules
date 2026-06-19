@@ -58,7 +58,16 @@ resource "kubernetes_persistent_volume_v1" "cloudbeaver" {
   }
 
   spec {
-    storage_class_name = ""
+    # MicroK8s enables the hostpath-storage addon, which registers a *default*
+    # StorageClass (microk8s-hostpath). The Terraform kubernetes provider drops
+    # storage_class_name = "" on a PVC (the attribute is Optional+Computed), so
+    # the DefaultStorageClass admission controller would inject that default into
+    # the claim while this static PV stays empty -> "storageClassName does not
+    # match" and the claim never binds. Pinning both sides to the same explicit,
+    # non-default class name keeps them matched and stops the injection. No
+    # StorageClass object is required: the claim is pre-bound via volume_name, so
+    # no dynamic provisioner is ever consulted.
+    storage_class_name = "manual"
     access_modes       = ["ReadWriteOnce"]
     capacity = {
       storage = "1Gi"
@@ -79,7 +88,9 @@ resource "kubernetes_persistent_volume_claim_v1" "cloudbeaver" {
   }
 
   spec {
-    storage_class_name = ""
+    # Must match the PV's storage_class_name (see the PV above) so the claim
+    # binds to it instead of triggering the MicroK8s default StorageClass.
+    storage_class_name = "manual"
     access_modes       = ["ReadWriteOnce"]
     volume_name        = kubernetes_persistent_volume_v1.cloudbeaver.metadata[0].name
     resources {
