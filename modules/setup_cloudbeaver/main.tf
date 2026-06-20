@@ -2,11 +2,15 @@ locals {
   cloudbeaver_name = "cloudbeaver"
   cloudbeaver_port = 8978
 
-  # Pre-provisioned global connection. CloudBeaver imports
-  # initial-data-sources.conf on first start and persists it into the workspace,
-  # so the Postgres database shows up ready to browse and edit (inline data grid)
-  # without anyone having to configure a connection through the UI. Credentials
-  # are embedded here and encrypted into the workspace on first connect.
+  # Pre-provisioned global connection. On first start CloudBeaver's launch
+  # script copies conf/initial-data-sources.conf to the workspace as
+  # data-sources.json (only if the workspace has not been initialised yet), so
+  # the Postgres database shows up ready to browse and edit (inline data grid)
+  # without anyone configuring a connection through the UI. Credentials are read
+  # by DataSourceSerializerModern straight from the configuration block via the
+  # top-level "user"/"password" keys (NOT "auth-properties", which is deprecated
+  # and ignored for login); with save-password they are persisted into the
+  # workspace secret store on first load.
   datasources = {
     connections = {
       "${var.database.name}" = {
@@ -23,10 +27,8 @@ locals {
           type                = "dev"
           closeIdleConnection = true
           "auth-model"        = "native"
-          "auth-properties" = {
-            name     = var.database.username
-            password = var.database.password
-          }
+          user                = var.database.username
+          password            = var.database.password
         }
       }
     }
@@ -156,6 +158,33 @@ resource "kubernetes_deployment_v1" "cloudbeaver" {
       }
 
       spec {
+        # CloudBeaver only copies the seed (conf/initial-data-sources.conf) into
+        # the workspace on the very first boot -- once workspace/.metadata exists
+        # the copy is skipped forever. That makes the connection definition
+        # un-updatable (e.g. a fixed credential or rotated DB password never
+        # reaches an already-initialised workspace). This init container
+        # reconciles the workspace's data-sources.json from the seed on every
+        # start, so the connection is effectively declarative. The connection is
+        # fully owned by this module, so overwriting it is intentional. The main
+        # container runs as root and its entrypoint chowns the workspace to the
+        # dbeaver user, so writing this file as root here is fine.
+        init_container {
+          name    = "seed-datasources"
+          image   = "dbeaver/cloudbeaver:${var.cloudbeaver_image_version}"
+          command = ["/bin/sh", "-c", "mkdir -p /workspace/GlobalConfiguration/.dbeaver && cp -f /seed/initial-data-sources.conf /workspace/GlobalConfiguration/.dbeaver/data-sources.json"]
+
+          volume_mount {
+            name       = "workspace"
+            mount_path = "/workspace"
+          }
+
+          volume_mount {
+            name       = "datasources"
+            mount_path = "/seed"
+            read_only  = true
+          }
+        }
+
         container {
           name  = local.cloudbeaver_name
           image = "dbeaver/cloudbeaver:${var.cloudbeaver_image_version}"
