@@ -10,7 +10,7 @@ output "hostname" {
 }
 
 output "admin_password" {
-  description = "Generated CloudBeaver administrator password. Access is already gated by oauth2-proxy and anonymous access is enabled, so these credentials are only needed for administrative tasks (managing users, connections, etc.)."
+  description = "Generated password for the CloudBeaver 'cbadmin' account. Anonymous access is disabled, so you sign in with cbadmin (after passing oauth2-proxy) to reach the seeded database connection. Retrieve with: terraform output -raw <module>_admin_password."
   value       = random_password.admin.result
   sensitive   = true
 }

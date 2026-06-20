@@ -161,11 +161,12 @@ resource "kubernetes_deployment_v1" "cloudbeaver" {
           image = "dbeaver/cloudbeaver:${var.cloudbeaver_image_version}"
 
           # CB_* env vars complete the initial server setup headlessly so the
-          # browser-based setup wizard never appears. Access is already gated by
-          # oauth2-proxy in front of the service, so anonymous access is enabled
-          # to keep the single-sign-on experience: passing the proxy is enough,
-          # no second CloudBeaver login. The admin account remains available for
-          # administrative tasks (see the admin_password output).
+          # browser-based setup wizard never appears. Anonymous access is left
+          # OFF: CloudBeaver 26 hides predefined connections from anonymous users
+          # (regression dbeaver/cloudbeaver#2058), so after passing oauth2-proxy
+          # you sign in to CloudBeaver as this admin account, which always sees
+          # the seeded global connection. Retrieve the password from the
+          # admin_password output.
           env {
             name  = "CB_SERVER_NAME"
             value = "CloudBeaver"
@@ -189,11 +190,6 @@ resource "kubernetes_deployment_v1" "cloudbeaver" {
                 key  = "CB_ADMIN_PASSWORD"
               }
             }
-          }
-
-          env {
-            name  = "CLOUDBEAVER_APP_ANONYMOUS_ACCESS_ENABLED"
-            value = "true"
           }
 
           port {
