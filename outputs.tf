@@ -23,3 +23,9 @@ output "apiserver_oidc_client_id" {
   description = "Entra application client_id for the Kubernetes API server. Used as kube-apiserver --oidc-client-id and as the kubelogin --server-id baked into each app's k8s-config kubeconfig."
   value       = module.setup_cluster.apiserver_oidc_client_id
 }
+
+output "cloudbeaver_admin_password" {
+  description = "Password for the CloudBeaver 'cbadmin' account. Not needed for normal use (oauth2-proxy is the single login); kept for administrative tasks. Retrieve via `terraform output -raw cloudbeaver_admin_password`."
+  value       = module.setup_cloudbeaver.admin_password
+  sensitive   = true
+}

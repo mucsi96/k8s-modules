@@ -1,5 +1,5 @@
 variable "hostname" {
-  description = "Public hostname where pgweb is exposed (e.g. db.example.com)"
+  description = "Public hostname where CloudBeaver is exposed (e.g. db.example.com)"
   type        = string
   sensitive   = true
 }
@@ -21,7 +21,7 @@ variable "client_secret" {
 }
 
 variable "valid_email" {
-  description = "Email address allowed to sign in to pgweb via Entra"
+  description = "Email address allowed to sign in to CloudBeaver via Entra"
   type        = string
   sensitive   = true
 }
@@ -35,8 +35,8 @@ variable "session_redis" {
   sensitive = true
 }
 
-variable "pgweb_image_version" {
-  description = "Container image tag for sosedoff/pgweb"
+variable "cloudbeaver_image_version" {
+  description = "Container image tag for dbeaver/cloudbeaver"
   type        = string
 }
 
@@ -51,7 +51,7 @@ variable "oauth2_proxy_image_version" {
 }
 
 variable "database" {
-  description = "Connection details for the Postgres instance pgweb connects to."
+  description = "Connection details for the Postgres instance CloudBeaver connects to. Pre-provisioned as a global connection so the data grid is editable without manual setup."
   type = object({
     name     = string
     host     = string
