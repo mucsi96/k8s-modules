@@ -25,7 +25,7 @@ output "apiserver_oidc_client_id" {
 }
 
 output "cloudbeaver_admin_password" {
-  description = "Password for the CloudBeaver 'cbadmin' account. After passing oauth2-proxy, sign in with cbadmin to reach the seeded database connection. Retrieve via `terraform output -raw cloudbeaver_admin_password`."
+  description = "Password for the CloudBeaver 'cbadmin' account. Not needed for normal use (oauth2-proxy is the single login); kept for administrative tasks. Retrieve via `terraform output -raw cloudbeaver_admin_password`."
   value       = module.setup_cloudbeaver.admin_password
   sensitive   = true
 }

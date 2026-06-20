@@ -161,12 +161,7 @@ resource "kubernetes_deployment_v1" "cloudbeaver" {
           image = "dbeaver/cloudbeaver:${var.cloudbeaver_image_version}"
 
           # CB_* env vars complete the initial server setup headlessly so the
-          # browser-based setup wizard never appears. Anonymous access is left
-          # OFF: CloudBeaver 26 hides predefined connections from anonymous users
-          # (regression dbeaver/cloudbeaver#2058), so after passing oauth2-proxy
-          # you sign in to CloudBeaver as this admin account, which always sees
-          # the seeded global connection. Retrieve the password from the
-          # admin_password output.
+          # browser-based setup wizard never appears.
           env {
             name  = "CB_SERVER_NAME"
             value = "CloudBeaver"
@@ -177,6 +172,10 @@ resource "kubernetes_deployment_v1" "cloudbeaver" {
             value = "https://${var.hostname}"
           }
 
+          # An admin account is still created (initial setup requires one, and
+          # it's there for administrative tasks via the admin_password output),
+          # but day-to-day access needs no CloudBeaver login: oauth2-proxy is the
+          # single sign-on gate.
           env {
             name  = "CB_ADMIN_NAME"
             value = "cbadmin"
@@ -190,6 +189,23 @@ resource "kubernetes_deployment_v1" "cloudbeaver" {
                 key  = "CB_ADMIN_PASSWORD"
               }
             }
+          }
+
+          # Anonymous access keeps oauth2-proxy as the only login. On its own,
+          # CloudBeaver 26 hides predefined connections from anonymous users
+          # (dbeaver/cloudbeaver#2058) -- "No Connections". The grant flag fixes
+          # that: at startup CBApplication.grantAnonymousAccessToConnections()
+          # grants every global datasource (our seeded Postgres connection) to
+          # the anonymous team, so it shows up ready to browse and edit with no
+          # second login.
+          env {
+            name  = "CLOUDBEAVER_APP_ANONYMOUS_ACCESS_ENABLED"
+            value = "true"
+          }
+
+          env {
+            name  = "CLOUDBEAVER_APP_GRANT_CONNECTIONS_ACCESS_TO_ANONYMOUS_TEAM"
+            value = "true"
           }
 
           port {
