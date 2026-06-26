@@ -45,22 +45,6 @@ variable "azure_subscription_id" {
   type        = string
 }
 
-variable "db_jdbc_url" {
-  description = "The JDBC URL for the database"
-  type        = string
-}
-
-variable "db_username" {
-  description = "The database username"
-  type        = string
-}
-
-variable "db_password" {
-  description = "The database password"
-  type        = string
-  sensitive   = true
-}
-
 variable "twingate_service_key" {
   description = "Twingate service key for this app's GitHub Actions pipeline. Required only for local clusters reachable via Twingate; leave null for cloud-hosted clusters."
   type        = string

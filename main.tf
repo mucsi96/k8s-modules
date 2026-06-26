@@ -471,9 +471,6 @@ module "setup_party_app" {
   azure_subscription_id      = var.azure_subscription_id
   k8s_oidc_config            = module.setup_cluster.k8s_oidc_config
   client_log_url             = local.client_log_url
-  db_jdbc_url                = module.create_database.jdbc_url
-  db_username                = module.create_database.username
-  db_password                = module.create_database.password
   twingate_service_key       = module.setup_twingate_access.service_key
   wait_for                   = module.setup_ingress_controller.traefik_ready
 }
