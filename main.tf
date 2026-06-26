@@ -458,6 +458,23 @@ module "setup_hello_app" {
   wait_for                   = module.setup_ingress_controller.traefik_ready
 }
 
+module "setup_party_app" {
+  source                     = "./modules/setup_party_app"
+  environment_name           = var.environment_name
+  azure_location             = var.azure_location
+  owner                      = local.owner
+  k8s_host                   = module.setup_cluster.k8s_host
+  k8s_cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
+  k8s_oidc_issuer_url        = module.setup_cluster.oidc_issuer_url
+  hostname                   = data.azurerm_key_vault_secret.dns_zone.value
+  tenant_id                  = data.azurerm_client_config.current.tenant_id
+  azure_subscription_id      = var.azure_subscription_id
+  k8s_oidc_config            = module.setup_cluster.k8s_oidc_config
+  client_log_url             = local.client_log_url
+  twingate_service_key       = module.setup_twingate_access.service_key
+  wait_for                   = module.setup_ingress_controller.traefik_ready
+}
+
 module "setup_metrics_server" {
   source                       = "./modules/setup_metrics_server"
   metrics_server_chart_version = "3.12.2" #https://github.com/kubernetes-sigs/metrics-server/releases
@@ -532,6 +549,7 @@ module "setup_loki" {
     "https://hello.${data.azurerm_key_vault_secret.dns_zone.value}",
     "https://language.${data.azurerm_key_vault_secret.dns_zone.value}",
     "https://training.${data.azurerm_key_vault_secret.dns_zone.value}",
+    "https://party.${data.azurerm_key_vault_secret.dns_zone.value}",
     "https://backup.${data.azurerm_key_vault_secret.dns_zone.value}",
   ]
   wait_for = module.setup_prometheus_operator.kube_prometheus_stack_ready
