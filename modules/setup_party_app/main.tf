@@ -5,7 +5,7 @@ locals {
 module "app_base" {
   source = "../setup_app_base"
 
-  github_repository          = "party-app"
+  github_repository          = "speaking-character"
   environment_name           = var.environment_name
   app_name                   = "party"
   azure_location             = var.azure_location
