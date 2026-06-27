@@ -51,3 +51,43 @@ module "setup_party_spa" {
     module.setup_party_api.scope_ids["createParty"]
   ]
 }
+
+resource "kubernetes_persistent_volume_v1" "party_app_pv" {
+  metadata {
+    name = "party-app"
+  }
+
+  spec {
+    storage_class_name = ""
+    access_modes       = ["ReadWriteOnce"]
+    capacity = {
+      storage = "5Gi"
+    }
+    persistent_volume_reclaim_policy = "Retain"
+    persistent_volume_source {
+      host_path {
+        path = "/data/party"
+      }
+    }
+  }
+}
+
+resource "kubernetes_persistent_volume_v1" "party_backup_pv" {
+  metadata {
+    name = "party-backup"
+  }
+
+  spec {
+    storage_class_name = ""
+    access_modes       = ["ReadWriteOnce"]
+    capacity = {
+      storage = "5Gi"
+    }
+    persistent_volume_reclaim_policy = "Retain"
+    persistent_volume_source {
+      host_path {
+        path = "/data/party"
+      }
+    }
+  }
+}
