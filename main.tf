@@ -543,7 +543,7 @@ module "setup_loki" {
   alloy_chart_version = "1.8.1" #https://github.com/grafana/helm-charts/releases?q=alloy
   grafana_namespace   = module.setup_prometheus_operator.namespace
   faro_hostname       = local.faro_hostname
-  # Production hostnames of the 4 apps only. Local dev origins are
+  # Production hostnames of the app SPAs only. Local dev origins are
   # intentionally excluded — Faro is a production-only signal.
   faro_cors_allowed_origins = [
     "https://hello.${data.azurerm_key_vault_secret.dns_zone.value}",
@@ -551,6 +551,7 @@ module "setup_loki" {
     "https://training.${data.azurerm_key_vault_secret.dns_zone.value}",
     "https://party.${data.azurerm_key_vault_secret.dns_zone.value}",
     "https://backup.${data.azurerm_key_vault_secret.dns_zone.value}",
+    "https://expenses.${data.azurerm_key_vault_secret.dns_zone.value}",
   ]
   wait_for = module.setup_prometheus_operator.kube_prometheus_stack_ready
 }
@@ -577,6 +578,26 @@ module "setup_cloudbeaver" {
     password = module.create_database.password
   }
   wait_for = module.setup_ingress_controller.traefik_ready
+}
+
+module "setup_expense_tracker_app" {
+  source                     = "./modules/setup_expense_tracker_app"
+  environment_name           = var.environment_name
+  azure_location             = var.azure_location
+  owner                      = local.owner
+  k8s_host                   = module.setup_cluster.k8s_host
+  k8s_cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
+  k8s_oidc_issuer_url        = module.setup_cluster.oidc_issuer_url
+  hostname                   = data.azurerm_key_vault_secret.dns_zone.value
+  tenant_id                  = data.azurerm_client_config.current.tenant_id
+  azure_subscription_id      = var.azure_subscription_id
+  k8s_oidc_config            = module.setup_cluster.k8s_oidc_config
+  client_log_url             = local.client_log_url
+  db_jdbc_url                = module.create_database.jdbc_url
+  db_username                = module.create_database.username
+  db_password                = module.create_database.password
+  twingate_service_key       = module.setup_twingate_access.service_key
+  wait_for                   = module.setup_ingress_controller.traefik_ready
 }
 
 module "setup_training_log_app" {
