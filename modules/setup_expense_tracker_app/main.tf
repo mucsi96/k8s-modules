@@ -29,8 +29,8 @@ module "setup_expense_tracker_api" {
   owner  = var.owner
 
   display_name = "Expense Tracker API"
-  roles        = ["ExpenseReader", "ExpenseCreator"]
-  scopes       = ["readExpenses", "createExpense"]
+  roles        = ["ExpenseReader"]
+  scopes       = ["readExpenses", "createExpenses"]
 
   k8s_oidc_issuer_url           = var.k8s_oidc_issuer_url
   k8s_service_account_namespace = "expense-tracker"
@@ -48,7 +48,7 @@ module "setup_expense_tracker_spa" {
   api_client_id = module.setup_expense_tracker_api.client_id
   api_scope_ids = [
     module.setup_expense_tracker_api.scope_ids["readExpenses"],
-    module.setup_expense_tracker_api.scope_ids["createExpense"]
+    module.setup_expense_tracker_api.scope_ids["createExpenses"]
   ]
 }
 
