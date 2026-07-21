@@ -15,3 +15,13 @@ resource "azurerm_key_vault_secret" "training_log_db_password" {
   name         = "db-password"
   value        = var.db_password
 }
+
+resource "random_bytes" "training_log_token_encryption_key" {
+  length = 32
+}
+
+resource "azurerm_key_vault_secret" "training_log_token_encryption_key" {
+  key_vault_id = module.app_base.key_vault_id
+  name         = "token-encryption-key"
+  value        = random_bytes.training_log_token_encryption_key.base64
+}
