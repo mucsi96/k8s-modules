@@ -15,3 +15,13 @@ resource "azurerm_key_vault_secret" "learn_language_db_password" {
   name         = "db-password"
   value        = var.db_password
 }
+
+resource "random_bytes" "learn_language_token_encryption_key" {
+  length = 32
+}
+
+resource "azurerm_key_vault_secret" "learn_language_token_encryption_key" {
+  key_vault_id = module.app_base.key_vault_id
+  name         = "token-encryption-key"
+  value        = random_bytes.learn_language_token_encryption_key.base64
+}
