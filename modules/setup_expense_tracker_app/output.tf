@@ -21,3 +21,8 @@ output "expense_tracker_api_resource_object_id" {
 output "expense_tracker_api_roles_ids" {
   value = module.setup_expense_tracker_api.roles_ids
 }
+
+output "bank_notification_token" {
+  value     = random_password.bank_notification_token.result
+  sensitive = true
+}
