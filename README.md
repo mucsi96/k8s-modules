@@ -11,7 +11,7 @@ The following secrets must exist in the Azure Key Vault (named after the `enviro
 |---|---|
 | `hcloud-token` | Hetzner Cloud API token used to provision the cluster server |
 | `dns-zone` | DNS zone domain used by all applications |
-| `letsencrypt-email` | Email address for Let's Encrypt certificate registration |
+| `letsencrypt-email` | Email address allowed through oauth2-proxy SSO (dashboards) and used as the Grafana admin user; no longer used for Let's Encrypt — TLS comes from a Cloudflare Origin CA certificate |
 | `cloudflare-zone-id` | Cloudflare zone ID for DNS management |
 | `cloudflare-api-token` | Cloudflare API token for DNS records, zone settings, Origin CA certificates, rulesets, Email Routing and Workers scripts |
 | `authorized-as` | Autonomous system number (ASN) allowed through the Cloudflare firewall rules |
@@ -138,13 +138,6 @@ Before the first apply, perform these manual steps in the Cloudflare dashboard:
    | Zone | Email Routing Rules | Edit | Routing the bank notification address to the email worker |
    | Account | Account Rulesets | Edit | Rate limiting, ASN restriction, bot blocking rulesets |
    | Account | Workers Scripts | Edit | Uploading the bank email notification worker |
-
-   Tokens created for the previous Cloudflare Tunnel setup may still carry
-   permissions that are no longer used and can be removed:
-
-   - Account / Cloudflare Tunnel
-   - Account / Access: Organizations, Identity Providers, and Groups
-   - Account / Access: Apps and Policies
 
    - Set "Zone Resources" to "Include" → "Specific zone" → select your domain,
      and "Account Resources" to your account
