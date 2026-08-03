@@ -183,6 +183,11 @@ module "setup_cluster" {
 }
 
 locals {
+  expense_tracker_hostname = "expenses.${data.azurerm_key_vault_secret.dns_zone.value}"
+  # REST endpoint the bank email worker POSTs to; the expense tracker API
+  # serves it with bearer-token authentication (bank-notification-token).
+  bank_notifications_path = "/api/bank-notifications"
+
   k8s_dashboard_hostname = "k8s.${data.azurerm_key_vault_secret.dns_zone.value}"
   grafana_hostname       = "grafana.${data.azurerm_key_vault_secret.dns_zone.value}"
   prometheus_hostname    = "prometheus.${data.azurerm_key_vault_secret.dns_zone.value}"
@@ -293,6 +298,16 @@ module "setup_ingress_controller" {
     connection_url = module.create_redis.connection_url
     password       = module.create_redis.password
   }
+  # The email worker's POST arrives from Cloudflare's own network, so the
+  # Block Non-Authorized AS rule would reject it; the endpoint authenticates
+  # with the bank-notification-token instead.
+  edge_firewall_exceptions = [
+    {
+      description = "Allow the bank email worker to POST notifications to the expense tracker"
+      hostname    = local.expense_tracker_hostname
+      path        = local.bank_notifications_path
+    }
+  ]
   depends_on = [module.setup_cluster]
 }
 
@@ -598,6 +613,19 @@ module "setup_expense_tracker_app" {
   db_password                = module.create_database.password
   twingate_service_key       = module.setup_twingate_access.service_key
   wait_for                   = module.setup_ingress_controller.traefik_ready
+}
+
+# Direct bank integration for the expense tracker: banks send card
+# notification emails to bank@<dns_zone>; Cloudflare Email Routing hands them
+# to an Email Worker that POSTs each message to the expense tracker's REST
+# API, authenticated with the bearer token stored as the app's
+# bank-notification-token Key Vault secret.
+module "setup_bank_email_worker" {
+  source             = "./modules/setup_bank_email_worker"
+  cloudflare_zone_id = data.azurerm_key_vault_secret.cloudflare_zone_id.value
+  dns_zone           = data.azurerm_key_vault_secret.dns_zone.value
+  target_url         = "https://${local.expense_tracker_hostname}${local.bank_notifications_path}"
+  api_token          = module.setup_expense_tracker_app.bank_notification_token
 }
 
 module "setup_training_log_app" {

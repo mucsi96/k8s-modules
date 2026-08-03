@@ -4,26 +4,44 @@ resource "cloudflare_ruleset" "firewall_rules" {
   name    = "Firewall Rules"
   phase   = "http_request_firewall_custom"
 
-  rules = [
-    {
-      action      = "block"
-      description = "Block Bots"
-      enabled     = true
-      expression  = "(cf.client.bot)"
-    },
-    {
-      action      = "block"
-      description = "Block High Threat Score"
-      enabled     = true
-      expression  = "(cf.threat_score ge 5)"
-    },
-    {
-      action      = "block"
-      description = "Block Non-Authorized AS"
-      enabled     = true
-      expression  = "(ip.geoip.asnum ne ${var.authorized_as})"
-    }
-  ]
+  # Skip rules must come first: a matching request skips the remaining rules
+  # of this ruleset (the block rules below), nothing else.
+  rules = concat(
+    [
+      for exception in var.edge_firewall_exceptions : {
+        action      = "skip"
+        description = exception.description
+        enabled     = true
+        expression  = "(http.host eq \"${exception.hostname}\" and http.request.uri.path eq \"${exception.path}\" and http.request.method eq \"POST\")"
+        action_parameters = {
+          ruleset = "current"
+        }
+        logging = {
+          enabled = true
+        }
+      }
+    ],
+    [
+      {
+        action      = "block"
+        description = "Block Bots"
+        enabled     = true
+        expression  = "(cf.client.bot)"
+      },
+      {
+        action      = "block"
+        description = "Block High Threat Score"
+        enabled     = true
+        expression  = "(cf.threat_score ge 5)"
+      },
+      {
+        action      = "block"
+        description = "Block Non-Authorized AS"
+        enabled     = true
+        expression  = "(ip.geoip.asnum ne ${var.authorized_as})"
+      }
+    ]
+  )
 }
 
 resource "cloudflare_ruleset" "rate_limiting" {
