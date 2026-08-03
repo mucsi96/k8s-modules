@@ -73,6 +73,116 @@ The connector tokens are baked into the server's cloud-init `user_data` (which h
 `module.provision_hetzner_server.hcloud_server.this`, then re-run `create.sh` with
 the break-glass console rule handy in case the old connector drops first.
 
+## Ingress: Traefik behind the Cloudflare proxy
+
+Traefik (`setup_ingress_controller`) is the ingress controller, exposed to the
+public internet through the Cloudflare proxy (orange-cloud DNS) with the origin
+reachable only from Cloudflare's edge. The module deploys Traefik with the
+official Helm chart, defines the shared `Gateway` (one HTTPS listener), creates
+the proxied wildcard DNS record and zone SSL settings, issues a Cloudflare
+Origin CA certificate for the Gateway listener, and protects the Traefik
+dashboard with oauth2-proxy (Microsoft Entra ID SSO).
+
+### How traffic flows
+
+1. The wildcard DNS record `*.<dns_zone>` is a **proxied A record** pointing at
+   the cluster server's public IPv4.
+2. Every request passes the Cloudflare edge, where the zone rulesets are
+   enforced: rate limiting, ASN restriction, bot and threat-score blocking
+   (`cloudflare_ruleset.tf`). Scoped **skip rules** (the module's
+   `edge_firewall_exceptions` variable) exempt machine-to-machine POST
+   endpoints that authenticate at the application layer — currently the bank
+   email worker's expense tracker endpoint — from the block rules; rate
+   limiting still applies to them.
+3. The edge connects to the origin on port 443 (SSL mode **Full (strict)**,
+   `always_use_https` on, so port 80 is never used).
+4. Traefik binds host port 443 on the `web` entrypoint; the Gateway's HTTPS
+   listener terminates TLS with a **Cloudflare Origin CA certificate** (15-year
+   validity, no renewal automation needed), referenced from the listener's
+   `certificateRefs`.
+5. The Hetzner Cloud firewall (`provision_hetzner_server` module) only admits
+   Cloudflare's published IP ranges on port 443, so the edge — and its security
+   rules — cannot be bypassed by connecting to the server IP directly.
+
+Traefik only honors `X-Forwarded-*` headers from Cloudflare's IP ranges, so apps
+and access logs see real client IPs that cannot be spoofed.
+
+### Manual Cloudflare setup steps
+
+Before the first apply, perform these manual steps in the Cloudflare dashboard:
+
+1. **Sign up for a Cloudflare account**
+   - Go to [https://dash.cloudflare.com/sign-up](https://dash.cloudflare.com/sign-up)
+   - Create a new account or sign in to an existing one
+
+2. **Add your domain to Cloudflare**
+   - Click "Add a site" and enter your domain name
+   - Select the free plan or appropriate plan for your needs
+   - Follow the instructions to update your nameservers at your domain registrar
+   - Wait for the nameserver changes to propagate (can take up to 24 hours)
+
+3. **Get your Zone ID**
+   - In the Cloudflare dashboard, select your domain
+   - Go to the Overview tab
+   - Your Zone ID will be displayed on the right side
+   - Copy this value for later use
+
+4. **Create an API token**
+   - In the Cloudflare dashboard, go to "My Profile" → "API Tokens"
+   - Click "Create Token"
+   - Use the "Custom token" template
+   - Configure the token with the following permissions:
+
+   | Resource Type | Permission | Access Level | Used for |
+   |---------------|------------|--------------|----------|
+   | Zone | Zone | Read | Resolving the account ID for the Workers script upload |
+   | Zone | DNS | Edit | Proxied wildcard A record |
+   | Zone | Zone Settings | Edit | SSL mode Full (strict), Always Use HTTPS, Email Routing DNS records |
+   | Zone | SSL and Certificates | Edit | Origin CA certificate issuance |
+   | Zone | Email Routing Rules | Edit | Routing the bank notification address to the email worker |
+   | Account | Account Rulesets | Edit | Rate limiting, ASN restriction, bot blocking rulesets |
+   | Account | Workers Scripts | Edit | Uploading the bank email notification worker |
+
+   Tokens created for the previous Cloudflare Tunnel setup may still carry
+   permissions that are no longer used and can be removed:
+
+   - Account / Cloudflare Tunnel
+   - Account / Access: Organizations, Identity Providers, and Groups
+   - Account / Access: Apps and Policies
+
+   - Set "Zone Resources" to "Include" → "Specific zone" → select your domain,
+     and "Account Resources" to your account
+   - Click "Continue to summary" and then "Create Token"
+   - Copy the token value immediately as it won't be shown again
+
+5. **Store secrets in Azure Key Vault**
+   After completing the steps above, store `cloudflare-zone-id`,
+   `cloudflare-api-token`, and `dns-zone` in the Key Vault (see the secrets
+   table above).
+
+## Bank email notifications (expense tracker)
+
+Banks send card notification emails to `bank@<dns_zone>`. The
+`setup_bank_email_worker` module enables Cloudflare **Email Routing** on the
+zone (MX and SPF records at the apex — the proxied wildcard A record is
+unaffected, Email Routing only receives mail) and routes that address to an
+**Email Worker**, which POSTs each message (`from`, `to`, `subject`, raw MIME
+body) to the expense tracker's REST API at
+`https://expenses.<dns_zone>/api/bank-notifications` with a bearer token.
+
+- The token is generated by `setup_expense_tracker_app` and stored in the
+  app's Key Vault as `bank-notification-token`; the API validates the
+  `Authorization` header against it. The token authenticates the worker, not
+  the bank — anyone can email the address, so the API must treat the email
+  content as untrusted input.
+- The worker's POST originates from Cloudflare's own network, which the
+  "Block Non-Authorized AS" edge rule would reject, so the endpoint is listed
+  in `edge_firewall_exceptions` (skip rule scoped to POST, exact hostname and
+  path; rate limiting still applies).
+- If the API does not answer 2xx, the worker throws, failing the delivery so
+  the sending mail server retries later instead of the notification being
+  silently dropped.
+
 ## HTTP routing (Gateway API)
 
 All in-cluster HTTP routing uses the Kubernetes **Gateway API** (`Gateway` +
