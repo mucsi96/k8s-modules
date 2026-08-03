@@ -8,12 +8,13 @@ data "cloudflare_zone" "zone" {
   zone_id = var.cloudflare_zone_id
 }
 
-# Enables Email Routing on the zone by creating the required MX and SPF
-# records at the apex. The proxied wildcard A record is unaffected — Email
-# Routing only receives mail, it never serves HTTP.
-resource "cloudflare_email_routing_dns" "email_routing" {
+# Enables Email Routing on the zone (the email/routing/enable API), which
+# provisions the required MX and SPF records at the apex. The proxied wildcard
+# A record is unaffected — Email Routing only receives mail, it never serves
+# HTTP. Not cloudflare_email_routing_dns: that resource manages *subdomain*
+# routing and rejects the zone apex with a 422.
+resource "cloudflare_email_routing_settings" "email_routing" {
   zone_id = var.cloudflare_zone_id
-  name    = var.dns_zone
 }
 
 resource "cloudflare_workers_script" "bank_email_worker" {
@@ -54,5 +55,5 @@ resource "cloudflare_email_routing_rule" "bank_notifications" {
     value = [cloudflare_workers_script.bank_email_worker.script_name]
   }]
 
-  depends_on = [cloudflare_email_routing_dns.email_routing]
+  depends_on = [cloudflare_email_routing_settings.email_routing]
 }
