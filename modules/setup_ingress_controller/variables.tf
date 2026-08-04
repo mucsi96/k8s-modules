@@ -50,6 +50,16 @@ variable "authorized_as" {
   sensitive   = true
 }
 
+variable "edge_firewall_exceptions" {
+  description = "POST endpoints allowed to skip the custom firewall rules (bot / threat-score / ASN blocks), only for requests coming from Cloudflare's own network (AS13335). For Cloudflare Workers that authenticate at the application layer, e.g. the Email Worker POSTing bank notifications to the expense tracker. Rate limiting still applies."
+  type = list(object({
+    description = string
+    hostname    = string
+    path        = string
+  }))
+  default = []
+}
+
 variable "tenant_id" {
   description = "Azure AD tenant ID used as the OIDC issuer for the Traefik dashboard"
   type        = string
