@@ -51,7 +51,7 @@ variable "authorized_as" {
 }
 
 variable "edge_firewall_exceptions" {
-  description = "POST endpoints allowed to skip the custom firewall rules (bot / threat-score / ASN blocks). For machine-to-machine callers that authenticate at the application layer, e.g. the Cloudflare Email Worker POSTing bank notifications to the expense tracker. Rate limiting still applies."
+  description = "POST endpoints allowed to skip the custom firewall rules (bot / threat-score / ASN blocks), only for requests coming from Cloudflare's own network (AS13335). For Cloudflare Workers that authenticate at the application layer, e.g. the Email Worker POSTing bank notifications to the expense tracker. Rate limiting still applies."
   type = list(object({
     description = string
     hostname    = string
