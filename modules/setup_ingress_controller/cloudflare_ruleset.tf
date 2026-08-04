@@ -6,13 +6,18 @@ resource "cloudflare_ruleset" "firewall_rules" {
 
   # Skip rules must come first: a matching request skips the remaining rules
   # of this ruleset (the block rules below), nothing else.
+  #
+  # The AS13335 condition scopes each exception to requests egressing from
+  # Cloudflare's own network: the callers are Cloudflare Workers (the bank
+  # email worker), whose subrequests re-enter the zone from Cloudflare's ASN.
+  # Everyone else POSTing to these paths still hits the block rules below.
   rules = concat(
     [
       for exception in var.edge_firewall_exceptions : {
         action      = "skip"
         description = exception.description
         enabled     = true
-        expression  = "(http.host eq \"${exception.hostname}\" and http.request.uri.path eq \"${exception.path}\" and http.request.method eq \"POST\")"
+        expression  = "(http.host eq \"${exception.hostname}\" and http.request.uri.path eq \"${exception.path}\" and http.request.method eq \"POST\" and ip.geoip.asnum eq 13335)"
         action_parameters = {
           ruleset = "current"
         }
