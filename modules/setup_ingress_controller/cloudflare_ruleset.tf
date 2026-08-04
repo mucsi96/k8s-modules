@@ -4,49 +4,31 @@ resource "cloudflare_ruleset" "firewall_rules" {
   name    = "Firewall Rules"
   phase   = "http_request_firewall_custom"
 
-  # Skip rules must come first: a matching request skips the remaining rules
-  # of this ruleset (the block rules below), nothing else.
-  #
-  # The AS13335 condition scopes each exception to requests egressing from
-  # Cloudflare's own network: the callers are Cloudflare Workers (the bank
-  # email worker), whose subrequests re-enter the zone from Cloudflare's ASN.
-  # Everyone else POSTing to these paths still hits the block rules below.
-  rules = concat(
-    [
-      for exception in var.edge_firewall_exceptions : {
-        action      = "skip"
-        description = exception.description
-        enabled     = true
-        expression  = "(http.host eq \"${exception.hostname}\" and http.request.uri.path eq \"${exception.path}\" and http.request.method eq \"POST\" and ip.geoip.asnum eq 13335)"
-        action_parameters = {
-          ruleset = "current"
-        }
-        logging = {
-          enabled = true
-        }
-      }
-    ],
-    [
-      {
-        action      = "block"
-        description = "Block Bots"
-        enabled     = true
-        expression  = "(cf.client.bot)"
-      },
-      {
-        action      = "block"
-        description = "Block High Threat Score"
-        enabled     = true
-        expression  = "(cf.threat_score ge 5)"
-      },
-      {
-        action      = "block"
-        description = "Block Non-Authorized AS"
-        enabled     = true
-        expression  = "(ip.geoip.asnum ne ${var.authorized_as})"
-      }
-    ]
-  )
+  # Rules evaluate in order on every request and stop at the first matching
+  # block, so the cheapest and most selective rule comes first.
+  rules = [
+    {
+      action      = "block"
+      description = "Block Non-Authorized AS"
+      enabled     = true
+      # 13335 is Cloudflare's own ASN, always allowed: subrequests from
+      # Cloudflare Workers (the bank email worker POSTing notifications to
+      # the expense tracker) egress from it.
+      expression = "(ip.geoip.asnum ne ${var.authorized_as} and ip.geoip.asnum ne 13335)"
+    },
+    {
+      action      = "block"
+      description = "Block High Threat Score"
+      enabled     = true
+      expression  = "(cf.threat_score ge 5)"
+    },
+    {
+      action      = "block"
+      description = "Block Bots"
+      enabled     = true
+      expression  = "(cf.client.bot)"
+    }
+  ]
 }
 
 resource "cloudflare_ruleset" "rate_limiting" {

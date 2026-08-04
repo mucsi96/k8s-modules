@@ -298,16 +298,6 @@ module "setup_ingress_controller" {
     connection_url = module.create_redis.connection_url
     password       = module.create_redis.password
   }
-  # The email worker's POST arrives from Cloudflare's own network, so the
-  # Block Non-Authorized AS rule would reject it; the endpoint authenticates
-  # with the bank-notification-token instead.
-  edge_firewall_exceptions = [
-    {
-      description = "Allow the bank email worker to POST notifications to the expense tracker"
-      hostname    = local.expense_tracker_hostname
-      path        = local.bank_notifications_path
-    }
-  ]
   depends_on = [module.setup_cluster]
 }
 
