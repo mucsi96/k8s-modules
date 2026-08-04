@@ -34,6 +34,16 @@ resource "cloudflare_workers_script" "bank_email_worker" {
       name = "API_TOKEN"
       type = "secret_text"
       text = var.api_token
+    },
+    {
+      name = "ALLOWED_SENDERS"
+      type = "plain_text"
+      text = join(",", var.allowed_senders)
+    },
+    {
+      name = "SUBJECT_PREFIX"
+      type = "plain_text"
+      text = var.subject_prefix
     }
   ]
 }
