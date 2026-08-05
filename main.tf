@@ -429,6 +429,16 @@ module "setup_backup_app" {
       name            = "Grafana"
       schema          = "grafana"
       createPlainDump = true
+    }),
+    merge(local.db, {
+      name            = "Library"
+      schema          = "library"
+      createPlainDump = true
+    }),
+    merge(local.db, {
+      name            = "Expense tracker"
+      schema          = "expensetracker"
+      createPlainDump = true
     })
   ]
 }
@@ -567,6 +577,7 @@ module "setup_loki" {
     "https://party.${data.azurerm_key_vault_secret.dns_zone.value}",
     "https://backup.${data.azurerm_key_vault_secret.dns_zone.value}",
     "https://expenses.${data.azurerm_key_vault_secret.dns_zone.value}",
+    "https://library.${data.azurerm_key_vault_secret.dns_zone.value}",
   ]
   wait_for = module.setup_prometheus_operator.kube_prometheus_stack_ready
 }
@@ -626,6 +637,26 @@ module "setup_bank_email_worker" {
   dns_zone           = data.azurerm_key_vault_secret.dns_zone.value
   target_url         = "https://${local.expense_tracker_hostname}${local.bank_notifications_path}"
   api_token          = module.setup_expense_tracker_app.bank_notification_token
+}
+
+module "setup_library_app" {
+  source                     = "./modules/setup_library_app"
+  environment_name           = var.environment_name
+  azure_location             = var.azure_location
+  owner                      = local.owner
+  k8s_host                   = module.setup_cluster.k8s_host
+  k8s_cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
+  k8s_oidc_issuer_url        = module.setup_cluster.oidc_issuer_url
+  hostname                   = data.azurerm_key_vault_secret.dns_zone.value
+  tenant_id                  = data.azurerm_client_config.current.tenant_id
+  azure_subscription_id      = var.azure_subscription_id
+  k8s_oidc_config            = module.setup_cluster.k8s_oidc_config
+  client_log_url             = local.client_log_url
+  db_jdbc_url                = module.create_database.jdbc_url
+  db_username                = module.create_database.username
+  db_password                = module.create_database.password
+  twingate_service_key       = module.setup_twingate_access.service_key
+  wait_for                   = module.setup_ingress_controller.traefik_ready
 }
 
 module "setup_training_log_app" {
