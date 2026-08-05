@@ -29,8 +29,8 @@ module "setup_library_api" {
   owner  = var.owner
 
   display_name = "Library API"
-  roles        = ["BookReader", "BookCreator"]
-  scopes       = ["readBooks", "createBook"]
+  roles        = ["LibraryUser"]
+  scopes       = ["readItems", "writeItems"]
 
   k8s_oidc_issuer_url           = var.k8s_oidc_issuer_url
   k8s_service_account_namespace = "library"
@@ -42,13 +42,13 @@ module "setup_library_spa" {
   owner  = var.owner
 
   display_name  = "Library SPA"
-  redirect_uris = ["https://${local.app_hostname}/", "http://localhost:4206/"]
+  redirect_uris = ["https://${local.app_hostname}/", "http://localhost:4250/"]
 
   api_id        = module.setup_library_api.application_id
   api_client_id = module.setup_library_api.client_id
   api_scope_ids = [
-    module.setup_library_api.scope_ids["readBooks"],
-    module.setup_library_api.scope_ids["createBook"]
+    module.setup_library_api.scope_ids["readItems"],
+    module.setup_library_api.scope_ids["writeItems"]
   ]
 }
 

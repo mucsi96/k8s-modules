@@ -434,6 +434,11 @@ module "setup_backup_app" {
       name            = "Library"
       schema          = "library"
       createPlainDump = true
+    }),
+    merge(local.db, {
+      name            = "Expense tracker"
+      schema          = "expensetracker"
+      createPlainDump = true
     })
   ]
 }
