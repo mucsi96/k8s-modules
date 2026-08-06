@@ -434,6 +434,11 @@ module "setup_backup_app" {
       name            = "Library"
       schema          = "library"
       createPlainDump = true
+      folderBackups = [
+        {
+          path = "/app/storage/library"
+        }
+      ]
     }),
     merge(local.db, {
       name            = "Expense tracker"
