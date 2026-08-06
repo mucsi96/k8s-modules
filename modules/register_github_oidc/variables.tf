@@ -9,7 +9,7 @@ variable "owner" {
 }
 
 variable "github_subject" {
-  description = "Federated credential subject claim (e.g. repo:owner/repo:ref:refs/heads/main)."
+  description = "Federated credential subject claim. Repos created before 2026-07-15 send the name-based format (repo:owner/repo:ref:refs/heads/main); newer, renamed, or transferred repos send the immutable format (repo:owner@OWNER-ID/repo@REPO-ID:ref:refs/heads/main)."
   type        = string
 }
 

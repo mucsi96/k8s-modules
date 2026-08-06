@@ -5,6 +5,7 @@
 - [IPInfo](https://ipinfo.io/)
 - [ASN IP ranges](https://github.com/ipverse/asn-ip)
 - [Workload identity federation](https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation)
+- [About security hardening with OpenID Connect](https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/about-security-hardening-with-openid-connect) - GitHub Actions OIDC subject claim formats; repos created after 2026-07-15 send immutable `owner@ID/repo@ID` subjects.
 - [Azure AD Workload Identity](https://azure.github.io/azure-workload-identity/docs/introduction.html)
 
 # DNS
