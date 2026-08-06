@@ -12,18 +12,12 @@ resource "azuread_service_principal" "github_deploy" {
   owners    = [var.owner]
 }
 
-resource "azuread_application_federated_identity_credential" "github_deploy" {
-  application_id = azuread_application.github_deploy.id
-  display_name   = "github-actions-k8s-deploy"
-  audiences      = ["api://AzureADTokenExchange"]
-  issuer         = "https://token.actions.githubusercontent.com"
-  subject        = "repo:${var.github_repository_owner}/${var.github_repository}:ref:refs/heads/main"
-}
-
-# Repos created after 2026-07-15 (and any repo that gets renamed or
-# transferred) send GitHub's immutable subject claim (owner@ID/repo@ID)
-# instead of the name-based one above. Entra requires an exact subject match,
-# so both formats are registered and a token matches whichever applies.
+# Uses GitHub's immutable subject claim format (owner@ID/repo@ID), which is
+# what repos created after 2026-07-15 send by default. Repos created before
+# that date must be opted in via
+# PUT /repos/{owner}/{repo}/actions/oidc/customization/sub
+# with use_immutable_subject=true, or their tokens keep the name-based
+# subject and won't match this credential.
 data "github_user" "repository_owner" {
   username = var.github_repository_owner
 }
@@ -32,9 +26,9 @@ data "github_repository" "app" {
   full_name = "${var.github_repository_owner}/${var.github_repository}"
 }
 
-resource "azuread_application_federated_identity_credential" "github_deploy_immutable" {
+resource "azuread_application_federated_identity_credential" "github_deploy" {
   application_id = azuread_application.github_deploy.id
-  display_name   = "github-actions-k8s-deploy-immutable"
+  display_name   = "github-actions-k8s-deploy"
   audiences      = ["api://AzureADTokenExchange"]
   issuer         = "https://token.actions.githubusercontent.com"
   subject        = "repo:${var.github_repository_owner}@${data.github_user.repository_owner.id}/${var.github_repository}@${data.github_repository.app.repo_id}:ref:refs/heads/main"
