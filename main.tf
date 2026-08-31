@@ -20,11 +20,6 @@ terraform {
       version = ">= 4.0.6"
     }
 
-    acme = {
-      source  = "vancluever/acme"
-      version = ">= 2.28.2"
-    }
-
     ansible = {
       source  = "ansible/ansible"
       version = ">= 1.3.0"
@@ -103,11 +98,6 @@ provider "kubectl" {
   client_key             = module.setup_cluster.k8s_client_key
   cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
   load_config_file       = false
-}
-
-provider "acme" {
-  # server_url = "https://acme-staging-v02.api.letsencrypt.org/directory" # Staging server
-  server_url = "https://acme-v02.api.letsencrypt.org/directory" # Production server
 }
 
 provider "cloudflare" {

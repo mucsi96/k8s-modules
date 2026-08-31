@@ -24,10 +24,6 @@ terraform {
       source = "hashicorp/tls"
     }
 
-    acme = {
-      source = "vancluever/acme"
-    }
-
     cloudflare = {
       source = "cloudflare/cloudflare"
     }
