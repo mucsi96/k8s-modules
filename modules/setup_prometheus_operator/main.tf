@@ -112,7 +112,7 @@ resource "kubernetes_job_v1" "grafana_database_init" {
 
         container {
           name  = "psql"
-          image = "postgres:18.4"
+          image = "postgres:18.6"
 
           env_from {
             secret_ref {
