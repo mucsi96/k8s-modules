@@ -101,5 +101,16 @@ resource "helm_release" "oauth2_proxy" {
       enabled = false
     }
     sessionStorage = local.session_storage
+    # Each proxy idles at ~1m / 7-14Mi; no CPU limit so bursts (TLS, login
+    # redirects) are never throttled.
+    resources = {
+      requests = {
+        cpu    = "5m"
+        memory = "16Mi"
+      }
+      limits = {
+        memory = "64Mi"
+      }
+    }
   })]
 }

@@ -42,6 +42,15 @@ resource "helm_release" "headlamp" {
     ingress = {
       enabled = false
     }
+    resources = {
+      requests = {
+        cpu    = "5m"
+        memory = "32Mi"
+      }
+      limits = {
+        memory = "128Mi"
+      }
+    }
   })]
 }
 
