@@ -182,11 +182,11 @@ resource "helm_release" "loki" {
     # kube-apiserver", which is acceptable here.
     sidecar = {
       skipTlsVerify = true
-      # The loki-sc-rules kiwigrid/k8s-sidecar idles around 76Mi.
+      # The loki-sc-rules kiwigrid/k8s-sidecar idles around 77Mi.
       resources = {
         requests = {
           cpu    = "5m"
-          memory = "64Mi"
+          memory = "96Mi"
         }
         limits = {
           memory = "128Mi"
