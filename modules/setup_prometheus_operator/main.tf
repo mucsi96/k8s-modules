@@ -323,20 +323,12 @@ resource "helm_release" "kube_prometheus_stack" {
         }
       }
     }
+    # No alert receivers are configured anywhere in this setup, so Alertmanager
+    # would only sit idle collecting firing alerts nobody sees. The bundled
+    # PrometheusRules still evaluate in Prometheus (Grafana dashboards use
+    # their recording rules); re-enable this if alert delivery is ever set up.
     alertmanager = {
-      alertmanagerSpec = {
-        alertmanagerConfigSelectorNilUsesHelmValues = false
-        # Replaces the default 200Mi memory request; observed usage is ~23Mi.
-        resources = {
-          requests = {
-            cpu    = "5m"
-            memory = "32Mi"
-          }
-          limits = {
-            memory = "128Mi"
-          }
-        }
-      }
+      enabled = false
     }
     "kube-state-metrics" = {
       resources = {
