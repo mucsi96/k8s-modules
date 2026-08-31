@@ -232,24 +232,27 @@ resource "helm_release" "kube_prometheus_stack" {
       sidecar = {
         skipTlsVerify = true
         # Applies to both kiwigrid/k8s-sidecar containers (sc-dashboard and
-        # sc-datasources); each idles around 75Mi watching ConfigMaps.
+        # sc-datasources); each idles around 80Mi watching ConfigMaps.
         resources = {
           requests = {
             cpu    = "5m"
-            memory = "64Mi"
+            memory = "96Mi"
           }
           limits = {
             memory = "128Mi"
           }
         }
       }
+      # Grafana's working set grew to ~385Mi (dashboards, plugins, image
+      # rendering); keep the request at observed usage and the limit a
+      # comfortable margin above it.
       resources = {
         requests = {
           cpu    = "50m"
-          memory = "256Mi"
+          memory = "384Mi"
         }
         limits = {
-          memory = "512Mi"
+          memory = "640Mi"
         }
       }
       # Trust the email header injected by oauth2-proxy. oauth2-proxy already
