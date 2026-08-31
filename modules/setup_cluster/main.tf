@@ -198,6 +198,20 @@ resource "helm_release" "workload_identity_webhook" {
 
   values = [yamlencode({
     azureTenantID = var.azure_tenant_id
+    # Single-node cluster: the chart's default 2 replicas add no availability,
+    # only a second reservation. The chart's default 20Mi request / 30Mi limit
+    # is below the webhook's observed ~21Mi working set, leaving it one spike
+    # from an OOM kill.
+    replicaCount = 1
+    resources = {
+      requests = {
+        cpu    = "10m"
+        memory = "32Mi"
+      }
+      limits = {
+        memory = "64Mi"
+      }
+    }
   })]
 
   depends_on = [

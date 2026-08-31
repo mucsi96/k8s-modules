@@ -82,6 +82,17 @@ resource "helm_release" "traefik" {
         }
       }
     }
+    # Sized from observed usage (~1m / ~39Mi at idle). No CPU limit: Traefik
+    # fronts every request, so throttling it degrades everything at once.
+    resources = {
+      requests = {
+        cpu    = "10m"
+        memory = "64Mi"
+      }
+      limits = {
+        memory = "128Mi"
+      }
+    }
     # With hostPort on a single node the chart's default RollingUpdate
     # (maxSurge=1, maxUnavailable=0) deadlocks: the surging pod can never
     # bind 443 while the old pod holds it.

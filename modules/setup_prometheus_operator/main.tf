@@ -231,6 +231,26 @@ resource "helm_release" "kube_prometheus_stack" {
       # already reach the kube-apiserver", which is acceptable here.
       sidecar = {
         skipTlsVerify = true
+        # Applies to both kiwigrid/k8s-sidecar containers (sc-dashboard and
+        # sc-datasources); each idles around 75Mi watching ConfigMaps.
+        resources = {
+          requests = {
+            cpu    = "5m"
+            memory = "64Mi"
+          }
+          limits = {
+            memory = "128Mi"
+          }
+        }
+      }
+      resources = {
+        requests = {
+          cpu    = "50m"
+          memory = "256Mi"
+        }
+        limits = {
+          memory = "512Mi"
+        }
       }
       # Trust the email header injected by oauth2-proxy. oauth2-proxy already
       # restricts sign-in to var.valid_email, so any request that reaches
@@ -289,11 +309,55 @@ resource "helm_release" "kube_prometheus_stack" {
         ruleSelectorNilUsesHelmValues           = false
         probeSelectorNilUsesHelmValues          = false
         scrapeConfigSelectorNilUsesHelmValues   = false
+        # Largest workload on the node (~600Mi / 44m observed). Memory here
+        # grows with series cardinality and retention, not traffic, so the
+        # request matches today's usage and the limit leaves growth headroom.
+        resources = {
+          requests = {
+            cpu    = "50m"
+            memory = "640Mi"
+          }
+          limits = {
+            memory = "1Gi"
+          }
+        }
       }
     }
     alertmanager = {
       alertmanagerSpec = {
         alertmanagerConfigSelectorNilUsesHelmValues = false
+        # Replaces the default 200Mi memory request; observed usage is ~23Mi.
+        resources = {
+          requests = {
+            cpu    = "5m"
+            memory = "32Mi"
+          }
+          limits = {
+            memory = "128Mi"
+          }
+        }
+      }
+    }
+    "kube-state-metrics" = {
+      resources = {
+        requests = {
+          cpu    = "10m"
+          memory = "48Mi"
+        }
+        limits = {
+          memory = "128Mi"
+        }
+      }
+    }
+    prometheusOperator = {
+      resources = {
+        requests = {
+          cpu    = "10m"
+          memory = "48Mi"
+        }
+        limits = {
+          memory = "128Mi"
+        }
       }
     }
   })]

@@ -102,6 +102,17 @@ resource "helm_release" "loki" {
 
     singleBinary = {
       replicas = 1
+      # Observed ~10m / ~109Mi; memory scales with active streams and query
+      # load, so the limit leaves room above the idle working set.
+      resources = {
+        requests = {
+          cpu    = "10m"
+          memory = "128Mi"
+        }
+        limits = {
+          memory = "256Mi"
+        }
+      }
       persistence = {
         enabled      = true
         storageClass = ""
@@ -171,6 +182,16 @@ resource "helm_release" "loki" {
     # kube-apiserver", which is acceptable here.
     sidecar = {
       skipTlsVerify = true
+      # The loki-sc-rules kiwigrid/k8s-sidecar idles around 76Mi.
+      resources = {
+        requests = {
+          cpu    = "5m"
+          memory = "64Mi"
+        }
+        limits = {
+          memory = "128Mi"
+        }
+      }
     }
   })]
 
@@ -444,6 +465,15 @@ resource "helm_release" "faro_alloy" {
       mounts = {
         varlog           = false
         dockercontainers = false
+      }
+      resources = {
+        requests = {
+          cpu    = "5m"
+          memory = "64Mi"
+        }
+        limits = {
+          memory = "128Mi"
+        }
       }
     }
     controller = {
