@@ -323,7 +323,42 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
         }]
       }
     }
+    # VictoriaLogs single-node store. The log pipeline (Alloy, deployed by
+    # setup_victoria_logs) ships pod logs and Faro browser telemetry to its
+    # Loki-compatible push API, replacing the standalone Loki release. VL is
+    # dramatically lighter than Loki's ingester, which buffers chunks in RAM.
+    vlsingle = {
+      enabled = true
+      spec = {
+        # Matches the 168h (7d) retention the Loki release used, so disk usage
+        # stays bounded the same way.
+        retentionPeriod = "7d"
+        storage = {
+          accessModes = ["ReadWriteOnce"]
+          resources = {
+            requests = {
+              storage = "20Gi"
+            }
+          }
+        }
+        resources = {
+          requests = {
+            cpu    = "10m"
+            memory = "128Mi"
+          }
+          limits = {
+            memory = "512Mi"
+          }
+        }
+      }
+    }
+    # Grafana plugin for querying VictoriaLogs (LogsQL). The stack provisions
+    # the matching "VictoriaLogs (DS)" datasource pointing at VLSingle once
+    # vlsingle is enabled; without the plugin installed that datasource is
+    # broken. The plugin is fetched from grafana.com when the Grafana pod
+    # starts, so the pod needs internet access on first boot.
     grafana = {
+      plugins = ["victoriametrics-logs-datasource"]
       service = {
         type = "ClusterIP"
         port = local.grafana_port
