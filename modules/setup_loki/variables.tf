@@ -15,7 +15,7 @@ variable "alloy_chart_version" {
 }
 
 variable "grafana_namespace" {
-  description = "Namespace where Grafana (kube-prometheus-stack) is installed. Loki provisions its datasource ConfigMap there so the kiwigrid sidecar discovers it; the sidecar only watches its own release namespace by default."
+  description = "Namespace where Grafana (victoria-metrics-k8s-stack) is installed. Loki provisions its datasource ConfigMap there so the kiwigrid sidecar discovers it; the sidecar only watches its own release namespace by default."
   type        = string
 }
 
@@ -61,7 +61,7 @@ variable "faro_rate_limit_burst" {
 }
 
 variable "wait_for" {
-  description = "Optional dependency to wait for before deploying (e.g., kube-prometheus-stack readiness so the datasource ConfigMap can land in the Grafana namespace)."
+  description = "Optional dependency to wait for before deploying (e.g., victoria-metrics-k8s-stack readiness so the datasource ConfigMap can land in the Grafana namespace)."
   type        = string
   default     = null
 }

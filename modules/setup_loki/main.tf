@@ -153,7 +153,8 @@ resource "helm_release" "loki" {
     monitoring = {
       # The chart's selfMonitoring mode would install a second Grafana Agent
       # operator just to scrape Loki itself, which duplicates Alloy. The
-      # ServiceMonitor below is enough for kube-prometheus-stack to scrape
+      # ServiceMonitor below is enough for the VictoriaMetrics stack (vmagent,
+      # via the operator's Prometheus-CRD conversion) to scrape
       # Loki's /metrics endpoint directly.
       selfMonitoring = {
         enabled = false

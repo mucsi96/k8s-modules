@@ -10,8 +10,8 @@ variable "prometheus_hostname" {
   sensitive   = true
 }
 
-variable "kube_prometheus_stack_chart_version" {
-  description = "Helm chart version for prometheus-community/kube-prometheus-stack. The chart pins compatible versions of the Prometheus Operator, Prometheus, Alertmanager, Grafana, node-exporter and kube-state-metrics, so only the chart version is exposed here."
+variable "victoria_metrics_k8s_stack_chart_version" {
+  description = "Helm chart version for VictoriaMetrics/helm-charts victoria-metrics-k8s-stack. The chart pins compatible versions of the VictoriaMetrics operator, VMSingle, VMAgent, VMAlert, Grafana, node-exporter and kube-state-metrics, so only the chart version is exposed here."
   type        = string
 }
 
