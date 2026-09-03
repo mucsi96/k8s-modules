@@ -204,9 +204,11 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
         extraArgs = {
           # VictoriaMetrics has no size cap equivalent to Prometheus'
           # retentionSize; this is the safety net: when free disk space drops
-          # below 10Gi the storage goes read-only instead of filling the disk.
-          # Ample headroom on the 256 GB disk.
-          "storage.minFreeDiskSpaceBytes" = "10Gi"
+          # below 10GiB the storage goes read-only instead of filling the
+          # disk. Ample headroom on the 256 GB disk. The flag takes a raw
+          # byte count (10 * 1024^3) — Kubernetes-style quantities like
+          # "10Gi" fail to parse and crash-loop the container on startup.
+          "storage.minFreeDiskSpaceBytes" = "10737418240"
         }
         storage = {
           accessModes = ["ReadWriteOnce"]
