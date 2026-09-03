@@ -1,11 +1,11 @@
 locals {
-  loki_release       = "loki"
   alloy_release      = "alloy"
   faro_alloy_release = "faro"
   faro_port          = 12347
-  loki_pv_label      = "loki"
-  loki_port          = 3100
-  loki_url           = "http://${local.loki_release}.${kubernetes_namespace_v1.logging.metadata[0].name}.svc.cluster.local:${local.loki_port}"
+  # Loki-compatible ingestion endpoint of the VLSingle deployed by
+  # setup_prometheus_operator. VictoriaLogs speaks the Loki push API under
+  # /insert/loki/api/v1/push, so Alloy's loki.write blocks only need this URL.
+  victoria_logs_push_url = "${var.victoria_logs_url}/insert/loki/api/v1/push"
 }
 
 resource "terraform_data" "wait_for" {
@@ -20,189 +20,11 @@ resource "kubernetes_namespace_v1" "logging" {
   depends_on = [terraform_data.wait_for]
 }
 
-# Pre-create a hostPath-backed PV so Loki's StatefulSet PVC binds to a known
-# location on the node, mirroring how Redis and the central Postgres are
-# persisted. The empty storage class disables dynamic provisioning, and the
-# label here is matched by persistence.selector below so the StatefulSet's
-# volumeClaimTemplate binds to this PV without naming the auto-generated PVC
-# explicitly.
-resource "kubernetes_persistent_volume_v1" "loki" {
-  metadata {
-    name = "loki"
-    labels = {
-      app = local.loki_pv_label
-    }
-  }
-
-  spec {
-    storage_class_name = ""
-    access_modes       = ["ReadWriteOnce"]
-    capacity = {
-      storage = var.loki_storage_size
-    }
-    persistent_volume_reclaim_policy = "Retain"
-    persistent_volume_source {
-      host_path {
-        path = var.loki_host_path
-      }
-    }
-  }
-}
-
-# Loki in single-binary mode: one StatefulSet running ingester, distributor,
-# querier and compactor in-process, with the filesystem store backed by the
-# hostPath PV above. The read/write/backend microservice modes only pay off
-# at higher ingest volumes than this single-node MicroK8s cluster will
-# generate, so they're explicitly zeroed out below.
-resource "helm_release" "loki" {
-  name       = local.loki_release
-  repository = "https://grafana.github.io/helm-charts"
-  chart      = "loki"
-  version    = var.loki_chart_version
-  namespace  = kubernetes_namespace_v1.logging.metadata[0].name
-  wait       = true
-  timeout    = 600
-
-  values = [yamlencode({
-    deploymentMode = "SingleBinary"
-    loki = {
-      auth_enabled = false
-      commonConfig = {
-        replication_factor = 1
-      }
-      storage = {
-        type = "filesystem"
-      }
-      schemaConfig = {
-        configs = [{
-          from         = "2024-04-01"
-          store        = "tsdb"
-          object_store = "filesystem"
-          schema       = "v13"
-          index = {
-            prefix = "loki_index_"
-            period = "24h"
-          }
-        }]
-      }
-      pattern_ingester = {
-        enabled = true
-      }
-      limits_config = {
-        allow_structured_metadata = true
-        volume_enabled            = true
-        retention_period          = var.log_retention_period
-      }
-      compactor = {
-        retention_enabled      = true
-        retention_delete_delay = "2h"
-        delete_request_store   = "filesystem"
-      }
-    }
-
-    singleBinary = {
-      replicas = 1
-      # Observed ~10m / ~109Mi; memory scales with active streams and query
-      # load, so the limit leaves room above the idle working set.
-      resources = {
-        requests = {
-          cpu    = "10m"
-          memory = "128Mi"
-        }
-        limits = {
-          memory = "256Mi"
-        }
-      }
-      persistence = {
-        enabled      = true
-        storageClass = ""
-        size         = var.loki_storage_size
-        selector = {
-          matchLabels = {
-            app = local.loki_pv_label
-          }
-        }
-      }
-    }
-
-    # SimpleScalable / microservices roles are unused in single-binary mode.
-    read = {
-      replicas = 0
-    }
-    write = {
-      replicas = 0
-    }
-    backend = {
-      replicas = 0
-    }
-    chunksCache = {
-      enabled = false
-    }
-    resultsCache = {
-      enabled = false
-    }
-    gateway = {
-      enabled = false
-    }
-    test = {
-      enabled = false
-    }
-    lokiCanary = {
-      enabled = false
-    }
-    monitoring = {
-      # The chart's selfMonitoring mode would install a second Grafana Agent
-      # operator just to scrape Loki itself, which duplicates Alloy. The
-      # ServiceMonitor below is enough for kube-prometheus-stack to scrape
-      # Loki's /metrics endpoint directly.
-      selfMonitoring = {
-        enabled = false
-        grafanaAgent = {
-          installOperator = false
-        }
-      }
-      lokiCanary = {
-        enabled = false
-      }
-      serviceMonitor = {
-        enabled = true
-        metricsInstance = {
-          enabled = false
-        }
-      }
-    }
-    # Same workaround as setup_prometheus_operator: the kiwigrid/k8s-sidecar
-    # the chart runs alongside Loki (loki-sc-rules) calls kube-apiserver over
-    # HTTPS using the in-cluster CA. MicroK8s' CA cert is missing the
-    # keyUsage extension, which Python 3.14 + OpenSSL 3 rejects ("CA cert
-    # does not include key usage extension"), so the sidecar
-    # CrashLoopBackOffs and keeps the Loki pod NotReady. The API call stays
-    # inside the pod network on every node, so skipping verification only
-    # widens the trust boundary to "anything that can already reach the
-    # kube-apiserver", which is acceptable here.
-    sidecar = {
-      skipTlsVerify = true
-      # The loki-sc-rules kiwigrid/k8s-sidecar idles around 77Mi.
-      resources = {
-        requests = {
-          cpu    = "5m"
-          memory = "96Mi"
-        }
-        limits = {
-          memory = "128Mi"
-        }
-      }
-    }
-  })]
-
-  depends_on = [kubernetes_persistent_volume_v1.loki]
-}
-
 # Grafana Alloy as a DaemonSet collecting pod logs from /var/log/pods on each
-# node and shipping them to Loki. Alloy is the supported successor to the
-# deprecated Promtail / Grafana Agent. The River config below discovers pods
-# via the Kubernetes API, relabels useful metadata onto each log stream, and
-# parses the CRI log line prefix so timestamps and log levels surface
+# node and shipping them to VictoriaLogs. Alloy is the supported successor to
+# the deprecated Promtail / Grafana Agent. The River config below discovers
+# pods via the Kubernetes API, relabels useful metadata onto each log stream,
+# and parses the CRI log line prefix so timestamps and log levels surface
 # correctly in Grafana.
 resource "helm_release" "alloy" {
   name       = local.alloy_release
@@ -276,7 +98,7 @@ resource "helm_release" "alloy" {
 
           loki.write "default" {
             endpoint {
-              url = "${local.loki_url}/loki/api/v1/push"
+              url = "${local.victoria_logs_push_url}"
             }
           }
         RIVER
@@ -294,8 +116,6 @@ resource "helm_release" "alloy" {
       type = "daemonset"
     }
   })]
-
-  depends_on = [helm_release.loki]
 }
 
 # Alloy config for the Faro receiver, managed directly as a Kubernetes
@@ -334,12 +154,12 @@ resource "kubernetes_config_map_v1" "faro_alloy_config" {
 
       // The Faro receiver emits each log line as a logfmt blob with every
       // browser/sdk/session field inlined, and only sets service_name as a
-      // real Loki label (Loki defaults missing values to "unknown_service").
-      // The pipeline below:
+      // real stream field (VictoriaLogs groups log entries into streams by
+      // their stream fields). The pipeline below:
       //   1. parses the logfmt line into extracted fields;
-      //   2. promotes app_name/kind/level to real Loki labels so dashboards
-      //      can do label_values(app) and {app="..."} just like for pod logs;
-      //   3. moves every other extracted field into structured metadata —
+      //   2. promotes app_name/kind/level to real stream fields so dashboards
+      //      can filter with {app="..."} just like for pod logs;
+      //   3. moves every other extracted field into the log entry's fields —
       //      still queryable with `| key="value"` and expandable in Grafana,
       //      but out of the log line;
       //   4. rewrites the log line as `<timestamp> [LEVEL] <message>`.
@@ -409,7 +229,7 @@ resource "kubernetes_config_map_v1" "faro_alloy_config" {
 
       loki.write "default" {
         endpoint {
-          url = "${local.loki_url}/loki/api/v1/push"
+          url = "${local.victoria_logs_push_url}"
         }
       }
     RIVER
@@ -419,10 +239,10 @@ resource "kubernetes_config_map_v1" "faro_alloy_config" {
 # Grafana Faro: a second Alloy instance running as a faro.receiver. The
 # receiver exposes an HTTP endpoint that the Faro Web SDK (running in users'
 # browsers) POSTs logs, events, exceptions and measurements to, and forwards
-# them as Loki log streams. faro.receiver attaches a 'kind' label
+# them as log streams to VictoriaLogs. faro.receiver attaches a 'kind' label
 # (log/event/exception/measurement) and an 'app' label sourced from the Faro
-# SDK's meta.app.name — the 'app' label matches the pod label promoted by
-# the DaemonSet above, so the same Loki query filters span backend pod logs
+# SDK's meta.app.name — the 'app' field matches the pod label promoted by
+# the DaemonSet above, so the same query filters span backend pod logs
 # and frontend SPA telemetry.
 #
 # Separate Helm release from the DaemonSet because the two need different
@@ -482,7 +302,7 @@ resource "helm_release" "faro_alloy" {
     }
   })]
 
-  depends_on = [helm_release.loki, kubernetes_config_map_v1.faro_alloy_config]
+  depends_on = [kubernetes_config_map_v1.faro_alloy_config]
 }
 
 # Public route to the Faro receiver. Browsers cannot authenticate against
@@ -517,36 +337,3 @@ resource "kubectl_manifest" "faro_httproute" {
   depends_on = [helm_release.faro_alloy]
 }
 
-# Grafana auto-discovers datasources from any ConfigMap in its namespace
-# labeled grafana_datasource=1 (kiwigrid k8s-sidecar). Dropping a single-key
-# ConfigMap here is the least intrusive way to wire Loki into the Grafana
-# instance owned by setup_prometheus_operator without modifying that module
-# or enabling cross-namespace sidecar discovery.
-resource "kubernetes_config_map_v1" "loki_datasource" {
-  metadata {
-    name      = "loki-grafana-datasource"
-    namespace = var.grafana_namespace
-    labels = {
-      grafana_datasource = "1"
-    }
-  }
-
-  data = {
-    "loki-datasource.yaml" = yamlencode({
-      apiVersion = 1
-      datasources = [{
-        name      = "Loki"
-        type      = "loki"
-        uid       = "loki"
-        access    = "proxy"
-        url       = local.loki_url
-        isDefault = false
-        jsonData = {
-          maxLines = 1000
-        }
-      }]
-    })
-  }
-
-  depends_on = [helm_release.loki]
-}

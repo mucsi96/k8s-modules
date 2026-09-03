@@ -1,11 +1,13 @@
 locals {
-  release_name         = "kube-prometheus-stack"
+  release_name = "victoria-metrics-k8s-stack"
+  # Service created by the chart for the Grafana subchart.
   grafana_service_name = "${local.release_name}-grafana"
   grafana_port         = 80
-  # Service created by the chart for the Prometheus instance managed by the
-  # Operator. The default port comes from the Prometheus pod (9090).
-  prometheus_service_name = "${local.release_name}-prometheus"
-  prometheus_port         = 9090
+  # Service created by the VM operator for the VMSingle instance, exposing
+  # vmui (VictoriaMetrics' query UI) on the single-node HTTP port. It replaces
+  # the Prometheus UI as the monitoring backend behind the "prometheus" host.
+  prometheus_service_name = "vmsingle-${local.release_name}"
+  prometheus_port         = 8428
   email_header_name       = "X-Auth-Request-Email"
   grafana_db_user         = "grafana"
   grafana_db_schema       = "grafana"
@@ -155,28 +157,208 @@ resource "kubernetes_job_v1" "grafana_database_init" {
   }
 }
 
-# kube-prometheus-stack bundles the Prometheus Operator together with
-# Prometheus, Alertmanager, Grafana, node-exporter and kube-state-metrics. The
-# Operator's CRDs (ServiceMonitor, PodMonitor, PrometheusRule, ...) are
-# installed separately and earlier by setup_prometheus_operator_crds, because
-# create_postgres_database — which this module depends on for Grafana's
-# metadata — ships a ServiceMonitor and therefore needs the CRDs before this
-# stack ever runs. crds.enabled is false here so the chart neither re-templates
-# nor fights over ownership of those already-present CRDs.
-resource "helm_release" "kube_prometheus_stack" {
+# victoria-metrics-k8s-stack replaces Prometheus with VictoriaMetrics as the
+# metrics store: VMSingle stores the time series (a fraction of Prometheus'
+# RAM for the same workload), vmagent scrapes targets, and VMAlert evaluates
+# the recording rules Grafana dashboards rely on. Grafana, node-exporter and
+# kube-state-metrics stay as the same subcharts kube-prometheus-stack used.
+#
+# The VM operator converts Prometheus Operator objects (ServiceMonitor,
+# PodMonitor, ...) into its own VMServiceScrape / VMPodMonitor equivalents, so
+# the ServiceMonitors shipped by postgres-db, Loki and the app modules keep
+# working untouched — that is why the Prometheus Operator CRDs must still be
+# installed first (setup_prometheus_operator_crds) and stay in place.
+# crds.plain (default true) installs the VictoriaMetrics operator CRDs as part
+# of this release; the Prometheus CRDs are NOT removed by it.
+resource "helm_release" "victoria_metrics_k8s_stack" {
   name       = local.release_name
-  repository = "https://prometheus-community.github.io/helm-charts"
-  chart      = "kube-prometheus-stack"
-  version    = var.kube_prometheus_stack_chart_version
+  repository = "https://victoriametrics.github.io/helm-charts"
+  chart      = "victoria-metrics-k8s-stack"
+  version    = var.victoria_metrics_k8s_stack_chart_version
   namespace  = kubernetes_namespace_v1.monitoring.metadata[0].name
   wait       = true
   timeout    = 600
 
   values = [yamlencode({
-    crds = {
+    # Resources of the victoria-metrics-operator subchart deployment (top-level
+    # `resources` key in that chart; the `operator` block only holds feature flags).
+    "victoria-metrics-operator" = {
+      resources = {
+        requests = {
+          cpu    = "10m"
+          memory = "48Mi"
+        }
+        limits = {
+          memory = "128Mi"
+        }
+      }
+    }
+    vmsingle = {
+      enabled = true
+      spec = {
+        # 3d retention (down from 10d) cuts the stored time series to ~30%.
+        # VictoriaMetrics drops out-of-retention samples at ingestion and
+        # deletes old parts continuously. Days are the finest granularity the
+        # open-source build supports.
+        retentionPeriod = "3d"
+        extraArgs = {
+          # VictoriaMetrics has no size cap equivalent to Prometheus'
+          # retentionSize; this is the safety net: when free disk space drops
+          # below 10Gi the storage goes read-only instead of filling the disk.
+          # Ample headroom on the 256 GB disk.
+          "storage.minFreeDiskSpaceBytes" = "10Gi"
+        }
+        storage = {
+          accessModes = ["ReadWriteOnce"]
+          resources = {
+            requests = {
+              storage = "20Gi"
+            }
+          }
+        }
+        resources = {
+          requests = {
+            cpu    = "50m"
+            memory = "256Mi"
+          }
+          limits = {
+            memory = "1Gi"
+          }
+        }
+      }
+    }
+    vmagent = {
+      enabled = true
+      spec = {
+        # 60s (down from 30s) halves the sample volume; on a single node with
+        # low-churn workloads the finer resolution buys nothing. Combined with
+        # the retention cut this drops RAM from ~680Mi to well under 300Mi
+        # across VMSingle + VMAgent.
+        scrapeInterval = "60s"
+        extraArgs = {
+          "promscrape.streamParse" = "true"
+        }
+        resources = {
+          requests = {
+            cpu    = "10m"
+            memory = "64Mi"
+          }
+          limits = {
+            memory = "512Mi"
+          }
+        }
+      }
+    }
+    vmalert = {
+      enabled = true
+      spec = {
+        evaluationInterval = "60s"
+        extraArgs = {
+          "http.pathPrefix" = "/"
+          # No alert receivers exist anywhere in this setup (Alertmanager is
+          # disabled below), so vmalert is told to blackhole notifications
+          # instead of failing validation without any notifier.
+          "notifier.blackhole" = "true"
+        }
+        resources = {
+          requests = {
+            cpu    = "10m"
+            memory = "64Mi"
+          }
+          limits = {
+            memory = "256Mi"
+          }
+        }
+      }
+    }
+    # No alert receivers are configured anywhere in this setup, so
+    # Alertmanager would only sit idle collecting firing alerts nobody sees.
+    # vmalert still evaluates the VMRules (Grafana dashboards use their
+    # recording rules); re-enable this if alert delivery is ever set up.
+    alertmanager = {
       enabled = false
     }
+    # Keep only the targets that exist and matter on a single-node k3s:
+    # kubelet, node-exporter, kube-state-metrics, coredns and the API server.
+    # The controller-manager, scheduler, proxy and etcd either don't exist as
+    # separate k3s pods or don't expose metrics, so each one is a dead target
+    # producing scrape errors and noise (plus rule groups and dashboards).
+    kubeApiServer = {
+      enabled = true
+    }
+    kubelet = {
+      enabled = true
+    }
+    coreDns = {
+      enabled = true
+    }
+    kubeControllerManager = {
+      enabled = false
+    }
+    kubeScheduler = {
+      enabled = false
+    }
+    kubeProxy = {
+      enabled = false
+    }
+    kubeEtcd = {
+      enabled = false
+    }
+    # Provision the datasource under the same name and UID kube-prometheus-stack
+    # used ("Prometheus" / "prometheus") but pointed at VMSingle, so existing
+    # dashboards in the persisted Grafana database keep resolving it. timeInterval
+    # matches the 60s scrape interval so Grafana doesn't request more resolution
+    # than was stored.
+    defaultDatasources = {
+      victoriametrics = {
+        datasources = [{
+          name      = "Prometheus"
+          type      = "prometheus"
+          access    = "proxy"
+          uid       = "prometheus"
+          isDefault = true
+          jsonData = {
+            timeInterval = "60s"
+          }
+        }]
+      }
+    }
+    # VictoriaLogs single-node store. The log pipeline (Alloy, deployed by
+    # setup_victoria_logs) ships pod logs and Faro browser telemetry to its
+    # Loki-compatible push API, replacing the standalone Loki release. VL is
+    # dramatically lighter than Loki's ingester, which buffers chunks in RAM.
+    vlsingle = {
+      enabled = true
+      spec = {
+        # Matches the 168h (7d) retention the Loki release used, so disk usage
+        # stays bounded the same way.
+        retentionPeriod = "7d"
+        storage = {
+          accessModes = ["ReadWriteOnce"]
+          resources = {
+            requests = {
+              storage = "20Gi"
+            }
+          }
+        }
+        resources = {
+          requests = {
+            cpu    = "10m"
+            memory = "128Mi"
+          }
+          limits = {
+            memory = "512Mi"
+          }
+        }
+      }
+    }
+    # Grafana plugin for querying VictoriaLogs (LogsQL). The stack provisions
+    # the matching "VictoriaLogs (DS)" datasource pointing at VLSingle once
+    # vlsingle is enabled; without the plugin installed that datasource is
+    # broken. The plugin is fetched from grafana.com when the Grafana pod
+    # starts, so the pod needs internet access on first boot.
     grafana = {
+      plugins = ["victoriametrics-logs-datasource"]
       service = {
         type = "ClusterIP"
         port = local.grafana_port
@@ -186,8 +368,9 @@ resource "helm_release" "kube_prometheus_stack" {
       }
       # Fixed server-admin credentials (see locals). Setting these stops the
       # subchart from generating a random admin-password into the
-      # kube-prometheus-stack-grafana Secret, so the value survives reprovisions
-      # and a restored database backup stays consistent with the running config.
+      # victoria-metrics-k8s-stack-grafana Secret, so the value survives
+      # reprovisions and a restored database backup stays consistent with the
+      # running config.
       adminUser     = local.grafana_admin_user
       adminPassword = local.grafana_admin_password
       # Pin Grafana's envelope-encryption / signing key via the environment
@@ -283,7 +466,7 @@ resource "helm_release" "kube_prometheus_stack" {
         # call /api/admin/provisioning/{dashboards,datasources}/reload with
         # HTTP Basic Auth as the pinned admin user (adminUser/adminPassword
         # above); disabling basic auth makes those calls 401 and the bundled
-        # Prometheus datasource never gets provisioned. External access is
+        # datasource never gets provisioned. External access is
         # already gated by the HTTPRoute in front of oauth2-proxy, so leaving
         # basic auth on doesn't widen the attack surface.
         users = {
@@ -292,46 +475,6 @@ resource "helm_release" "kube_prometheus_stack" {
           allow_sign_up        = false
         }
       }
-    }
-    prometheus = {
-      # The Prometheus UI exposed by the operator-managed StatefulSet has no
-      # built-in auth, so we front it with oauth2-proxy below. The Service is
-      # ClusterIP-only; external access happens through the HTTPRoute.
-      service = {
-        type = "ClusterIP"
-        port = local.prometheus_port
-      }
-      ingress = {
-        enabled = false
-      }
-      prometheusSpec = {
-        # Pick up ServiceMonitor / PodMonitor / PrometheusRule resources from
-        # any namespace so apps can ship their own scrape configs.
-        serviceMonitorSelectorNilUsesHelmValues = false
-        podMonitorSelectorNilUsesHelmValues     = false
-        ruleSelectorNilUsesHelmValues           = false
-        probeSelectorNilUsesHelmValues          = false
-        scrapeConfigSelectorNilUsesHelmValues   = false
-        # Largest workload on the node (~600Mi / 44m observed). Memory here
-        # grows with series cardinality and retention, not traffic, so the
-        # request matches today's usage and the limit leaves growth headroom.
-        resources = {
-          requests = {
-            cpu    = "50m"
-            memory = "640Mi"
-          }
-          limits = {
-            memory = "1Gi"
-          }
-        }
-      }
-    }
-    # No alert receivers are configured anywhere in this setup, so Alertmanager
-    # would only sit idle collecting firing alerts nobody sees. The bundled
-    # PrometheusRules still evaluate in Prometheus (Grafana dashboards use
-    # their recording rules); re-enable this if alert delivery is ever set up.
-    alertmanager = {
-      enabled = false
     }
     "kube-state-metrics" = {
       resources = {
@@ -344,7 +487,7 @@ resource "helm_release" "kube_prometheus_stack" {
         }
       }
     }
-    prometheusOperator = {
+    "prometheus-node-exporter" = {
       resources = {
         requests = {
           cpu    = "10m"
@@ -383,7 +526,7 @@ module "grafana_oauth2_proxy" {
     }]
   }]
 
-  depends_on = [helm_release.kube_prometheus_stack]
+  depends_on = [helm_release.victoria_metrics_k8s_stack]
 }
 
 module "prometheus_oauth2_proxy" {
@@ -400,7 +543,7 @@ module "prometheus_oauth2_proxy" {
   upstream_uri               = "http://${local.prometheus_service_name}.${kubernetes_namespace_v1.monitoring.metadata[0].name}.svc.cluster.local:${local.prometheus_port}"
   session_redis              = var.session_redis
 
-  depends_on = [helm_release.kube_prometheus_stack]
+  depends_on = [helm_release.victoria_metrics_k8s_stack]
 }
 
 resource "kubectl_manifest" "grafana_httproute" {

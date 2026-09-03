@@ -321,14 +321,17 @@ module "setup_twingate_access" {
 
 # Prometheus Operator CRDs are installed on their own, before any chart that
 # ships a ServiceMonitor / PodMonitor / PrometheusRule. create_database below
-# does (the postgres-db chart bundles a ServiceMonitor), and the full
-# kube-prometheus-stack in setup_prometheus_operator can't install these CRDs
-# early because it depends on the database for Grafana's metadata.
+# does (the postgres-db chart bundles a ServiceMonitor), and both the postgres
+# release and the victoria-metrics-k8s-stack in setup_prometheus_operator
+# depend on them: the VictoriaMetrics operator converts Prometheus Operator
+# objects (ServiceMonitor, ...) into its own VMServiceScrape equivalents, so
+# these CRDs must exist — and stay installed — for vmagent to pick up the
+# existing ServiceMonitors.
 module "setup_prometheus_operator_crds" {
   source = "./modules/setup_prometheus_operator_crds"
-  # Matches the Prometheus Operator version (v0.90.1) shipped by
-  # kube-prometheus-stack 84.5.0 in setup_prometheus_operator.
-  prometheus_operator_crds_chart_version = "28.0.1"  #https://github.com/prometheus-community/helm-charts/releases?q=prometheus-operator-crds
+  # Kept in place for the postgres-db ServiceMonitor and the VictoriaMetrics
+  # operator's Prometheus-CRD conversion; nothing scrapes from them directly.
+  prometheus_operator_crds_chart_version = "28.0.1" #https://github.com/prometheus-community/helm-charts/releases?q=prometheus-operator-crds
   wait_for                               = module.setup_ingress_controller.traefik_ready
 }
 
@@ -531,22 +534,22 @@ module "setup_k8s_dashboard" {
 }
 
 module "setup_prometheus_operator" {
-  source                              = "./modules/setup_prometheus_operator"
-  grafana_hostname                    = local.grafana_hostname
-  prometheus_hostname                 = local.prometheus_hostname
-  tenant_id                           = data.azurerm_client_config.current.tenant_id
-  grafana_client_id                   = module.register_grafana_dashboard.client_id
-  grafana_client_secret               = module.register_grafana_dashboard.client_secret
-  prometheus_client_id                = module.register_prometheus_dashboard.client_id
-  prometheus_client_secret            = module.register_prometheus_dashboard.client_secret
-  valid_email                         = data.azurerm_key_vault_secret.letsencrypt_email.value
-  # When bumping this, update prometheus_operator_crds_chart_version in the
-  # setup_prometheus_operator_crds module above to the CRDs release matching this
-  # chart's Prometheus Operator appVersion — they are installed separately and
-  # must stay in sync (this chart runs with crds.enabled = false).
-  kube_prometheus_stack_chart_version = "84.5.0"  #https://github.com/prometheus-community/helm-charts/releases?q=kube-prometheus-stack
-  oauth2_proxy_chart_version          = "7.12.6"  #https://github.com/oauth2-proxy/manifests/releases
-  oauth2_proxy_image_version          = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
+  source                   = "./modules/setup_prometheus_operator"
+  grafana_hostname         = local.grafana_hostname
+  prometheus_hostname      = local.prometheus_hostname
+  tenant_id                = data.azurerm_client_config.current.tenant_id
+  grafana_client_id        = module.register_grafana_dashboard.client_id
+  grafana_client_secret    = module.register_grafana_dashboard.client_secret
+  prometheus_client_id     = module.register_prometheus_dashboard.client_id
+  prometheus_client_secret = module.register_prometheus_dashboard.client_secret
+  valid_email              = data.azurerm_key_vault_secret.letsencrypt_email.value
+  # When bumping this, no other version needs to move: the Prometheus
+  # Operator CRDs (setup_prometheus_operator_crds above) are version-independent
+  # of this chart — they only need to exist for the postgres-db ServiceMonitor
+  # and the VictoriaMetrics operator's Prometheus-CRD conversion.
+  victoria_metrics_k8s_stack_chart_version = "0.91.2"  #https://github.com/VictoriaMetrics/helm-charts/releases?q=victoria-metrics-k8s-stack
+  oauth2_proxy_chart_version               = "7.12.6"  #https://github.com/oauth2-proxy/manifests/releases
+  oauth2_proxy_image_version               = "v7.12.0" #https://github.com/oauth2-proxy/oauth2-proxy/releases
   session_redis = {
     connection_url = module.create_redis.connection_url
     password       = module.create_redis.password
@@ -560,19 +563,32 @@ module "setup_prometheus_operator" {
   }
   wait_for = module.setup_ingress_controller.traefik_ready
 
-  # This stack runs with crds.enabled = false, so the Prometheus Operator CRDs
-  # must already exist. A full apply gets that transitively (database depends on
-  # the CRDs module), but an explicit dependency keeps the contract clear in the
-  # graph and protects targeted applies that skip create_database.
+  # This stack's vmagent scrapes the postgres ServiceMonitor through the
+  # VictoriaMetrics operator's Prometheus-CRD conversion, so the Prometheus
+  # Operator CRDs must already exist. A full apply gets that transitively
+  # (database depends on the CRDs module), but an explicit dependency keeps
+  # the contract clear in the graph and protects targeted applies that skip
+  # create_database.
   depends_on = [module.setup_prometheus_operator_crds]
 }
 
-module "setup_loki" {
-  source              = "./modules/setup_loki"
-  loki_chart_version  = "7.0.0" #https://github.com/grafana/loki/blob/main/production/helm/loki/Chart.yaml
+# The module folder was renamed from setup_loki when the standalone Loki
+# release was replaced by VictoriaLogs (VLSingle, part of the stack above);
+# the moved block carries the existing state across so the namespace, the
+# Alloy releases and the Faro HTTPRoute are adopted in place instead of
+# being destroyed and recreated.
+moved {
+  from = module.setup_loki
+  to   = module.setup_victoria_logs
+}
+
+module "setup_victoria_logs" {
+  source              = "./modules/setup_victoria_logs"
   alloy_chart_version = "1.8.1" #https://github.com/grafana/helm-charts/releases?q=alloy
-  grafana_namespace   = module.setup_prometheus_operator.namespace
-  faro_hostname       = local.faro_hostname
+  # In-cluster VLSingle API URL owned by the stack module; Alloy pushes both
+  # pod logs and Faro browser telemetry to its Loki-compatible endpoint.
+  victoria_logs_url = module.setup_prometheus_operator.victoria_logs_url
+  faro_hostname     = local.faro_hostname
   # Production hostnames of the app SPAs only. Local dev origins are
   # intentionally excluded — Faro is a production-only signal.
   faro_cors_allowed_origins = [
@@ -585,7 +601,7 @@ module "setup_loki" {
     "https://library.${data.azurerm_key_vault_secret.dns_zone.value}",
     "https://cooking.${data.azurerm_key_vault_secret.dns_zone.value}",
   ]
-  wait_for = module.setup_prometheus_operator.kube_prometheus_stack_ready
+  wait_for = module.setup_prometheus_operator.victoria_metrics_k8s_stack_ready
 }
 
 module "setup_cloudbeaver" {
