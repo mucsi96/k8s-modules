@@ -572,12 +572,23 @@ module "setup_prometheus_operator" {
   depends_on = [module.setup_prometheus_operator_crds]
 }
 
-module "setup_loki" {
-  source              = "./modules/setup_loki"
-  loki_chart_version  = "7.0.0" #https://github.com/grafana/loki/blob/main/production/helm/loki/Chart.yaml
+# The module folder was renamed from setup_loki when the standalone Loki
+# release was replaced by VictoriaLogs (VLSingle, part of the stack above);
+# the moved block carries the existing state across so the namespace, the
+# Alloy releases and the Faro HTTPRoute are adopted in place instead of
+# being destroyed and recreated.
+moved {
+  from = module.setup_loki
+  to   = module.setup_victoria_logs
+}
+
+module "setup_victoria_logs" {
+  source              = "./modules/setup_victoria_logs"
   alloy_chart_version = "1.8.1" #https://github.com/grafana/helm-charts/releases?q=alloy
-  grafana_namespace   = module.setup_prometheus_operator.namespace
-  faro_hostname       = local.faro_hostname
+  # In-cluster VLSingle API URL owned by the stack module; Alloy pushes both
+  # pod logs and Faro browser telemetry to its Loki-compatible endpoint.
+  victoria_logs_url = module.setup_prometheus_operator.victoria_logs_url
+  faro_hostname     = local.faro_hostname
   # Production hostnames of the app SPAs only. Local dev origins are
   # intentionally excluded — Faro is a production-only signal.
   faro_cors_allowed_origins = [
