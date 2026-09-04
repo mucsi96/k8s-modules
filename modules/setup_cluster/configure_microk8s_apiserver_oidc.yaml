@@ -4,15 +4,9 @@
   become: true
 
   # Structured authentication (kube-apiserver --authentication-config) replaces
-  # the legacy --oidc-* flags. The same Entra v2 issuer is shared by both
-  # audiences we care about — kube-apiserver forbids a duplicate issuer URL
-  # across `jwt` entries, so this is a single authenticator that accepts both
-  # audiences and branches the Kubernetes username on the `aud` claim:
-  #
-  #   aud = apiserver app   -> bare `oid`         (kubelogin path, bound by
-  #                                                oidc_human_admin to admin)
-  #   aud = cluster_monitor -> "headlamp:<oid>"   (Headlamp path, bound by
-  #                                                oidc_dashboard_view to view)
+  # the legacy --oidc-* flags. It accepts tokens issued for the dedicated
+  # apiserver Entra application and maps the `oid` claim to the Kubernetes
+  # username bound by oidc_human_admin.
   #
   # Requires k8s >= 1.30 (StructuredAuthenticationConfiguration default-
   # enabled since 1.30 beta, GA in 1.32). MicroK8s latest/stable tracks
@@ -38,12 +32,9 @@
                 url: {{ oidc_issuer_url }}
                 audiences:
                   - {{ apiserver_client_id }}
-                  - {{ dashboard_client_id }}
-                audienceMatchPolicy: MatchAny
               claimMappings:
                 username:
-                  expression: |
-                    claims.aud == "{{ dashboard_client_id }}" ? "headlamp:" + claims.oid : claims.oid
+                  expression: claims.oid
       register: auth_config
 
     - name: Set apiserver --authentication-config

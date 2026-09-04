@@ -1,5 +1,5 @@
 variable "prometheus_operator_crds_chart_version" {
-  description = "Helm chart version for prometheus-community/prometheus-operator-crds. Keep the bundled CRDs in sync with the Prometheus Operator version shipped by the kube-prometheus-stack chart used in setup_prometheus_operator."
+  description = "Helm chart version for prometheus-community/prometheus-operator-crds. Keep the bundled CRDs compatible with the VictoriaMetrics operator shipped by setup_victoria_metrics."
   type        = string
 }
 

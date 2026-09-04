@@ -46,7 +46,7 @@ variable "upstream_uri" {
 }
 
 variable "inject_request_headers" {
-  description = "Headers oauth2-proxy injects into upstream requests (alphaConfig.injectRequestHeaders). Used e.g. to forward the Entra access token as 'Authorization: Bearer ...' to Headlamp."
+  description = "Headers oauth2-proxy injects into upstream requests (alphaConfig.injectRequestHeaders)."
   type = list(object({
     name = string
     values = list(object({

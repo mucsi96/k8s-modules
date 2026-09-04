@@ -121,14 +121,12 @@ resource "ansible_playbook" "configure_microk8s_oidc" {
 locals {
   apiserver_oidc_issuer_url = "https://login.microsoftonline.com/${var.azure_tenant_id}/v2.0"
   apiserver_oidc_client_id  = azuread_application.apiserver.client_id
-  dashboard_oidc_client_id  = module.cluster_monitor.client_id
 }
 
 resource "terraform_data" "apiserver_oidc_args" {
   triggers_replace = {
     issuer_url          = local.apiserver_oidc_issuer_url
     apiserver_client_id = local.apiserver_oidc_client_id
-    dashboard_client_id = local.dashboard_oidc_client_id
   }
 }
 
@@ -140,7 +138,6 @@ resource "ansible_playbook" "configure_microk8s_apiserver_oidc" {
   extra_vars = merge(local.ansible_connection_vars, {
     oidc_issuer_url     = local.apiserver_oidc_issuer_url
     apiserver_client_id = local.apiserver_oidc_client_id
-    dashboard_client_id = local.dashboard_oidc_client_id
   })
 
   lifecycle {
@@ -242,37 +239,6 @@ resource "kubernetes_cluster_role_binding_v1" "oidc_human_admin" {
   subject {
     kind      = "User"
     name      = var.owner
-    api_group = "rbac.authorization.k8s.io"
-  }
-
-  depends_on = [
-    ansible_playbook.configure_microk8s_oidc,
-    ansible_playbook.configure_microk8s_apiserver_oidc,
-    ansible_playbook.restart_calico,
-  ]
-}
-
-# View-only binding for Headlamp's authenticated user. Tokens issued to the
-# dashboard's oauth2-proxy (aud = cluster_monitor_app) are mapped by the
-# structured-auth config to "headlamp:<oid>" — a distinct Kubernetes username
-# from the bare `oid` that oidc_human_admin binds to cluster-admin. So when
-# the operator clicks through Headlamp, the apiserver sees a different user
-# and grants only `view` (plus whatever extras setup_k8s_dashboard's
-# headlamp_view_extras ClusterRole aggregates into `view`).
-resource "kubernetes_cluster_role_binding_v1" "oidc_dashboard_view" {
-  metadata {
-    name = "oidc-dashboard-view"
-  }
-
-  role_ref {
-    api_group = "rbac.authorization.k8s.io"
-    kind      = "ClusterRole"
-    name      = "view"
-  }
-
-  subject {
-    kind      = "User"
-    name      = "headlamp:${var.owner}"
     api_group = "rbac.authorization.k8s.io"
   }
 

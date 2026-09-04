@@ -10,7 +10,7 @@ variable "alloy_chart_version" {
 }
 
 variable "victoria_logs_url" {
-  description = "In-cluster base URL of the VLSingle HTTP API owned by setup_prometheus_operator (e.g. http://vlsingle-victoria-metrics-k8s-stack.monitoring.svc.cluster.local:9428). Alloy's loki.write appends the Loki-compatible /insert/loki/api/v1/push path."
+  description = "In-cluster base URL of the VLSingle HTTP API owned by setup_victoria_metrics (e.g. http://vlsingle-victoria-metrics-k8s-stack.monitoring.svc.cluster.local:9428). Alloy's loki.write appends the Loki-compatible /insert/loki/api/v1/push path."
   type        = string
 }
 

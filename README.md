@@ -41,9 +41,8 @@ the consumer repository.
 
 | Module | Purpose |
 | --- | --- |
-| `setup_ingress_controller` | Installs Traefik, Gateway API resources, Cloudflare DNS/security configuration, origin TLS, and the protected Traefik dashboard. |
+| `setup_ingress_controller` | Installs Traefik, Gateway API resources, Cloudflare DNS/security configuration, and origin TLS. |
 | `setup_metrics_server` | Installs metrics-server with MicroK8s-compatible kubelet settings. |
-| `setup_k8s_dashboard` | Installs Headlamp, read-only RBAC, oauth2-proxy, and its HTTPRoute. |
 | `setup_oauth2_proxy` | Reusable Entra OIDC proxy backed by Redis sessions. |
 | `create_app_namespace` | Creates an application namespace, service account, RBAC, token secret, and deployment kubeconfig. |
 
@@ -51,12 +50,11 @@ the consumer repository.
 
 | Module | Purpose |
 | --- | --- |
-| `setup_prometheus_operator_crds` | Installs Prometheus Operator CRDs before charts that create `ServiceMonitor`, `PodMonitor`, or `PrometheusRule` objects. |
+| `setup_monitoring_crds` | Installs monitoring CRDs before charts that create `ServiceMonitor`, `PodMonitor`, or `PrometheusRule` objects. |
 | `create_postgres_database` | Installs PostgreSQL with generated credentials, a retained host-path PV, and a `ServiceMonitor`. |
 | `setup_redis` | Installs shared Redis with generated credentials and a retained host-path PV. |
-| `setup_prometheus_operator` | Installs `victoria-metrics-k8s-stack`, including VMSingle, vmagent, VMAlert, Grafana, exporters, and VLSingle. The historical module name is retained for state compatibility. |
-| `setup_victoria_logs` | Installs Alloy pod-log collection and a Faro receiver that write to the VLSingle owned by `setup_prometheus_operator`. |
-| `setup_cloudbeaver` | Installs persistent CloudBeaver, database configuration, oauth2-proxy, and an HTTPRoute. |
+| `setup_victoria_metrics` | Installs `victoria-metrics-k8s-stack`, including VMSingle, vmagent, VMAlert, Grafana, exporters, and VLSingle. |
+| `setup_victoria_logs` | Installs Alloy pod-log collection and a Faro receiver that write to the VLSingle owned by `setup_victoria_metrics`. |
 
 ### Identity And Application Foundations
 
@@ -119,13 +117,13 @@ Twingate connector
   -> SSH readiness
   -> MicroK8s cluster
   -> Traefik and Gateway API
-  -> Prometheus Operator CRDs
+  -> Monitoring CRDs
   -> PostgreSQL and VictoriaMetrics
   -> VictoriaLogs collectors and dependent applications
 ```
 
 Redis is a parallel prerequisite for oauth2-proxy users. Metrics-server follows
-Traefik in the existing topology, and Headlamp follows metrics-server.
+Traefik in the existing topology.
 
 ### Twingate Lifecycle Barrier
 
@@ -195,32 +193,229 @@ module "setup_ingress_controller" {
   depends_on = [module.setup_cluster]
 }
 
-module "setup_prometheus_operator_crds" {
+module "setup_monitoring_crds" {
   # Inputs omitted.
   wait_for = module.setup_ingress_controller.traefik_ready
 }
 
 module "create_postgres_database" {
   # Inputs omitted. Its chart creates a ServiceMonitor.
-  wait_for = module.setup_prometheus_operator_crds.crds_ready
+  wait_for = module.setup_monitoring_crds.crds_ready
 }
 
-module "setup_prometheus_operator" {
+module "setup_victoria_metrics" {
   # Inputs include PostgreSQL and Redis outputs.
   wait_for   = module.setup_ingress_controller.traefik_ready
-  depends_on = [module.setup_prometheus_operator_crds]
+  depends_on = [module.setup_monitoring_crds]
 }
 
 module "setup_victoria_logs" {
-  victoria_logs_url = module.setup_prometheus_operator.victoria_logs_url
-  wait_for          = module.setup_prometheus_operator.victoria_metrics_k8s_stack_ready
+  victoria_logs_url = module.setup_victoria_metrics.victoria_logs_url
+  wait_for          = module.setup_victoria_metrics.victoria_metrics_k8s_stack_ready
   # Other inputs omitted.
 }
 ```
 
-Traefik owns the Gateway API CRDs used by module HTTPRoutes. Prometheus Operator
-CRDs must exist before PostgreSQL or VictoriaMetrics charts create monitoring
-objects, and must outlive those objects during destroy.
+Traefik owns the Gateway API CRDs used by module HTTPRoutes. Monitoring CRDs
+must exist before PostgreSQL or VictoriaMetrics charts create objects, and must
+outlive those objects during destroy.
+
+## Migration Guide
+
+This release is a breaking, dashboard-focused cleanup. It removes web tools
+that are no longer part of the supported cluster topology, removes their public
+interfaces, and renames the monitoring modules around VictoriaMetrics. Grafana
+remains installed and publicly available through oauth2-proxy.
+
+This guide assumes a direct upgrade. It does not preserve Terraform resource
+addresses for renamed module blocks and does not require migration or `moved`
+blocks.
+
+### Change Summary
+
+| Previous interface | New interface |
+| --- | --- |
+| `setup_prometheus_operator` module path | `setup_victoria_metrics` |
+| `setup_prometheus_operator_crds` module path | `setup_monitoring_crds` |
+| `setup_cloudbeaver` | Removed |
+| `setup_k8s_dashboard` | Removed |
+| Traefik dashboard, Entra application, oauth2-proxy, and HTTPRoute | Removed from `setup_ingress_controller` |
+| Public Prometheus/VMUI oauth2-proxy and HTTPRoute | Removed from `setup_victoria_metrics` |
+| Headlamp Entra application, API-server audience, and read-only RBAC | Removed from `setup_cluster` |
+| Grafana, its PostgreSQL state, oauth2-proxy, and HTTPRoute | Retained in `setup_victoria_metrics` |
+
+Prometheus-compatible CRDs such as `ServiceMonitor`, `PodMonitor`, and
+`PrometheusRule` are still required by VictoriaMetrics and application charts.
+The `setup_monitoring_crds` module therefore still installs the upstream
+`prometheus-operator-crds` Helm chart, and its
+`prometheus_operator_crds_chart_version` input keeps that upstream name.
+
+### Update Module Blocks
+
+Delete the complete consumer module blocks for these removed modules:
+
+```hcl
+module "setup_cloudbeaver" {
+  # Removed.
+}
+
+module "setup_k8s_dashboard" {
+  # Removed.
+}
+```
+
+Replace the old monitoring module paths and use the new module names:
+
+```hcl
+module "setup_monitoring_crds" {
+  source = "git::https://github.com/mucsi96/k8s-modules.git//modules/setup_monitoring_crds?ref=<new-release>"
+
+  prometheus_operator_crds_chart_version = var.prometheus_operator_crds_chart_version
+  wait_for                               = module.setup_ingress_controller.traefik_ready
+}
+
+module "setup_victoria_metrics" {
+  source = "git::https://github.com/mucsi96/k8s-modules.git//modules/setup_victoria_metrics?ref=<new-release>"
+
+  victoria_metrics_k8s_stack_chart_version = var.victoria_metrics_k8s_stack_chart_version
+  grafana_hostname                         = var.grafana_hostname
+  grafana_client_id                        = module.register_grafana.client_id
+  grafana_client_secret                    = module.register_grafana.client_secret
+  tenant_id                                = var.tenant_id
+  valid_email                              = var.valid_email
+  oauth2_proxy_chart_version               = var.oauth2_proxy_chart_version
+  oauth2_proxy_image_version               = var.oauth2_proxy_image_version
+  session_redis                            = module.setup_redis
+  wait_for                                 = module.setup_ingress_controller.traefik_ready
+  database = {
+    host           = module.create_postgres_database.host
+    port           = module.create_postgres_database.port
+    name           = module.create_postgres_database.name
+    admin_username = module.create_postgres_database.username
+    admin_password = module.create_postgres_database.password
+  }
+
+  depends_on = [module.setup_monitoring_crds]
+}
+```
+
+Update all references to the old module names. In particular:
+
+```hcl
+module "setup_victoria_logs" {
+  # Other inputs omitted.
+  victoria_logs_url = module.setup_victoria_metrics.victoria_logs_url
+  wait_for          = module.setup_victoria_metrics.victoria_metrics_k8s_stack_ready
+}
+
+module "create_postgres_database" {
+  # Other inputs omitted.
+  wait_for = module.setup_monitoring_crds.crds_ready
+}
+```
+
+### Remove Obsolete Inputs
+
+Remove the following arguments from consumer module blocks and any variables or
+locals that only supplied them:
+
+| Module | Removed arguments |
+| --- | --- |
+| `setup_cluster` | `cluster_monitor_redirect_uris` |
+| `setup_ingress_controller` | `environment_name`, `subscription_id`, `tenant_id`, `owner`, `oauth2_proxy_chart_version`, `oauth2_proxy_image_version`, `valid_email`, `session_redis` |
+| `setup_victoria_metrics` | `prometheus_hostname`, `prometheus_client_id`, `prometheus_client_secret` |
+
+The `owner` input remains required by `setup_cluster` for the Kubernetes
+API-server Entra application and the operator's cluster-admin binding. Grafana
+also continues to require its hostname, Entra client credentials, tenant,
+allowed email, oauth2-proxy versions, Redis session backend, and PostgreSQL
+database inputs.
+
+### Remove Obsolete Outputs And Dependencies
+
+The following outputs no longer exist:
+
+| Removed module | Removed outputs |
+| --- | --- |
+| `setup_cluster` | `cluster_monitor_client_id`, `cluster_monitor_client_secret` |
+| `setup_cloudbeaver` | `k8s_namespace`, `hostname`, `admin_password` |
+| `setup_k8s_dashboard` | `k8s_namespace`, `hostname` |
+
+Remove references to those outputs from locals, secrets, DNS configuration,
+application registrations, and dependency expressions. Remove any consumer-owned
+Entra web applications used only by CloudBeaver, Headlamp, or the public
+Prometheus/VMUI route. Keep the Grafana Entra application.
+
+Redis and PostgreSQL are still used by Grafana. Do not remove shared Redis or
+PostgreSQL modules merely because the other dashboards were removed.
+
+`setup_ingress_controller` no longer requires the `azurerm`, `azuread`, or
+`random` providers. Remove provider aliases passed exclusively to that module,
+but retain any root provider configurations used by other modules. The ingress
+module still requires `kubernetes`, `kubectl`, `helm`, `tls`, and `cloudflare`.
+
+### Apply The Upgrade
+
+Make the configuration changes together, pin every module to the new release,
+and then run the normal consumer workflow:
+
+```bash
+terraform fmt -recursive
+terraform init -upgrade
+terraform validate
+terraform plan -out=migration.tfplan
+terraform show migration.tfplan
+terraform apply migration.tfplan
+```
+
+The plan should remove the retired dashboard resources and may recreate
+resources under the renamed module blocks. Review the complete plan rather than
+targeting individual modules.
+
+Expected removals include:
+
+- The `cloudbeaver` namespace, workload, service, secrets, oauth2-proxy, route,
+  and persistent-volume objects.
+- The `k8s-dashboard` namespace, Headlamp chart, extra read-only RBAC,
+  oauth2-proxy, and route.
+- The cluster-monitor Entra application and secret, Headlamp API-server
+  audience, and `oidc-dashboard-view` role binding.
+- The Traefik dashboard Entra application, oauth2-proxy, and HTTPRoute.
+- The public Prometheus/VMUI oauth2-proxy and HTTPRoute.
+
+Expected retained services include:
+
+- Traefik ingress and Gateway API resources.
+- VMSingle, vmagent, VMAlert, exporters, and monitoring CRDs.
+- Grafana, its database schema, oauth2-proxy, and HTTPRoute.
+- VLSingle and the VictoriaLogs collection pipeline.
+
+The `setup_cluster` change rewrites the MicroK8s API-server authentication
+configuration for the single kubelogin audience and can restart MicroK8s and
+Calico during apply. Keep SSH, Twingate, and Kubernetes access available for the
+entire operation.
+
+CloudBeaver used a retained host-path volume. Removing its Kubernetes resources
+does not delete `/data/cloudbeaver` from the server. Remove that directory
+separately only after confirming its contents are no longer needed.
+
+### Verify The Upgrade
+
+Verify terminal access and the remaining monitoring stack after apply:
+
+```bash
+kubectl get nodes
+kubectl get pods --all-namespaces
+kubectl get httproutes --all-namespaces
+kubectl auth can-i '*' '*' --all-namespaces
+helm list --all-namespaces
+```
+
+Confirm that the `cloudbeaver` and `k8s-dashboard` namespaces are absent, no
+Traefik or Prometheus/VMUI dashboard routes remain, and the Grafana route is
+still present. Sign in to Grafana and verify that metrics and logs remain
+queryable before removing any old consumer variables, secrets, or Entra
+registrations outside Terraform.
 
 ## Safe Destruction
 
@@ -253,7 +448,7 @@ this library. This keeps its pre-delete cleanup Job labels under Kubernetes'
 `<fullname>-cleanup-hook` label at or below 63 bytes.
 
 An existing release installed without this override still contains the broken
-pre-delete hook. Apply the updated `setup_prometheus_operator` module once while
+pre-delete hook. Apply the updated `setup_victoria_metrics` module once while
 the API is reachable so Helm records a corrected release revision before
 destroying it. For immediate teardown only, the fallback is:
 
@@ -264,19 +459,6 @@ helm uninstall victoria-metrics-k8s-stack --namespace monitoring --no-hooks
 Confirm the release is gone, then remove only its `helm_release` address from
 Terraform state. Skipping the cleanup hook is acceptable only when the whole
 cluster is being removed.
-
-When module addresses change in a consumer, add `moved` blocks in that consumer
-instead of editing or removing state directly.
-
-Consumers migrating the former logging module name should retain this move
-until every relevant state has been upgraded:
-
-```hcl
-moved {
-  from = module.setup_loki
-  to   = module.setup_victoria_logs
-}
-```
 
 ## Development
 
