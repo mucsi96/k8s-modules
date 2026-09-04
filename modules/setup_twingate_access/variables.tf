@@ -14,6 +14,12 @@ variable "k8s_host" {
   sensitive   = true
 }
 
+variable "k8s_port" {
+  description = "TCP port exposed by the Kubernetes API server."
+  type        = number
+  default     = 16443
+}
+
 variable "ssh_address" {
   description = "Address (public IPv4) of the host's SSH endpoint, used as the Twingate resource address."
   type        = string

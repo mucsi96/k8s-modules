@@ -1,8 +1,7 @@
 # Kubernetes Terraform Modules
 
-Reusable Terraform modules for provisioning a private MicroK8s cluster on
-Hetzner and the Azure, Cloudflare, Twingate, GitHub, and Kubernetes resources
-around it.
+Reusable Terraform modules for provisioning a private Kubernetes cluster and
+the cloud, identity, access, networking, and application resources around it.
 
 This repository is a module library. It deliberately has no root Terraform
 configuration, backend, state, environment values, or apply/destroy scripts.
@@ -33,15 +32,15 @@ the consumer repository.
 | Module | Purpose |
 | --- | --- |
 | `setup_twingate_connector` | Creates the Twingate remote network, host connector, and connector tokens that are embedded in server cloud-init. |
-| `provision_hetzner_server` | Creates the SSH key and port, Hetzner server, Cloudflare-only HTTPS firewall, host Twingate connector configuration, and SSH readiness barrier. |
+| `provision_server` | Provisions the cluster server, SSH access, HTTPS firewall, host Twingate connector configuration, and readiness barrier. The current implementation uses Hetzner Cloud. |
 | `setup_twingate_access` | Creates Twingate resources for SSH and the Kubernetes API plus a service account/key for CI access. |
-| `setup_cluster` | Installs and configures MicroK8s through Ansible, publishes OIDC metadata, configures Entra authentication and Azure workload identity, and outputs Kubernetes credentials. |
+| `setup_cluster` | Installs and configures Kubernetes through Ansible, publishes OIDC metadata, configures Entra authentication and Azure workload identity, and outputs Kubernetes credentials. The current implementation uses MicroK8s. |
 
 ### Cluster Services
 
 | Module | Purpose |
 | --- | --- |
-| `setup_ingress_controller` | Installs Traefik, Gateway API resources, Cloudflare DNS/security configuration, and origin TLS. |
+| `setup_ingress_controller` | Configures the ingress controller, Gateway API resources, Cloudflare DNS/security configuration, and origin TLS. The current implementation installs Traefik with Helm. |
 | `setup_metrics_server` | Installs metrics-server with MicroK8s-compatible kubelet settings. |
 | `setup_oauth2_proxy` | Reusable Entra OIDC proxy backed by Redis sessions. |
 | `create_app_namespace` | Creates an application namespace, service account, RBAC, token secret, and deployment kubeconfig. |
@@ -112,18 +111,18 @@ The full creation dependency chain is:
 
 ```text
 Twingate connector
-  -> Hetzner server
+  -> Server
   -> Twingate SSH and Kubernetes API resources
   -> SSH readiness
-  -> MicroK8s cluster
-  -> Traefik and Gateway API
+  -> Kubernetes cluster
+  -> Ingress controller and Gateway API
   -> Monitoring CRDs
   -> PostgreSQL and VictoriaMetrics
   -> VictoriaLogs collectors and dependent applications
 ```
 
 Redis is a parallel prerequisite for oauth2-proxy users. Metrics-server follows
-Traefik in the existing topology.
+the ingress controller in the existing topology.
 
 ### Twingate Lifecycle Barrier
 
@@ -139,8 +138,8 @@ module "setup_twingate_connector" {
   environment_name = var.environment_name
 }
 
-module "provision_hetzner_server" {
-  source = "git::https://github.com/mucsi96/k8s-modules.git//modules/provision_hetzner_server?ref=<release-tag>"
+module "provision_server" {
+  source = "git::https://github.com/mucsi96/k8s-modules.git//modules/provision_server?ref=<release-tag>"
 
   # Other required inputs are omitted here.
   twingate_access_token  = module.setup_twingate_connector.access_token
@@ -156,24 +155,25 @@ module "setup_twingate_access" {
 
   environment_name  = var.environment_name
   remote_network_id = module.setup_twingate_connector.remote_network_id
-  k8s_host          = module.provision_hetzner_server.ipv4_address
-  ssh_address       = module.provision_hetzner_server.ipv4_address
-  ssh_port          = module.provision_hetzner_server.ssh_port
+  k8s_host          = module.provision_server.ipv4_address
+  k8s_port          = 16443
+  ssh_address       = module.provision_server.ipv4_address
+  ssh_port          = module.provision_server.ssh_port
 }
 
 module "setup_cluster" {
   source = "git::https://github.com/mucsi96/k8s-modules.git//modules/setup_cluster?ref=<release-tag>"
 
   # Other required inputs are omitted here.
-  host     = module.provision_hetzner_server.ipv4_address
-  ssh_port = module.provision_hetzner_server.ssh_port
-  username = module.provision_hetzner_server.username
-  wait_for = module.provision_hetzner_server.ssh_ready
+  host     = module.provision_server.ipv4_address
+  ssh_port = module.provision_server.ssh_port
+  username = module.provision_server.username
+  wait_for = module.provision_server.ssh_ready
 }
 ```
 
 Do not replace this with module-level `depends_on` between
-`provision_hetzner_server` and `setup_twingate_access`; that creates a cycle.
+`provision_server` and `setup_twingate_access`; that creates a cycle.
 The `ssh_ready_wait_for` value is used only by `terraform_data.ssh_ready`, which
 allows Terraform to build the intended resource graph. On destroy, the graph is
 reversed and both Twingate access resources remain until Kubernetes and Helm no
@@ -195,7 +195,7 @@ module "setup_ingress_controller" {
 
 module "setup_monitoring_crds" {
   # Inputs omitted.
-  wait_for = module.setup_ingress_controller.traefik_ready
+  wait_for = module.setup_ingress_controller.ingress_controller_ready
 }
 
 module "create_postgres_database" {
@@ -205,7 +205,7 @@ module "create_postgres_database" {
 
 module "setup_victoria_metrics" {
   # Inputs include PostgreSQL and Redis outputs.
-  wait_for   = module.setup_ingress_controller.traefik_ready
+  wait_for   = module.setup_ingress_controller.ingress_controller_ready
   depends_on = [module.setup_monitoring_crds]
 }
 
@@ -222,10 +222,11 @@ outlive those objects during destroy.
 
 ## Migration Guide
 
-This release is a breaking, dashboard-focused cleanup. It removes web tools
-that are no longer part of the supported cluster topology, removes their public
-interfaces, and renames the monitoring modules around VictoriaMetrics. Grafana
-remains installed and publicly available through oauth2-proxy.
+This release is a breaking cleanup. It removes web tools that are no longer part
+of the supported cluster topology, renames modules and outputs around generic
+platform responsibilities, and prepares for a later provider and Kubernetes
+distribution replacement. Grafana remains installed and publicly available
+through oauth2-proxy.
 
 This guide assumes a direct upgrade. It does not preserve Terraform resource
 addresses for renamed module blocks and does not require migration or `moved`
@@ -235,8 +236,12 @@ blocks.
 
 | Previous interface | New interface |
 | --- | --- |
+| `provision_hetzner_server` module path | `provision_server` |
 | `setup_prometheus_operator` module path | `setup_victoria_metrics` |
 | `setup_prometheus_operator_crds` module path | `setup_monitoring_crds` |
+| `setup_ingress_controller.traefik_namespace` | `setup_ingress_controller.ingress_controller_namespace` |
+| `setup_ingress_controller.traefik_ready` | `setup_ingress_controller.ingress_controller_ready` |
+| Hardcoded Twingate Kubernetes API port | Optional `setup_twingate_access.k8s_port`; defaults to MicroK8s port `16443` |
 | `setup_cloudbeaver` | Removed |
 | `setup_k8s_dashboard` | Removed |
 | Traefik dashboard, Entra application, oauth2-proxy, and HTTPRoute | Removed from `setup_ingress_controller` |
@@ -250,7 +255,24 @@ The `setup_monitoring_crds` module therefore still installs the upstream
 `prometheus-operator-crds` Helm chart, and its
 `prometheus_operator_crds_chart_version` input keeps that upstream name.
 
+The generic naming changes do not yet replace Hetzner Cloud, Ubuntu, MicroK8s,
+or the standalone Traefik Helm release. Their current implementation-specific
+resource names and inputs remain until the platform transition described below.
+
 ### Update Module Blocks
+
+Replace the branded server module path and consumer module name:
+
+```hcl
+module "provision_server" {
+  source = "git::https://github.com/mucsi96/k8s-modules.git//modules/provision_server?ref=<new-release>"
+
+  # Existing provisioning inputs are unchanged in this release.
+}
+```
+
+Update all `module.provision_hetzner_server.*` references to
+`module.provision_server.*`.
 
 Delete the complete consumer module blocks for these removed modules:
 
@@ -271,7 +293,7 @@ module "setup_monitoring_crds" {
   source = "git::https://github.com/mucsi96/k8s-modules.git//modules/setup_monitoring_crds?ref=<new-release>"
 
   prometheus_operator_crds_chart_version = var.prometheus_operator_crds_chart_version
-  wait_for                               = module.setup_ingress_controller.traefik_ready
+  wait_for                               = module.setup_ingress_controller.ingress_controller_ready
 }
 
 module "setup_victoria_metrics" {
@@ -286,7 +308,7 @@ module "setup_victoria_metrics" {
   oauth2_proxy_chart_version               = var.oauth2_proxy_chart_version
   oauth2_proxy_image_version               = var.oauth2_proxy_image_version
   session_redis                            = module.setup_redis
-  wait_for                                 = module.setup_ingress_controller.traefik_ready
+  wait_for                                 = module.setup_ingress_controller.ingress_controller_ready
   database = {
     host           = module.create_postgres_database.host
     port           = module.create_postgres_database.port
@@ -313,6 +335,22 @@ module "create_postgres_database" {
   wait_for = module.setup_monitoring_crds.crds_ready
 }
 ```
+
+Replace references to the renamed ingress outputs:
+
+```hcl
+module.setup_ingress_controller.traefik_namespace
+# becomes
+module.setup_ingress_controller.ingress_controller_namespace
+
+module.setup_ingress_controller.traefik_ready
+# becomes
+module.setup_ingress_controller.ingress_controller_ready
+```
+
+`setup_twingate_access.k8s_port` is optional and defaults to the current
+MicroK8s API port, `16443`. Set it explicitly in new consumer configurations so
+the later k3s cutover is a one-line change to `6443`.
 
 ### Remove Obsolete Inputs
 
@@ -417,6 +455,112 @@ still present. Sign in to Grafana and verify that metrics and logs remain
 queryable before removing any old consumer variables, secrets, or Entra
 registrations outside Terraform.
 
+### Planned Platform Transition
+
+The generic module and output names establish stable responsibility boundaries
+for the next migration. They do not implement the target platform in this
+release.
+
+| Layer | Current implementation | Target implementation |
+| --- | --- | --- |
+| Server | Hetzner Cloud | Netcup RS 1000 G12 |
+| Operating system | Ubuntu 24.04 | Debian 13 (Trixie) |
+| Kubernetes | MicroK8s | k3s |
+| Ingress | Standalone Traefik Helm release | Traefik bundled with k3s |
+
+The module paths remain `provision_server`, `setup_cluster`, and
+`setup_ingress_controller` across that transition. Provider-specific Terraform
+resources, Ansible playbooks, inputs, and defaults will change when each target
+implementation is added.
+
+#### Netcup And Debian Trixie
+
+The future `provision_server` implementation must replace `hcloud_server`, the
+Hetzner firewall and attachment, Hetzner labels, server-type identifiers,
+locations, and image identifiers with the selected Netcup provisioning
+mechanism for an RS 1000 G12.
+
+The replacement must preserve the current network boundary: public HTTPS is
+accepted only from Cloudflare edge CIDRs, while SSH and the Kubernetes API are
+available through Twingate rather than the public firewall. Keep outbound
+access for package installation, image pulls, and external APIs.
+
+Use a Debian 13 Trixie image with working cloud-init. Update the default image
+and SSH username together, verify passwordless sudo and SSH service activation,
+and remove Ubuntu-specific root-expiry, `ssh.socket`, snap, and release checks.
+Validate Python, `apt`, `curl`, `sudo`, systemd, DNS, and reboot behavior before
+running cluster installation.
+
+#### k3s
+
+The future `setup_cluster` implementation must replace the MicroK8s snap,
+addons, status commands, paths under `/var/snap/microk8s`, kubeconfig handling,
+and Calico restart workaround with k3s equivalents. Preserve the existing
+module outputs so Kubernetes, Helm, and kubectl providers continue to consume
+the cluster endpoint and credentials through the same generic contract.
+
+Set `setup_twingate_access.k8s_port` to the configured k3s API port, normally
+`6443`. Update the generated kubeconfig away from its loopback endpoint before
+publishing it to Key Vault.
+
+Recreate the API-server structured authentication configuration through k3s
+configuration, retain human kubelogin access, and preserve the public workload
+identity issuer. Republish OIDC discovery and JWKS data whenever the k3s
+service-account signing key changes, then verify existing Entra federated
+credentials against the new issuer.
+
+k3s may package components that this library currently installs separately.
+Confirm whether its Metrics Server is enabled before retaining
+`setup_metrics_server`; do not run duplicate Metrics Server deployments.
+
+#### Bundled Traefik
+
+The future `setup_ingress_controller` implementation must stop creating a
+standalone `helm_release` and configure the Traefik packaged by k3s, normally
+through a k3s `HelmChartConfig`. Remove `traefik_chart_version` and
+`traefik_version` when chart lifecycle is fully owned by k3s.
+
+Preserve the current Cloudflare Origin CA secret, forwarded-header trust for
+Cloudflare CIDRs, public port 443 behavior, GatewayClass, shared Gateway,
+`websecure` listener, route namespace permissions, and resource limits. Replace
+`ingress_controller_ready` with a readiness token based on the bundled
+controller rather than a Helm release status.
+
+Determine the bundled controller and Gateway namespaces before cutover. Update
+the Grafana and Faro HTTPRoute parent references if k3s Traefik does not use the
+current `traefik` namespace. Disable or remove the standalone release before
+enabling bundled Traefik so two controllers never compete for host port 443.
+
+#### Data And Cutover
+
+The Netcup move replaces the host beneath static host-path volumes. Back up and
+transfer these directories before starting workloads on the new server:
+
+- `/data/database`
+- `/data/redis`
+- `/data/hello`
+- `/data/learn-language`
+- `/data/training-log`
+- `/data/party`
+- `/data/library`
+- `/data/expense-tracker`
+- `/data/cooking`
+
+Use database-consistent backups, stop writes during the final transfer, restore
+ownership and permissions, and confirm every PV and PVC binds to the intended
+path. The k3s local-path provisioner does not migrate existing host data.
+
+Keep the old server available until Twingate SSH and Kubernetes access, OIDC,
+workload identity, ingress, PostgreSQL, Redis, Grafana, VictoriaMetrics,
+VictoriaLogs, Faro, and application data have been verified. Switch the
+Cloudflare wildcard record only after the new origin passes those checks, and
+retain a DNS rollback path until the old server is intentionally removed.
+
+After cutover, verify that Gateway and HTTPRoute conditions report `Accepted`
+and `ResolvedRefs=True`, only one Traefik and one Metrics Server deployment are
+running, public port 443 cannot bypass Cloudflare, and the Kubernetes API is
+reachable through Twingate on the configured port.
+
 ## Safe Destruction
 
 Use a full destroy plan from the consumer repository:
@@ -427,7 +571,7 @@ terraform show destroy.tfplan
 terraform apply destroy.tfplan
 ```
 
-Do not routinely target the Hetzner server, cluster module, firewall, Twingate
+Do not routinely target the server, cluster module, firewall, Twingate
 resources, or individual prerequisites. Targeted destroy includes graph
 dependents and can still remove independent access resources in parallel if the
 consumer omitted the lifecycle barrier above.

@@ -50,7 +50,7 @@ variable "local_python_interpreter" {
 }
 
 variable "wait_for" {
-  description = "Optional dependency token (e.g. provision_hetzner_server.ssh_ready). Threaded through ansible_playbook.system_update.extra_vars so Terraform's data-flow tracker serializes Ansible execution behind ssh_ready — i.e. until ssh-agent has the key AND cloud-init has finished bringing sshd up on the custom port. depends_on on a terraform_data sentinel does not serialize correctly here."
+  description = "Optional dependency token (e.g. provision_server.ssh_ready). Threaded through ansible_playbook.system_update.extra_vars so Terraform's data-flow tracker serializes Ansible execution behind ssh_ready — i.e. until ssh-agent has the key AND cloud-init has finished bringing sshd up on the custom port. depends_on on a terraform_data sentinel does not serialize correctly here."
   type        = string
   default     = null
 }
