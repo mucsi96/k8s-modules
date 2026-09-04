@@ -56,7 +56,7 @@ variable "twingate_refresh_token" {
 }
 
 variable "ssh_ready_wait_for" {
-  description = "Optional ordering barrier folded into the ssh_ready provisioner environment so the Twingate SSH resource exists before the keyscan poll runs over Twingate. Pass module.setup_twingate_access.ssh_resource_id."
+  description = "Optional ordering barrier folded into the ssh_ready provisioner environment so the Twingate SSH and Kubernetes API resources exist before cluster setup and remain through cluster teardown."
   type        = string
   default     = null
 }

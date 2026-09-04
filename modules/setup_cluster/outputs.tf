@@ -93,8 +93,8 @@ output "cluster_monitor_client_secret" {
 # defaults to `azurecli` (humans run `az login` first); pipelines override at
 # runtime by exporting AAD_LOGIN_METHOD=workloadidentity alongside the AZURE_*
 # env vars set by azure/login@v3. Marked sensitive because it embeds the
-# cluster CA cert (already a sensitive output of this module); the root stores
-# it as the k8s-oidc-config Key Vault secret for scripts/pull_kube_oidc_config.sh.
+# cluster CA cert (already a sensitive output of this module). The consumer is
+# expected to persist it securely, for example in Azure Key Vault.
 output "k8s_oidc_config" {
   description = "Rendered kubelogin kubeconfig for humans (`az login`) and pipelines (AAD_LOGIN_METHOD=workloadidentity). Caller is expected to store this in Key Vault."
   value = yamlencode({

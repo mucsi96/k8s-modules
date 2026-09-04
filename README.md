@@ -1,264 +1,296 @@
-# aks-modules
-Terraform modules for Azure cloud deployment
+# Kubernetes Terraform Modules
 
-## Prerequisites
+Reusable Terraform modules for provisioning a private MicroK8s cluster on
+Hetzner and the Azure, Cloudflare, Twingate, GitHub, and Kubernetes resources
+around it.
 
-### Azure Key Vault Secrets
+This repository is a module library. It deliberately has no root Terraform
+configuration, backend, state, environment values, or apply/destroy scripts.
+Those belong in a separate consumer repository. Do not run `terraform apply` or
+`terraform destroy` from this checkout.
 
-The following secrets must exist in the Azure Key Vault (named after the `environment_name` variable) before creating the cluster:
+## Using A Module
 
-| Secret Name | Description |
-|---|---|
-| `hcloud-token` | Hetzner Cloud API token used to provision the cluster server |
-| `dns-zone` | DNS zone domain used by all applications |
-| `letsencrypt-email` | Email address allowed through oauth2-proxy SSO (dashboards) and used as the Grafana admin user; no longer used for Let's Encrypt — TLS comes from a Cloudflare Origin CA certificate |
-| `cloudflare-zone-id` | Cloudflare zone ID for DNS management |
-| `cloudflare-api-token` | Cloudflare API token for DNS records, zone settings, Origin CA certificates, rulesets, Email Routing and Workers scripts |
-| `authorized-as` | Autonomous system number (ASN) allowed through the Cloudflare firewall rules |
-| `twingate-api-token` | Twingate API token with Read, Write & Provision permissions |
-| `twingate-network` | Twingate network name (e.g. `mynetwork` from `mynetwork.twingate.com`) |
-| `github-token` | GitHub personal access token with `repo` scope for setting Actions secrets |
+Pin every module used by one environment to the same release tag:
 
-The cluster server is provisioned on Hetzner Cloud by Terraform. SSH keys, port,
-and host credentials are generated during `terraform apply` and exported to the
-Key Vault as `host`, `ssh-user-name`, `ssh-port`, `ssh-private-key`, and
-`ssh-public-key` for downstream tooling (`scripts/ssh_to_server.sh` reads them).
-The cloud-init user data bakes in the public key, sets a custom SSH port,
-disables password authentication and root login, and grants NOPASSWD sudo to the
-bootstrap user so no password is ever generated or rotated by Ansible.
+```hcl
+module "setup_cluster" {
+  source = "git::https://github.com/mucsi96/k8s-modules.git//modules/setup_cluster?ref=<release-tag>"
 
-During `terraform apply`, Ansible authenticates via an `ssh-agent` started by
-`scripts/create.sh`; the generated private key is piped straight into
-`ssh-add` and never written to disk. Ansible runs with
-`StrictHostKeyChecking=no` and `UserKnownHostsFile=/dev/null` — the host IP
-comes back from the Hetzner Cloud API over TLS seconds before the first
-connect, so we trust it without staging a per-apply `known_hosts` file.
-Run `terraform apply` through `scripts/create.sh` (or start your own agent
-with `eval "$(ssh-agent -s)"` first) — applies fail fast if `SSH_AUTH_SOCK`
-is unset.
-
-## Operator access (Twingate-only)
-
-The Hetzner firewall admits **only** port 443 from the Cloudflare edge. SSH (the
-randomized port), the Kubernetes API (`16443`), and ICMP are **not** reachable
-from the public internet — they are exposed solely through Twingate.
-
-- A host-level Twingate connector (systemd unit `twingate-connector`) is installed
-  by cloud-init on first boot (`setup_twingate_connector` provides the tokens). It
-  dials out to Twingate; its traffic to the node's own public IP is delivered
-  locally and never crosses the cloud firewall, so `https://<publicIP>:16443` and
-  SSH keep working for anyone on the Twingate network.
-- Humans get access via Twingate's built-in **Everyone** group (every user in the
-  network), which is granted the SSH and K8s API resources. GitHub Actions reach
-  the K8s API via a Twingate service account (`twingate-service-key`).
-- **You must have the Twingate client connected** to run `terraform apply`
-  (the bootstrap keyscan, Ansible, and `remote-exec` all go over Twingate),
-  `scripts/ssh_to_server.sh`, or `kubectl`. Both scripts fail fast with a clear
-  message if the SSH port is unreachable.
-
-### Break-glass (locked out)
-
-- Open the **Hetzner Cloud Console** web VNC for the server, or add a temporary
-  inbound TCP rule for the SSH port under **Firewalls** in the console. Terraform
-  reverts any console-added rule on the next apply (desired self-healing).
-- If bootstrap fails before the connector registers, inspect
-  `/var/log/cloud-init-output.log` via the console, or `-replace` the server and
-  re-run `scripts/create.sh`.
-
-### Token rotation
-
-The connector tokens are baked into the server's cloud-init `user_data` (which has
-`ignore_changes`), so rotation is done by recreating the server: `-replace` the
-`setup_twingate_connector` connector tokens **and**
-`module.provision_hetzner_server.hcloud_server.this`, then re-run `create.sh` with
-the break-glass console rule handy in case the old connector drops first.
-
-## Ingress: Traefik behind the Cloudflare proxy
-
-Traefik (`setup_ingress_controller`) is the ingress controller, exposed to the
-public internet through the Cloudflare proxy (orange-cloud DNS) with the origin
-reachable only from Cloudflare's edge. The module deploys Traefik with the
-official Helm chart, defines the shared `Gateway` (one HTTPS listener), creates
-the proxied wildcard DNS record and zone SSL settings, issues a Cloudflare
-Origin CA certificate for the Gateway listener, and protects the Traefik
-dashboard with oauth2-proxy (Microsoft Entra ID SSO).
-
-### How traffic flows
-
-1. The wildcard DNS record `*.<dns_zone>` is a **proxied A record** pointing at
-   the cluster server's public IPv4.
-2. Every request passes the Cloudflare edge, where the zone rulesets are
-   enforced: rate limiting, ASN restriction, bot and threat-score blocking
-   (`cloudflare_ruleset.tf`).
-3. The edge connects to the origin on port 443 (SSL mode **Full (strict)**,
-   `always_use_https` on, so port 80 is never used).
-4. Traefik binds host port 443 on the `web` entrypoint; the Gateway's HTTPS
-   listener terminates TLS with a **Cloudflare Origin CA certificate** (15-year
-   validity, no renewal automation needed), referenced from the listener's
-   `certificateRefs`.
-5. The Hetzner Cloud firewall (`provision_hetzner_server` module) only admits
-   Cloudflare's published IP ranges on port 443, so the edge — and its security
-   rules — cannot be bypassed by connecting to the server IP directly.
-
-Traefik only honors `X-Forwarded-*` headers from Cloudflare's IP ranges, so apps
-and access logs see real client IPs that cannot be spoofed.
-
-### Manual Cloudflare setup steps
-
-Before the first apply, perform these manual steps in the Cloudflare dashboard:
-
-1. **Sign up for a Cloudflare account**
-   - Go to [https://dash.cloudflare.com/sign-up](https://dash.cloudflare.com/sign-up)
-   - Create a new account or sign in to an existing one
-
-2. **Add your domain to Cloudflare**
-   - Click "Add a site" and enter your domain name
-   - Select the free plan or appropriate plan for your needs
-   - Follow the instructions to update your nameservers at your domain registrar
-   - Wait for the nameserver changes to propagate (can take up to 24 hours)
-
-3. **Get your Zone ID**
-   - In the Cloudflare dashboard, select your domain
-   - Go to the Overview tab
-   - Your Zone ID will be displayed on the right side
-   - Copy this value for later use
-
-4. **Create an API token**
-   - In the Cloudflare dashboard, go to "My Profile" → "API Tokens"
-   - Click "Create Token"
-   - Use the "Custom token" template
-   - Configure the token with the following permissions:
-
-   | Resource Type | Permission | Access Level | Used for |
-   |---------------|------------|--------------|----------|
-   | Zone | Zone | Read | Resolving the account ID for the Workers script upload |
-   | Zone | DNS | Edit | Proxied wildcard A record |
-   | Zone | Zone Settings | Edit | SSL mode Full (strict), Always Use HTTPS, Email Routing DNS records |
-   | Zone | SSL and Certificates | Edit | Origin CA certificate issuance |
-   | Zone | Email Routing Rules | Edit | Routing the bank notification address to the email worker |
-   | Account | Account Rulesets | Edit | Rate limiting, ASN restriction, bot blocking rulesets |
-   | Account | Workers Scripts | Edit | Uploading the bank email notification worker |
-
-   - Set "Zone Resources" to "Include" → "Specific zone" → select your domain,
-     and "Account Resources" to your account
-   - Click "Continue to summary" and then "Create Token"
-   - Copy the token value immediately as it won't be shown again
-
-5. **Store secrets in Azure Key Vault**
-   After completing the steps above, store `cloudflare-zone-id`,
-   `cloudflare-api-token`, and `dns-zone` in the Key Vault (see the secrets
-   table above).
-
-## HTTP routing (Gateway API)
-
-All in-cluster HTTP routing uses the Kubernetes **Gateway API** (`Gateway` +
-`HTTPRoute`). Traefik's own `IngressRoute` and `Ingress` providers are **disabled**
-(`setup_ingress_controller/traefik.tf`); the Gateway API CRDs (standard channel)
-are vendored and applied before Traefik starts. A single `Gateway` in the `traefik`
-namespace terminates TLS on its HTTPS listener with the Cloudflare Origin CA cert
-and accepts `HTTPRoute`s from all namespaces.
-
-> **App repos must migrate too.** The `hello`, `language`, `training`, and `backup`
-> apps define their routes in their **own** Helm chart repos. Because the
-> `IngressRoute` provider is now off, those charts must switch to an `HTTPRoute`
-> (`parentRefs` → `traefik/traefik`, `sectionName: websecure`, with their hostname)
-> or they will 404 after the rebuild.
-
-## Debugging Commands
-
-Useful commands for debugging Kubernetes (MicroK8s) clusters and authorization issues.
-
-### Authorization & RBAC
-
-```sh
-# List all permissions the current user has in the current namespace
-kubectl auth can-i --list
-
-# List all permissions for a specific user (impersonation)
-kubectl auth can-i --list --as=user@example.com
-
-# Check whether a specific action is permitted
-kubectl auth can-i create pods --as=user@example.com -n default
-
-# List all permissions for a service account
-kubectl auth can-i --list --as=system:serviceaccount:<namespace>:<sa-name>
-
-# Show all ClusterRoleBindings and RoleBindings for a user
-kubectl get clusterrolebindings,rolebindings --all-namespaces -o json \
-  | jq -r '.items[] | select(.subjects[]?.name=="user@example.com") | "\(.kind)/\(.metadata.name)"'
+  # See modules/setup_cluster/variables.tf for the required inputs.
+}
 ```
 
-### MicroK8s API Server Configuration (run on the server)
+Do not use a moving branch such as `main` for deployed infrastructure. Module
+inputs and outputs are documented in each module's `variables.tf` and
+`outputs.tf` files. Provider versions and the dependency lock file belong to
+the consumer repository.
 
-```sh
-# Inspect authorization mode and ABAC/RBAC related flags
-sudo cat /var/snap/microk8s/current/args/kube-apiserver | grep -E "authorization|abac"
+## Module Catalog
 
-# Show all kube-apiserver arguments
-sudo cat /var/snap/microk8s/current/args/kube-apiserver
+### Host And Cluster
 
-# Tail kube-apiserver logs
-sudo journalctl -u snap.microk8s.daemon-kubelite -f
+| Module | Purpose |
+| --- | --- |
+| `setup_twingate_connector` | Creates the Twingate remote network, host connector, and connector tokens that are embedded in server cloud-init. |
+| `provision_hetzner_server` | Creates the SSH key and port, Hetzner server, Cloudflare-only HTTPS firewall, host Twingate connector configuration, and SSH readiness barrier. |
+| `setup_twingate_access` | Creates Twingate resources for SSH and the Kubernetes API plus a service account/key for CI access. |
+| `setup_cluster` | Installs and configures MicroK8s through Ansible, publishes OIDC metadata, configures Entra authentication and Azure workload identity, and outputs Kubernetes credentials. |
 
-# Filter API server logs for authorization decisions
-sudo journalctl -u snap.microk8s.daemon-kubelite | grep -i "forbidden\|unauthorized"
+### Cluster Services
 
-# Inspect recent OIDC-related log lines (token validation, issuer discovery)
-sudo journalctl -u snap.microk8s.daemon-kubelite -n 200 --no-pager | grep -i oidc
+| Module | Purpose |
+| --- | --- |
+| `setup_ingress_controller` | Installs Traefik, Gateway API resources, Cloudflare DNS/security configuration, origin TLS, and the protected Traefik dashboard. |
+| `setup_metrics_server` | Installs metrics-server with MicroK8s-compatible kubelet settings. |
+| `setup_k8s_dashboard` | Installs Headlamp, read-only RBAC, oauth2-proxy, and its HTTPRoute. |
+| `setup_oauth2_proxy` | Reusable Entra OIDC proxy backed by Redis sessions. |
+| `create_app_namespace` | Creates an application namespace, service account, RBAC, token secret, and deployment kubeconfig. |
 
-# Check MicroK8s status and enabled addons
-sudo microk8s status
+### Data And Observability
 
-# Restart MicroK8s after changing apiserver args
-sudo microk8s stop && sudo microk8s start
+| Module | Purpose |
+| --- | --- |
+| `setup_prometheus_operator_crds` | Installs Prometheus Operator CRDs before charts that create `ServiceMonitor`, `PodMonitor`, or `PrometheusRule` objects. |
+| `create_postgres_database` | Installs PostgreSQL with generated credentials, a retained host-path PV, and a `ServiceMonitor`. |
+| `setup_redis` | Installs shared Redis with generated credentials and a retained host-path PV. |
+| `setup_prometheus_operator` | Installs `victoria-metrics-k8s-stack`, including VMSingle, vmagent, VMAlert, Grafana, exporters, and VLSingle. The historical module name is retained for state compatibility. |
+| `setup_victoria_logs` | Installs Alloy pod-log collection and a Faro receiver that write to the VLSingle owned by `setup_prometheus_operator`. |
+| `setup_cloudbeaver` | Installs persistent CloudBeaver, database configuration, oauth2-proxy, and an HTTPRoute. |
+
+### Identity And Application Foundations
+
+| Module | Purpose |
+| --- | --- |
+| `register_api` | Registers an Entra API, app roles/scopes, workload identity, service principal, and client credential. |
+| `register_spa` | Registers an Entra SPA and pre-authorizes access to an API. |
+| `register_webapp` | Registers a confidential Entra web application for oauth2-proxy. |
+| `register_github_oidc` | Registers GitHub Actions federation and grants Key Vault access. |
+| `setup_app_base` | Composes namespace/RBAC, app Key Vault, deployment identity, GitHub Actions secrets, and Docker Hub access. |
+| `setup_bank_email_worker` | Creates a Cloudflare Email Worker and routing rule for authenticated bank-notification delivery. |
+
+### Opinionated Applications
+
+`setup_hello_app`, `setup_learn_language_app`, `setup_training_log_app`,
+`setup_party_app`, `setup_library_app`, `setup_expense_tracker_app`,
+`setup_cooking_app`, and `setup_backup_app` configure infrastructure needed by
+their application repositories: Entra registrations, namespace access, Key
+Vault secrets, GitHub deployment credentials, and where applicable database or
+backup storage. They do not install the application workloads themselves.
+
+## Consumer Composition
+
+The consumer owns all provider configuration. Configure the Kubernetes-facing
+providers from `setup_cluster` outputs so their resources are graph-dependent
+on the cluster:
+
+```hcl
+provider "kubernetes" {
+  host                   = module.setup_cluster.k8s_host
+  client_certificate     = module.setup_cluster.k8s_client_certificate
+  client_key             = module.setup_cluster.k8s_client_key
+  cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
+}
+
+provider "helm" {
+  kubernetes = {
+    host                   = module.setup_cluster.k8s_host
+    client_certificate     = module.setup_cluster.k8s_client_certificate
+    client_key             = module.setup_cluster.k8s_client_key
+    cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
+  }
+}
+
+provider "kubectl" {
+  host                   = module.setup_cluster.k8s_host
+  client_certificate     = module.setup_cluster.k8s_client_certificate
+  client_key             = module.setup_cluster.k8s_client_key
+  cluster_ca_certificate = module.setup_cluster.k8s_cluster_ca_certificate
+  load_config_file       = false
+}
 ```
 
-### Cluster & Workload Inspection
+The full creation dependency chain is:
 
-```sh
-# Show cluster info and component health
-kubectl cluster-info
-kubectl get componentstatuses
-kubectl get nodes -o wide
-
-# Describe a problematic pod (events appear at the bottom)
-kubectl describe pod <pod-name> -n <namespace>
-
-# Show pod logs (previous container after a crash)
-kubectl logs <pod-name> -n <namespace> --previous
-
-# Watch events across the cluster sorted by time
-kubectl get events --all-namespaces --sort-by=.lastTimestamp
-
-# Open a debug shell in an existing pod
-kubectl exec -it <pod-name> -n <namespace> -- sh
-
-# Run an ephemeral debug container (kubectl >= 1.23)
-kubectl debug -it <pod-name> -n <namespace> --image=busybox --target=<container>
+```text
+Twingate connector
+  -> Hetzner server
+  -> Twingate SSH and Kubernetes API resources
+  -> SSH readiness
+  -> MicroK8s cluster
+  -> Traefik and Gateway API
+  -> Prometheus Operator CRDs
+  -> PostgreSQL and VictoriaMetrics
+  -> VictoriaLogs collectors and dependent applications
 ```
 
-### Networking
+Redis is a parallel prerequisite for oauth2-proxy users. Metrics-server follows
+Traefik in the existing topology, and Headlamp follows metrics-server.
 
-```sh
-# Show services and endpoints
-kubectl get svc,endpoints -A
+### Twingate Lifecycle Barrier
 
-# Run a temporary pod to test DNS / connectivity from inside the cluster
-kubectl run -it --rm debug --image=nicolaka/netshoot --restart=Never -- bash
+The host/access relationship intentionally forms a resource-level back-edge.
+Connector tokens flow into the server, the server address flows into the access
+module, and both access resource IDs flow into only the server module's
+`ssh_ready` resource:
 
-# Port-forward a service to localhost for ad-hoc testing
-kubectl port-forward svc/<service-name> -n <namespace> 8080:80
+```hcl
+module "setup_twingate_connector" {
+  source = "git::https://github.com/mucsi96/k8s-modules.git//modules/setup_twingate_connector?ref=<release-tag>"
+
+  environment_name = var.environment_name
+}
+
+module "provision_hetzner_server" {
+  source = "git::https://github.com/mucsi96/k8s-modules.git//modules/provision_hetzner_server?ref=<release-tag>"
+
+  # Other required inputs are omitted here.
+  twingate_access_token  = module.setup_twingate_connector.access_token
+  twingate_refresh_token = module.setup_twingate_connector.refresh_token
+  ssh_ready_wait_for = join(",", [
+    module.setup_twingate_access.ssh_resource_id,
+    module.setup_twingate_access.k8s_resource_id,
+  ])
+}
+
+module "setup_twingate_access" {
+  source = "git::https://github.com/mucsi96/k8s-modules.git//modules/setup_twingate_access?ref=<release-tag>"
+
+  environment_name  = var.environment_name
+  remote_network_id = module.setup_twingate_connector.remote_network_id
+  k8s_host          = module.provision_hetzner_server.ipv4_address
+  ssh_address       = module.provision_hetzner_server.ipv4_address
+  ssh_port          = module.provision_hetzner_server.ssh_port
+}
+
+module "setup_cluster" {
+  source = "git::https://github.com/mucsi96/k8s-modules.git//modules/setup_cluster?ref=<release-tag>"
+
+  # Other required inputs are omitted here.
+  host     = module.provision_hetzner_server.ipv4_address
+  ssh_port = module.provision_hetzner_server.ssh_port
+  username = module.provision_hetzner_server.username
+  wait_for = module.provision_hetzner_server.ssh_ready
+}
 ```
 
-### Certificates & Secrets
+Do not replace this with module-level `depends_on` between
+`provision_hetzner_server` and `setup_twingate_access`; that creates a cycle.
+The `ssh_ready_wait_for` value is used only by `terraform_data.ssh_ready`, which
+allows Terraform to build the intended resource graph. On destroy, the graph is
+reversed and both Twingate access resources remain until Kubernetes and Helm no
+longer need the API.
 
-```sh
-# Decode a secret value
-kubectl get secret <secret-name> -n <namespace> -o jsonpath='{.data.<key>}' | base64 -d
+An active `SSH_AUTH_SOCK` and a connected Twingate client are required while
+creating or updating the server and cluster. The consumer's automation should
+start `ssh-agent`, load the generated/recovered key, and verify private access.
 
-# Inspect cert-manager certificates and challenges
-kubectl get certificates,certificaterequests,challenges,orders -A
-kubectl describe certificate <name> -n <namespace>
+### CRD And Service Ordering
+
+Preserve these relationships in the consumer:
+
+```hcl
+module "setup_ingress_controller" {
+  # Inputs omitted.
+  depends_on = [module.setup_cluster]
+}
+
+module "setup_prometheus_operator_crds" {
+  # Inputs omitted.
+  wait_for = module.setup_ingress_controller.traefik_ready
+}
+
+module "create_postgres_database" {
+  # Inputs omitted. Its chart creates a ServiceMonitor.
+  wait_for = module.setup_prometheus_operator_crds.crds_ready
+}
+
+module "setup_prometheus_operator" {
+  # Inputs include PostgreSQL and Redis outputs.
+  wait_for   = module.setup_ingress_controller.traefik_ready
+  depends_on = [module.setup_prometheus_operator_crds]
+}
+
+module "setup_victoria_logs" {
+  victoria_logs_url = module.setup_prometheus_operator.victoria_logs_url
+  wait_for          = module.setup_prometheus_operator.victoria_metrics_k8s_stack_ready
+  # Other inputs omitted.
+}
 ```
 
-## Requirements
+Traefik owns the Gateway API CRDs used by module HTTPRoutes. Prometheus Operator
+CRDs must exist before PostgreSQL or VictoriaMetrics charts create monitoring
+objects, and must outlive those objects during destroy.
+
+## Safe Destruction
+
+Use a full destroy plan from the consumer repository:
+
+```bash
+terraform plan -destroy -out=destroy.tfplan
+terraform show destroy.tfplan
+terraform apply destroy.tfplan
+```
+
+Do not routinely target the Hetzner server, cluster module, firewall, Twingate
+resources, or individual prerequisites. Targeted destroy includes graph
+dependents and can still remove independent access resources in parallel if the
+consumer omitted the lifecycle barrier above.
+
+Terraform persists each successful deletion immediately. A failed destroy is
+normally a valid partial state, not a corrupt state. Fix the failing resource
+and run a new full destroy plan.
+
+Never remove `kubernetes_*`, `helm_release`, or `kubectl_manifest` addresses from
+state merely because one Helm hook failed. State removal is appropriate only
+after independently confirming that the cluster is permanently gone and the
+in-cluster objects therefore no longer exist. Back up remote state before any
+recovery operation and review every address being removed.
+
+The VictoriaMetrics operator subchart uses the short fullname `vm-operator` in
+this library. This keeps its pre-delete cleanup Job labels under Kubernetes'
+63-byte limit. Consumers overriding that value must keep the generated
+`<fullname>-cleanup-hook` label at or below 63 bytes.
+
+An existing release installed without this override still contains the broken
+pre-delete hook. Apply the updated `setup_prometheus_operator` module once while
+the API is reachable so Helm records a corrected release revision before
+destroying it. For immediate teardown only, the fallback is:
+
+```bash
+helm uninstall victoria-metrics-k8s-stack --namespace monitoring --no-hooks
+```
+
+Confirm the release is gone, then remove only its `helm_release` address from
+Terraform state. Skipping the cleanup hook is acceptable only when the whole
+cluster is being removed.
+
+When module addresses change in a consumer, add `moved` blocks in that consumer
+instead of editing or removing state directly.
+
+Consumers migrating the former logging module name should retain this move
+until every relevant state has been upgraded:
+
+```hcl
+moved {
+  from = module.setup_loki
+  to   = module.setup_victoria_logs
+}
+```
+
+## Development
+
+Format and validate modules independently; there is no root module to validate:
+
+```bash
+terraform fmt -check -diff -recursive modules
+
+for dir in modules/*/; do
+  terraform -chdir="$dir" init -backend=false
+  terraform -chdir="$dir" validate
+done
+```
+
+`setup_cluster` executes Ansible playbooks. Install the collections from
+`requirements.yml` and Python packages from `requirements.txt` in the consumer
+or CI environment before applying it.
