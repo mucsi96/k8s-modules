@@ -37,13 +37,45 @@ Order the RS 1000 G12 first, then obtain the following values from the SCP API:
 - A Debian 13 `netcup_image_flavour_id` from
   `GET /api/v1/servers/{serverId}/imageflavours`.
 - `netcup_disk_name` from `GET /api/v1/servers/{serverId}/disks`.
-- A short-lived OpenID Connect access token for `netcup_access_token`.
+- A long-lived OpenID Connect refresh token stored in a local file.
 
 The API base URL defaults to `https://www.servercontrolpanel.de/scp-core`.
-Authentication uses `Authorization: Bearer <access-token>`. Obtain and refresh
-tokens outside Terraform; the public SCP client does not provide a documented
-customer service-account secret. The runner also needs `curl`, `jq`,
-`ssh-agent`, and a connected Twingate client.
+Authentication uses Netcup's OAuth2 device-code flow, not the CCP API key,
+webservice password, or customer number. Request and authorize a device code:
+
+```bash
+umask 077
+curl -sS -X POST \
+  'https://www.servercontrolpanel.de/realms/scp/protocol/openid-connect/auth/device' \
+  -d 'client_id=scp' \
+  -d 'scope=offline_access openid' | tee device-response.json | jq
+```
+
+Open the returned `verification_uri_complete`, sign in to SCP, and approve the
+request. Exchange the authorized device code:
+
+```bash
+curl -sS -X POST \
+  'https://www.servercontrolpanel.de/realms/scp/protocol/openid-connect/token' \
+  -d 'grant_type=urn:ietf:params:oauth:grant-type:device_code' \
+  -d 'client_id=scp' \
+  --data-urlencode "device_code=$(jq -r .device_code device-response.json)" \
+  | tee token-response.json | jq
+
+REFRESH_TOKEN=$(jq -r .refresh_token token-response.json)
+# Persist REFRESH_TOKEN in the caller's secret store, such as Azure Key Vault.
+rm device-response.json token-response.json
+```
+
+Pass the current secret-store value through the sensitive
+`netcup_refresh_token` input. The module exchanges it for short-lived access
+tokens and uses any rotated refresh token for the remainder of the current run.
+Refresh-token changes are authentication data only and do not replace the
+firewall or server installation resources.
+
+The Terraform runner needs `curl`, `jq`, `ssh-agent`, and a connected
+Twingate client. Netcup's current authentication instructions are available in
+SCP under **API > REST API Docs > Authentication**.
 
 The HashiCorp HTTP provider has data sources but no managed resources. The
 server module uses it for authenticated discovery and validation. Apply-only
@@ -53,8 +85,8 @@ assignment. Destructive POSTs therefore never run during refresh or plan.
 
 `reinstall_generation` is mandatory. Its first value approves erasing the
 selected disk; changing it intentionally reinstalls and erases that disk again.
-Protect Terraform state because it contains bootstrap secrets and HTTP request
-metadata.
+Protect Terraform state because it contains bootstrap secrets, OAuth tokens,
+and HTTP request metadata.
 
 ## Consumer Composition
 
@@ -102,7 +134,7 @@ module "provision_server" {
   server_name             = var.server_name
   netcup_server_id        = var.netcup_server_id
   netcup_user_id          = var.netcup_user_id
-  netcup_access_token     = var.netcup_access_token
+  netcup_refresh_token    = var.netcup_refresh_token
   netcup_image_flavour_id = var.netcup_image_flavour_id
   netcup_disk_name        = var.netcup_disk_name
   reinstall_generation   = var.reinstall_generation

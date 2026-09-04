@@ -8,10 +8,34 @@ for command in curl jq; do
   }
 done
 
+script_directory=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+
+refresh_access_token() {
+  local auth_result expires_in refresh_after
+  auth_result=$(jq -cn \
+    --arg refresh_token "$NETCUP_REFRESH_TOKEN" \
+    --arg token_url "$NETCUP_TOKEN_URL" \
+    --arg client_id "$NETCUP_CLIENT_ID" \
+    '{refresh_token: $refresh_token, token_url: $token_url, client_id: $client_id}' | \
+    bash "$script_directory/netcup_auth.sh")
+  NETCUP_TOKEN=$(jq -er '.access_token' <<<"$auth_result")
+  NETCUP_REFRESH_TOKEN=$(jq -er '.refresh_token' <<<"$auth_result")
+  expires_in=$(jq -er '.expires_in | tonumber' <<<"$auth_result")
+  refresh_after=$((expires_in > 60 ? expires_in - 30 : expires_in / 2))
+  NETCUP_TOKEN_REFRESH_AT=$(($(date +%s) + refresh_after))
+}
+
+ensure_access_token() {
+  if [[ -z "${NETCUP_TOKEN:-}" || $(date +%s) -ge ${NETCUP_TOKEN_REFRESH_AT:-0} ]]; then
+    refresh_access_token
+  fi
+}
+
 api_request() {
   local method=$1
   local path=$2
   local body=${3:-}
+  ensure_access_token
   local -a args=(
     --fail-with-body --silent --show-error
     --request "$method"
@@ -30,6 +54,7 @@ wait_for_task() {
   [[ -n "$uuid" ]] || return 0
 
   for _ in $(seq 1 180); do
+    ensure_access_token
     task=$(api_request GET "/api/v1/tasks/$uuid")
     state=$(jq -r '.state' <<<"$task")
     case "$state" in
@@ -45,6 +70,8 @@ wait_for_task() {
   echo "Timed out waiting for Netcup task $uuid" >&2
   return 1
 }
+
+ensure_access_token
 
 case "${1:-}" in
   install)

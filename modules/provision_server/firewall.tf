@@ -59,13 +59,17 @@ resource "terraform_data" "netcup_firewall" {
   provisioner "local-exec" {
     interpreter = ["/bin/bash", "-c"]
     environment = {
-      NETCUP_API_URL       = trimsuffix(var.netcup_api_url, "/")
-      NETCUP_TOKEN         = var.netcup_access_token
-      NETCUP_USER_ID       = tostring(var.netcup_user_id)
-      SERVER_ID            = tostring(var.netcup_server_id)
-      INTERFACE_MAC        = local.interface_mac
-      FIREWALL_POLICY_NAME = local.firewall_policy_name
-      FIREWALL_POLICY_BODY = local.firewall_policy_body
+      NETCUP_API_URL          = trimsuffix(var.netcup_api_url, "/")
+      NETCUP_CLIENT_ID        = local.netcup_client_id
+      NETCUP_TOKEN_URL        = local.netcup_token_url
+      NETCUP_TOKEN            = local.netcup_access_token
+      NETCUP_TOKEN_REFRESH_AT = data.external.netcup_token.result.refresh_at
+      NETCUP_REFRESH_TOKEN    = local.netcup_refresh_token
+      NETCUP_USER_ID          = tostring(var.netcup_user_id)
+      SERVER_ID               = tostring(var.netcup_server_id)
+      INTERFACE_MAC           = local.interface_mac
+      FIREWALL_POLICY_NAME    = local.firewall_policy_name
+      FIREWALL_POLICY_BODY    = local.firewall_policy_body
     }
     command = "bash \"${path.module}/netcup_api.sh\" firewall"
   }

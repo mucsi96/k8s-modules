@@ -29,6 +29,7 @@
 
 - [Netcup SCP REST API](https://www.netcup.com/en/helpcenter/documentation/server/rest-api)
 - [Netcup SCP OpenAPI document](https://www.servercontrolpanel.de/scp-core/api/v1/openapi)
+- [Netcup SCP OpenID configuration](https://www.servercontrolpanel.de/realms/scp/.well-known/openid-configuration)
 - [Netcup server images](https://www.netcup.com/en/helpcenter/documentation/server/media)
 - [Netcup firewall](https://www.netcup.com/en/helpcenter/documentation/server/firewall)
 - [k3s configuration](https://docs.k3s.io/installation/configuration)
