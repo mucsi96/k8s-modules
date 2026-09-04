@@ -242,13 +242,13 @@ resource "kubernetes_deployment_v1" "cloudbeaver" {
             name           = "http"
           }
 
-          # CloudBeaver is a JVM app that settles around 286Mi; the request
-          # keeps it Burstable (not first in line for eviction) and the limit
-          # caps heap growth well below node pressure.
+          # CloudBeaver is a JVM app; observed usage settles around 220Mi. The
+          # request keeps it Burstable (not first in line for eviction) and the
+          # limit caps heap growth well below node pressure.
           resources {
             requests = {
               cpu    = "10m"
-              memory = "320Mi"
+              memory = "256Mi"
             }
             limits = {
               memory = "512Mi"

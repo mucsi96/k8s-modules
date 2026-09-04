@@ -186,7 +186,7 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
       resources = {
         requests = {
           cpu    = "10m"
-          memory = "48Mi"
+          memory = "64Mi"
         }
         limits = {
           memory = "128Mi"
@@ -218,10 +218,11 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
             }
           }
         }
+        # Sized from observed usage (~52m / ~459Mi).
         resources = {
           requests = {
-            cpu    = "50m"
-            memory = "256Mi"
+            cpu    = "60m"
+            memory = "512Mi"
           }
           limits = {
             memory = "1Gi"
@@ -240,10 +241,11 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
         extraArgs = {
           "promscrape.streamParse" = "true"
         }
+        # Sized from observed usage (~25m / ~139Mi).
         resources = {
           requests = {
-            cpu    = "10m"
-            memory = "64Mi"
+            cpu    = "25m"
+            memory = "160Mi"
           }
           limits = {
             memory = "512Mi"
@@ -428,13 +430,13 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
           }
         }
       }
-      # Grafana's working set grew to ~385Mi (dashboards, plugins, image
-      # rendering); keep the request at observed usage and the limit a
-      # comfortable margin above it.
+      # Sized from observed usage (~59m / ~286Mi): the working set settled
+      # back down after the dashboard/plugin churn, so the request tracks it
+      # again and the limit stays a comfortable margin above.
       resources = {
         requests = {
-          cpu    = "50m"
-          memory = "384Mi"
+          cpu    = "60m"
+          memory = "288Mi"
         }
         limits = {
           memory = "640Mi"
