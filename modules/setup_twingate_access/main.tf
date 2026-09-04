@@ -1,5 +1,5 @@
 # Twingate access layer: who and what can reach the cluster through Twingate.
-# Needs the server's address/port, so it is created after provision_hetzner_server
+# Needs the server's address/port, so it is created after provision_server
 # (via field references — never a module-level depends_on, which would form a
 # cycle with the ssh_ready_wait_for edge back into that module).
 
@@ -36,7 +36,7 @@ resource "twingate_resource" "k8s_api" {
     allow_icmp = false
     tcp = {
       policy = "RESTRICTED"
-      ports  = ["16443"]
+      ports  = [tostring(var.k8s_port)]
     }
     udp = {
       policy = "DENY_ALL"

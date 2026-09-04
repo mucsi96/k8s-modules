@@ -1,4 +1,4 @@
-# Common Ansible vars: SSH via the agent loaded by provision_hetzner_server.
+# Common Ansible vars: SSH via the agent loaded by provision_server.
 # StrictHostKeyChecking=no is intentional — the host IP comes back from the
 # Hetzner Cloud API over TLS seconds before the first connect, so first-connect
 # host-key verification adds plumbing without practical security.

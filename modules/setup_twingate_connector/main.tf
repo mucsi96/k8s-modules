@@ -1,5 +1,5 @@
 # Twingate remote network plus the host-level connector. The connector is
-# installed on the Hetzner host itself by provision_hetzner_server's cloud-init
+# installed on the Hetzner host itself by provision_server's cloud-init
 # (systemd unit twingate-connector), not as an in-cluster Helm release, so that
 # SSH and the K8s API stay reachable through Twingate even when the cluster is
 # broken. These resources must exist before hcloud_server so the tokens can be

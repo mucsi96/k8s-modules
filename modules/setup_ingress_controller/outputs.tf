@@ -1,9 +1,9 @@
-output "traefik_namespace" {
+output "ingress_controller_namespace" {
   value       = kubernetes_namespace_v1.traefik.metadata[0].name
-  description = "Traefik namespace name"
+  description = "Namespace containing the ingress controller."
 }
 
-output "traefik_ready" {
+output "ingress_controller_ready" {
   value       = helm_release.traefik.status
-  description = "Traefik Helm release status to ensure it's ready"
+  description = "Ingress controller readiness token for downstream ordering."
 }
