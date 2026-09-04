@@ -1,6 +1,6 @@
 # Cloudflare Origin CA certificate served by Traefik. Only the Cloudflare
 # edge trusts this CA, which is fine: with the proxied DNS record and the
-# hcloud firewall, the edge is the only client that ever reaches port 443.
+# Netcup firewall, the edge is the only client that reaches public port 443.
 # 5475 days (15 years) is the maximum validity, so no renewal automation is
 # needed.
 
@@ -51,7 +51,7 @@ resource "cloudflare_origin_ca_certificate" "origin" {
 resource "kubernetes_secret_v1" "origin_tls" {
   metadata {
     name      = "cloudflare-origin-tls"
-    namespace = kubernetes_namespace_v1.traefik.metadata[0].name
+    namespace = kubernetes_namespace_v1.gateway.metadata[0].name
   }
 
   type = "kubernetes.io/tls"

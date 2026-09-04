@@ -42,3 +42,12 @@ variable "wait_for" {
   type        = string
   default     = null
 }
+
+variable "gateway_parent_ref" {
+  description = "Shared ingress Gateway reference from setup_ingress_controller.gateway_parent_ref."
+  type = object({
+    name         = string
+    namespace    = string
+    section_name = string
+  })
+}

@@ -8,10 +8,6 @@ terraform {
       source = "gavinbunney/kubectl"
     }
 
-    helm = {
-      source = "hashicorp/helm"
-    }
-
     tls = {
       source = "hashicorp/tls"
     }

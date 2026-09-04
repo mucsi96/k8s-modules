@@ -1,9 +1,9 @@
 # Twingate remote network plus the host-level connector. The connector is
-# installed on the Hetzner host itself by provision_server's cloud-init
+# installed on the Netcup host by provision_server's image bootstrap script
 # (systemd unit twingate-connector), not as an in-cluster Helm release, so that
 # SSH and the K8s API stay reachable through Twingate even when the cluster is
-# broken. These resources must exist before hcloud_server so the tokens can be
-# baked into the server's user_data — hence this module is created first and
+# broken. These resources must exist before the Debian installation so their
+# tokens can be included in the custom script; this module is created first and
 # takes no input from the server.
 resource "twingate_remote_network" "home_cluster" {
   name     = "${var.environment_name} cluster"

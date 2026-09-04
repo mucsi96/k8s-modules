@@ -1,0 +1,201 @@
+# Installs a pinned k3s release on Debian 13 and exports its admin credentials.
+- name: Install k3s
+  hosts: all
+  gather_facts: true
+  become: true
+
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    k3s_config_path: /etc/rancher/k3s/config.yaml
+    auth_config_path: /etc/rancher/k3s/authentication-config.yaml
+
+  pre_tasks:
+    - name: Ensure target is Debian 13
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == "Debian"
+          - ansible_distribution_major_version == "13"
+        fail_msg: "k3s installation is supported only on Debian 13 (Trixie)"
+
+  tasks:
+    - name: Create k3s configuration directory
+      ansible.builtin.file:
+        path: /etc/rancher/k3s
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Write API server structured authentication configuration
+      ansible.builtin.copy:
+        dest: "{{ auth_config_path }}"
+        owner: root
+        group: root
+        mode: "0600"
+        content: |
+          apiVersion: apiserver.config.k8s.io/v1
+          kind: AuthenticationConfiguration
+          jwt:
+            - issuer:
+                url: {{ oidc_issuer_url | to_json }}
+                audiences:
+                  - {{ apiserver_client_id | to_json }}
+              claimMappings:
+                username:
+                  expression: claims.oid
+      notify: Restart k3s
+
+    - name: Write k3s server configuration
+      ansible.builtin.copy:
+        dest: "{{ k3s_config_path }}"
+        owner: root
+        group: root
+        mode: "0600"
+        content: |
+          https-listen-port: {{ k3s_api_port }}
+          write-kubeconfig-mode: "0600"
+          tls-san:
+            - {{ api_host | to_json }}
+          disable:
+            - servicelb
+          kube-apiserver-arg:
+            - service-account-issuer={{ workload_identity_issuer }}
+            - authentication-config={{ auth_config_path }}
+          kubelet-arg:
+            - resolv-conf=/run/systemd/resolve/resolv.conf
+      notify: Restart k3s
+
+    - name: Read installed k3s version
+      ansible.builtin.command: /usr/local/bin/k3s --version
+      register: installed_k3s
+      failed_when: false
+      changed_when: false
+
+    - name: Download the k3s installer
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/k3s-io/k3s/{{ k3s_version | urlencode }}/install.sh"
+        dest: /tmp/install-k3s.sh
+        mode: "0755"
+      when: installed_k3s.rc != 0 or k3s_version not in installed_k3s.stdout
+
+    # The official installer downloads the release checksum and verifies the
+    # binary before installing it.
+    - name: Install the pinned k3s release
+      ansible.builtin.command: /tmp/install-k3s.sh
+      environment:
+        INSTALL_K3S_VERSION: "{{ k3s_version }}"
+      when: installed_k3s.rc != 0 or k3s_version not in installed_k3s.stdout
+
+    - name: Apply pending k3s configuration changes
+      ansible.builtin.meta: flush_handlers
+
+    - name: Ensure k3s is enabled and running
+      ansible.builtin.systemd_service:
+        name: k3s
+        enabled: true
+        state: started
+
+    - name: Wait for the k3s API ready endpoint
+      ansible.builtin.command: /usr/local/bin/k3s kubectl get --raw=/readyz
+      register: k3s_ready
+      retries: 120
+      delay: 5
+      until: k3s_ready.rc == 0
+      changed_when: false
+
+    - name: Wait for the node to become ready
+      ansible.builtin.command: /usr/local/bin/k3s kubectl wait --for=condition=Ready node --all --timeout=600s
+      changed_when: false
+
+    - name: Wait for the k3s Helm controller API
+      ansible.builtin.command: /usr/local/bin/k3s kubectl wait --for=condition=Established customresourcedefinition/helmchartconfigs.helm.cattle.io --timeout=600s
+      changed_when: false
+
+    - name: Wait for bundled Traefik Gateway API definitions
+      ansible.builtin.command: /usr/local/bin/k3s kubectl wait --for=condition=Established customresourcedefinition/gateways.gateway.networking.k8s.io --timeout=600s
+      changed_when: false
+
+    - name: Read k3s admin kubeconfig
+      ansible.builtin.slurp:
+        src: /etc/rancher/k3s/k3s.yaml
+      register: k3s_config
+
+    - name: Parse k3s admin kubeconfig
+      ansible.builtin.set_fact:
+        kubeconfig_data: "{{ k3s_config.content | ansible.builtin.b64decode | from_yaml }}"
+
+    - name: Replace loopback API endpoint in kubeconfig
+      ansible.builtin.set_fact:
+        kubeconfig_cluster: "{{ kubeconfig_data.clusters[0] | combine({'cluster': kubeconfig_data.clusters[0].cluster | combine({'server': 'https://' ~ api_host ~ ':' ~ k3s_api_port})}) }}"
+
+    - name: Render externally reachable kubeconfig
+      ansible.builtin.set_fact:
+        kubeconfig_data: "{{ kubeconfig_data | combine({'clusters': [kubeconfig_cluster]}) }}"
+        kubeconfig_yaml: "{{ (kubeconfig_data | combine({'clusters': [kubeconfig_cluster]})) | to_nice_yaml(indent=2, sort_keys=false) }}"
+
+    - name: Save k8s-config to Azure Key Vault
+      azure.azcollection.azure_rm_keyvaultsecret:
+        secret_name: k8s-config
+        secret_value: "{{ kubeconfig_yaml }}"
+        keyvault_uri: "https://{{ azure_key_vault_name }}.vault.azure.net"
+        subscription_id: "{{ azure_subscription_id }}"
+        auth_source: cli
+      delegate_to: localhost
+      become: false
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
+
+    - name: Save k8s-host to Azure Key Vault
+      azure.azcollection.azure_rm_keyvaultsecret:
+        secret_name: k8s-host
+        secret_value: "{{ kubeconfig_data.clusters[0].cluster.server }}"
+        keyvault_uri: "https://{{ azure_key_vault_name }}.vault.azure.net"
+        subscription_id: "{{ azure_subscription_id }}"
+        auth_source: cli
+      delegate_to: localhost
+      become: false
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
+
+    - name: Save k8s-client-certificate to Azure Key Vault
+      azure.azcollection.azure_rm_keyvaultsecret:
+        secret_name: k8s-client-certificate
+        secret_value: "{{ kubeconfig_data.users[0].user['client-certificate-data'] | ansible.builtin.b64decode }}"
+        keyvault_uri: "https://{{ azure_key_vault_name }}.vault.azure.net"
+        subscription_id: "{{ azure_subscription_id }}"
+        auth_source: cli
+      delegate_to: localhost
+      become: false
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
+
+    - name: Save k8s-client-key to Azure Key Vault
+      azure.azcollection.azure_rm_keyvaultsecret:
+        secret_name: k8s-client-key
+        secret_value: "{{ kubeconfig_data.users[0].user['client-key-data'] | ansible.builtin.b64decode }}"
+        keyvault_uri: "https://{{ azure_key_vault_name }}.vault.azure.net"
+        subscription_id: "{{ azure_subscription_id }}"
+        auth_source: cli
+      delegate_to: localhost
+      become: false
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
+
+    - name: Save k8s-cluster-ca-certificate to Azure Key Vault
+      azure.azcollection.azure_rm_keyvaultsecret:
+        secret_name: k8s-cluster-ca-certificate
+        secret_value: "{{ kubeconfig_data.clusters[0].cluster['certificate-authority-data'] | ansible.builtin.b64decode }}"
+        keyvault_uri: "https://{{ azure_key_vault_name }}.vault.azure.net"
+        subscription_id: "{{ azure_subscription_id }}"
+        auth_source: cli
+      delegate_to: localhost
+      become: false
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
+
+  handlers:
+    - name: Restart k3s
+      ansible.builtin.systemd_service:
+        name: k3s
+        state: restarted
+      when: installed_k3s is defined and installed_k3s.rc == 0

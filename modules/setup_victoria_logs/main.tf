@@ -105,7 +105,7 @@ resource "helm_release" "alloy" {
       }
       # The chart mounts /var/log from the host into the Alloy container so
       # loki.source.file can read /var/log/pods/*. dockercontainers stays
-      # off; MicroK8s uses containerd, not docker, and pod log symlinks under
+      # off; k3s uses containerd, not docker, and pod log symlinks under
       # /var/log/pods already point at the right files.
       mounts = {
         varlog           = true
@@ -320,9 +320,11 @@ resource "kubectl_manifest" "faro_httproute" {
     }
     spec = {
       parentRefs = [{
-        name        = "traefik"
-        namespace   = "traefik"
-        sectionName = "websecure"
+        group       = "gateway.networking.k8s.io"
+        kind        = "Gateway"
+        name        = var.gateway_parent_ref.name
+        namespace   = var.gateway_parent_ref.namespace
+        sectionName = var.gateway_parent_ref.section_name
       }]
       hostnames = [var.faro_hostname]
       rules = [{
