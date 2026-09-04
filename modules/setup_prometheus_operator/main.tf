@@ -183,6 +183,8 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
     # Resources of the victoria-metrics-operator subchart deployment (top-level
     # `resources` key in that chart; the `operator` block only holds feature flags).
     "victoria-metrics-operator" = {
+      # Keep the pre-delete cleanup hook's label below Kubernetes' 63-byte limit.
+      fullnameOverride = "vm-operator"
       resources = {
         requests = {
           cpu    = "10m"

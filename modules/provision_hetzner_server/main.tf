@@ -33,15 +33,12 @@ resource "hcloud_server" "this" {
 
 # Loads the generated private key into the caller's ssh-agent. The key is
 # piped via stdin from an env var, so it never touches the local filesystem.
-# The agent (and therefore SSH_AUTH_SOCK) must be started by the caller, e.g.
-# `eval "$(ssh-agent -s)"` in scripts/create.sh, before `terraform apply`.
+# The agent (and therefore SSH_AUTH_SOCK) must be started by the consumer before
+# `terraform apply`, for example with `eval "$(ssh-agent -s)"`.
 #
-# triggers_replace only watches tls_private_key.user.id. The wrapper
-# scripts/create.sh now pre-loads the key from Key Vault into ssh-agent on
-# every invocation, so the agent already has the key by the time terraform
-# runs and we do not need to re-trigger this resource on every fresh
-# SSH_AUTH_SOCK. The provisioner still exists to handle the very first apply,
-# when the key has not yet been mirrored to Key Vault.
+# triggers_replace only watches tls_private_key.user.id. On later invocations,
+# consumer automation must load the persisted key into a fresh ssh-agent before
+# Terraform runs. The provisioner handles the first apply.
 resource "terraform_data" "ssh_agent_loaded" {
   triggers_replace = {
     key_id = tls_private_key.user.id
@@ -55,8 +52,7 @@ resource "terraform_data" "ssh_agent_loaded" {
     command = <<-EOT
       set -euo pipefail
       if [ -z "$${SSH_AUTH_SOCK:-}" ]; then
-        echo "SSH_AUTH_SOCK is not set. Run terraform via scripts/create.sh, or" >&2
-        echo "start an ssh-agent yourself before applying:" >&2
+        echo "SSH_AUTH_SOCK is not set. Start an ssh-agent before applying:" >&2
         echo "    eval \"\$(ssh-agent -s)\"" >&2
         exit 1
       fi
@@ -81,13 +77,12 @@ resource "terraform_data" "ssh_ready" {
     environment = {
       HOST     = hcloud_server.this.ipv4_address
       SSH_PORT = tostring(random_integer.ssh_port.result)
-      # Folding the Twingate SSH resource ID into the environment (a value that
-      # cannot be known until twingate_resource.ssh exists) is what actually
-      # serializes the keyscan poll after the resource is created — the poll
-      # now reaches sshd only through Twingate. Same data-flow ordering trick
-      # documented for wait_for in setup_cluster/main.tf. NOT in
-      # triggers_replace, so it does not churn the resource on its own.
-      TWINGATE_SSH_RESOURCE = coalesce(var.ssh_ready_wait_for, "")
+      # Folding the Twingate access resource IDs into the environment (values
+      # that are unknown until both resources exist) serializes the keyscan poll
+      # after Twingate access is ready. The reverse dependency keeps that access
+      # alive during cluster teardown. NOT in triggers_replace, so it does not
+      # churn the resource on its own.
+      TWINGATE_ACCESS_RESOURCES = coalesce(var.ssh_ready_wait_for, "")
     }
     command = <<-EOT
       set -euo pipefail

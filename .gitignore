@@ -1,6 +1,8 @@
-terraform.tfstate
-terraform.tfstate.backup
+*.tfstate
+*.tfstate.*
+*.tfplan
 tfplan
+.terraform.lock.hcl
 .terraform/
 .kube/
 backend.tf
