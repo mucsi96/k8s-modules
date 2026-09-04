@@ -12,9 +12,27 @@ resource "random_integer" "ssh_port" {
 }
 
 locals {
+  netcup_client_id = "scp"
+  netcup_token_url = "https://www.servercontrolpanel.de/realms/scp/protocol/openid-connect/token"
+}
+
+data "external" "netcup_token" {
+  program = ["bash", "${path.module}/netcup_auth.sh"]
+
+  query = {
+    client_id     = local.netcup_client_id
+    token_url     = local.netcup_token_url
+    refresh_token = var.netcup_refresh_token
+  }
+}
+
+locals {
+  netcup_access_token  = sensitive(data.external.netcup_token.result.access_token)
+  netcup_refresh_token = sensitive(data.external.netcup_token.result.refresh_token)
+
   netcup_headers = {
     Accept        = "application/json"
-    Authorization = "Bearer ${var.netcup_access_token}"
+    Authorization = "Bearer ${local.netcup_access_token}"
   }
 
   bootstrap_script = templatefile("${path.module}/bootstrap.sh.tftpl", {
@@ -132,14 +150,18 @@ resource "terraform_data" "debian_install" {
   provisioner "local-exec" {
     interpreter = ["/bin/bash", "-c"]
     environment = {
-      NETCUP_API_URL        = trimsuffix(var.netcup_api_url, "/")
-      NETCUP_TOKEN          = var.netcup_access_token
-      NETCUP_USER_ID        = tostring(var.netcup_user_id)
-      SERVER_ID             = tostring(var.netcup_server_id)
-      SSH_KEY_BODY          = local.ssh_key_body
-      INSTALL_APPROVAL_NAME = local.install_approval_name
-      INSTALL_APPROVAL_BODY = local.install_approval_body
-      IMAGE_BODY            = local.image_body
+      NETCUP_API_URL          = trimsuffix(var.netcup_api_url, "/")
+      NETCUP_CLIENT_ID        = local.netcup_client_id
+      NETCUP_TOKEN_URL        = local.netcup_token_url
+      NETCUP_TOKEN            = local.netcup_access_token
+      NETCUP_TOKEN_REFRESH_AT = data.external.netcup_token.result.refresh_at
+      NETCUP_REFRESH_TOKEN    = local.netcup_refresh_token
+      NETCUP_USER_ID          = tostring(var.netcup_user_id)
+      SERVER_ID               = tostring(var.netcup_server_id)
+      SSH_KEY_BODY            = local.ssh_key_body
+      INSTALL_APPROVAL_NAME   = local.install_approval_name
+      INSTALL_APPROVAL_BODY   = local.install_approval_body
+      IMAGE_BODY              = local.image_body
     }
     command = "bash \"${path.module}/netcup_api.sh\" install"
   }

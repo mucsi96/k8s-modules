@@ -18,10 +18,15 @@ variable "netcup_user_id" {
   type        = number
 }
 
-variable "netcup_access_token" {
-  description = "Short-lived SCP OpenID Connect bearer token. Obtain and refresh it outside Terraform."
+variable "netcup_refresh_token" {
+  description = "Long-lived SCP OAuth2 refresh token loaded and persisted by the caller's secret store."
   type        = string
   sensitive   = true
+
+  validation {
+    condition     = length(trimspace(var.netcup_refresh_token)) > 0
+    error_message = "netcup_refresh_token must be non-empty."
+  }
 }
 
 variable "netcup_api_url" {

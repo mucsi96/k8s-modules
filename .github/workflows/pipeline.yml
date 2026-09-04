@@ -43,7 +43,9 @@ jobs:
             ansible-playbook --syntax-check -i 'localhost,' "$playbook"
           done
       - name: Netcup helper syntax check
-        run: bash -n modules/provision_server/netcup_api.sh
+        run: bash -n modules/provision_server/netcup_api.sh modules/provision_server/netcup_auth.sh modules/provision_server/test_netcup_auth.sh
+      - name: Netcup authentication helper test
+        run: bash modules/provision_server/test_netcup_auth.sh
 
   release:
     runs-on: ubuntu-latest
