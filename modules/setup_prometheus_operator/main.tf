@@ -209,6 +209,11 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
           # byte count (10 * 1024^3) — Kubernetes-style quantities like
           # "10Gi" fail to parse and crash-loop the container on startup.
           "storage.minFreeDiskSpaceBytes" = "10737418240"
+          # Caps the share of the container's memory limit VM may use for
+          # caches/index blocks (default 60%). Most of the ~460Mi working set
+          # was cache, so dropping to 40% trims idle RAM without touching
+          # ingestion; the trade-off is slightly more frequent cache misses.
+          "memory.allowedPercent" = "40"
         }
         storage = {
           accessModes = ["ReadWriteOnce"]
@@ -345,10 +350,12 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
             }
           }
         }
+        # Sized from observed usage (~10m / ~52Mi): the request tracks the
+        # real working set instead of the previous 128Mi guess.
         resources = {
           requests = {
             cpu    = "10m"
-            memory = "128Mi"
+            memory = "64Mi"
           }
           limits = {
             memory = "512Mi"
