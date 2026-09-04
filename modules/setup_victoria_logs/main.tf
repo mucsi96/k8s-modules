@@ -3,7 +3,7 @@ locals {
   faro_alloy_release = "faro"
   faro_port          = 12347
   # Loki-compatible ingestion endpoint of the VLSingle deployed by
-  # setup_prometheus_operator. VictoriaLogs speaks the Loki push API under
+  # setup_victoria_metrics. VictoriaLogs speaks the Loki push API under
   # /insert/loki/api/v1/push, so Alloy's loki.write blocks only need this URL.
   victoria_logs_push_url = "${var.victoria_logs_url}/insert/loki/api/v1/push"
 }
@@ -336,4 +336,3 @@ resource "kubectl_manifest" "faro_httproute" {
 
   depends_on = [helm_release.faro_alloy]
 }
-

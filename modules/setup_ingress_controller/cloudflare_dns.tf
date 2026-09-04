@@ -13,11 +13,6 @@ resource "cloudflare_dns_record" "wildcard" {
   proxied = true
 }
 
-moved {
-  from = cloudflare_dns_record.cname_record
-  to   = cloudflare_dns_record.wildcard
-}
-
 # Full (strict): the edge only accepts an origin certificate signed by a CA
 # it trusts — the Origin CA certificate from origin_certificate.tf.
 resource "cloudflare_zone_setting" "ssl" {

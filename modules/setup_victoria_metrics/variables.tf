@@ -4,12 +4,6 @@ variable "grafana_hostname" {
   sensitive   = true
 }
 
-variable "prometheus_hostname" {
-  description = "Public hostname where the Prometheus UI is exposed (e.g. prometheus.example.com)"
-  type        = string
-  sensitive   = true
-}
-
 variable "victoria_metrics_k8s_stack_chart_version" {
   description = "Helm chart version for VictoriaMetrics/helm-charts victoria-metrics-k8s-stack. The chart pins compatible versions of the VictoriaMetrics operator, VMSingle, VMAgent, VMAlert, Grafana, node-exporter and kube-state-metrics, so only the chart version is exposed here."
   type        = string
@@ -31,19 +25,8 @@ variable "grafana_client_secret" {
   sensitive   = true
 }
 
-variable "prometheus_client_id" {
-  description = "OIDC client ID of the Entra application used by Prometheus's oauth2-proxy"
-  type        = string
-}
-
-variable "prometheus_client_secret" {
-  description = "OIDC client secret of the Entra application used by Prometheus's oauth2-proxy"
-  type        = string
-  sensitive   = true
-}
-
 variable "valid_email" {
-  description = "Email address allowed to sign in to the Grafana and Prometheus dashboards"
+  description = "Email address allowed to sign in to Grafana"
   type        = string
   sensitive   = true
 }

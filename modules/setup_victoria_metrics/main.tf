@@ -3,14 +3,9 @@ locals {
   # Service created by the chart for the Grafana subchart.
   grafana_service_name = "${local.release_name}-grafana"
   grafana_port         = 80
-  # Service created by the VM operator for the VMSingle instance, exposing
-  # vmui (VictoriaMetrics' query UI) on the single-node HTTP port. It replaces
-  # the Prometheus UI as the monitoring backend behind the "prometheus" host.
-  prometheus_service_name = "vmsingle-${local.release_name}"
-  prometheus_port         = 8428
-  email_header_name       = "X-Auth-Request-Email"
-  grafana_db_user         = "grafana"
-  grafana_db_schema       = "grafana"
+  email_header_name    = "X-Auth-Request-Email"
+  grafana_db_user      = "grafana"
+  grafana_db_schema    = "grafana"
 
   # Grafana's server-admin account. Pinned here rather than left to the grafana
   # subchart's random adminPassword (regenerated on every from-scratch install)
@@ -166,8 +161,8 @@ resource "kubernetes_job_v1" "grafana_database_init" {
 # The VM operator converts Prometheus Operator objects (ServiceMonitor,
 # PodMonitor, ...) into its own VMServiceScrape / VMPodMonitor equivalents, so
 # the ServiceMonitors shipped by postgres-db, Loki and the app modules keep
-# working untouched — that is why the Prometheus Operator CRDs must still be
-# installed first (setup_prometheus_operator_crds) and stay in place.
+# working untouched - that is why the monitoring CRDs must still be installed
+# first (setup_monitoring_crds) and stay in place.
 # crds.plain (default true) installs the VictoriaMetrics operator CRDs as part
 # of this release; the Prometheus CRDs are NOT removed by it.
 resource "helm_release" "victoria_metrics_k8s_stack" {
@@ -542,23 +537,6 @@ module "grafana_oauth2_proxy" {
   depends_on = [helm_release.victoria_metrics_k8s_stack]
 }
 
-module "prometheus_oauth2_proxy" {
-  source = "../setup_oauth2_proxy"
-
-  name                       = "prometheus"
-  namespace                  = kubernetes_namespace_v1.monitoring.metadata[0].name
-  client_id                  = var.prometheus_client_id
-  client_secret              = var.prometheus_client_secret
-  tenant_id                  = var.tenant_id
-  valid_email                = var.valid_email
-  oauth2_proxy_chart_version = var.oauth2_proxy_chart_version
-  oauth2_proxy_image_version = var.oauth2_proxy_image_version
-  upstream_uri               = "http://${local.prometheus_service_name}.${kubernetes_namespace_v1.monitoring.metadata[0].name}.svc.cluster.local:${local.prometheus_port}"
-  session_redis              = var.session_redis
-
-  depends_on = [helm_release.victoria_metrics_k8s_stack]
-}
-
 resource "kubectl_manifest" "grafana_httproute" {
   yaml_body = yamlencode({
     apiVersion = "gateway.networking.k8s.io/v1"
@@ -584,31 +562,4 @@ resource "kubectl_manifest" "grafana_httproute" {
   })
 
   depends_on = [module.grafana_oauth2_proxy]
-}
-
-resource "kubectl_manifest" "prometheus_httproute" {
-  yaml_body = yamlencode({
-    apiVersion = "gateway.networking.k8s.io/v1"
-    kind       = "HTTPRoute"
-    metadata = {
-      name      = "prometheus"
-      namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
-    }
-    spec = {
-      parentRefs = [{
-        name        = "traefik"
-        namespace   = "traefik"
-        sectionName = "websecure"
-      }]
-      hostnames = [var.prometheus_hostname]
-      rules = [{
-        backendRefs = [{
-          name = module.prometheus_oauth2_proxy.service_name
-          port = 80
-        }]
-      }]
-    }
-  })
-
-  depends_on = [module.prometheus_oauth2_proxy]
 }

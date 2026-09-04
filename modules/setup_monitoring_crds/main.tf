@@ -4,7 +4,7 @@ resource "terraform_data" "wait_for" {
 
 # Install the Prometheus Operator CRDs (ServiceMonitor, PodMonitor,
 # PrometheusRule, ...) on their own, ahead of any chart that ships those
-# resources. The full kube-prometheus-stack (setup_prometheus_operator) cannot
+# resources. The full VictoriaMetrics stack (setup_victoria_metrics) cannot
 # do this job early: it depends on the shared Postgres for Grafana's metadata,
 # so it must run after create_postgres_database. But the postgres-db chart now
 # ships a ServiceMonitor, which needs these CRDs to already exist. Installing
@@ -14,7 +14,7 @@ resource "terraform_data" "wait_for" {
 #
 # The chart contains only cluster-scoped CRDs, so the release is parked in
 # kube-system (which always exists) to avoid contending for ownership of the
-# monitoring namespace that setup_prometheus_operator manages.
+# monitoring namespace that setup_victoria_metrics manages.
 resource "helm_release" "prometheus_operator_crds" {
   name       = "prometheus-operator-crds"
   repository = "https://prometheus-community.github.io/helm-charts"

@@ -1,11 +1,5 @@
 # Dedicated Entra application that the kube-apiserver trusts as its OIDC
-# audience. Deliberately separate from cluster_monitor (the Headlamp
-# dashboard's OIDC client): if those were the same app, an id_token leaked
-# from oauth2-proxy's browser session would be a valid Bearer for the
-# apiserver as the signed-in user — and that user has cluster-admin via
-# the oidc_human_admin binding. With the apps split, the dashboard's
-# id_token has aud = cluster_monitor and is rejected by the apiserver
-# (--oidc-client-id = apiserver below).
+# audience.
 #
 # kubelogin sets --server-id to this app's client_id so the tokens it mints
 # carry aud = apiserver. user.impersonation is exposed and Azure CLI is
