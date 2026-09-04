@@ -412,16 +412,7 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
           }
         }
       }
-      # The kiwigrid/k8s-sidecar containers (dashboards + datasources) talk
-      # to the kube-apiserver over HTTPS using the in-cluster CA. MicroK8s'
-      # CA cert is missing the keyUsage extension, which Python 3.14 +
-      # OpenSSL 3 rejects ("CA cert does not include key usage extension"),
-      # so the sidecars CrashLoopBackOff and the pod stays NotReady. The
-      # API call stays inside the pod network on every node, so skipping
-      # verification only widens the trust boundary to "anything that can
-      # already reach the kube-apiserver", which is acceptable here.
       sidecar = {
-        skipTlsVerify = true
         # Applies to both kiwigrid/k8s-sidecar containers (sc-dashboard and
         # sc-datasources); each idles around 80Mi watching ConfigMaps.
         resources = {
@@ -547,9 +538,11 @@ resource "kubectl_manifest" "grafana_httproute" {
     }
     spec = {
       parentRefs = [{
-        name        = "traefik"
-        namespace   = "traefik"
-        sectionName = "websecure"
+        group       = "gateway.networking.k8s.io"
+        kind        = "Gateway"
+        name        = var.gateway_parent_ref.name
+        namespace   = var.gateway_parent_ref.namespace
+        sectionName = var.gateway_parent_ref.section_name
       }]
       hostnames = [var.grafana_hostname]
       rules = [{

@@ -1,0 +1,106 @@
+- name: Publish k3s workload identity OIDC documents
+  hosts: all
+  gather_facts: false
+
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
+  tasks:
+    - name: Create a temporary file for the public key
+      ansible.builtin.tempfile:
+        suffix: ".pub"
+        state: file
+      register: publickey_tmp
+      delegate_to: localhost
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
+
+    - name: Read the k3s service account public key
+      community.crypto.openssl_publickey:
+        privatekey_path: /var/lib/rancher/k3s/server/tls/service.key
+        path: /var/lib/rancher/k3s/server/tls/service.pub
+        return_content: true
+      register: publickey_result
+      become: true
+
+    - name: Write the public key to the controller
+      ansible.builtin.copy:
+        dest: "{{ publickey_tmp.path }}"
+        content: "{{ publickey_result.publickey }}"
+        mode: "0600"
+      delegate_to: localhost
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
+
+    - name: Create a temporary file for JWKS
+      ansible.builtin.tempfile:
+        suffix: ".json"
+        state: file
+      register: jwks_tmp
+      delegate_to: localhost
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
+
+    - name: Generate JWKS document
+      ansible.builtin.command:
+        argv:
+          - azwi
+          - jwks
+          - --public-keys
+          - "{{ publickey_tmp.path }}"
+          - --output-file
+          - "{{ jwks_tmp.path }}"
+      changed_when: true
+      delegate_to: localhost
+
+    - name: Build OIDC discovery document
+      ansible.builtin.copy:
+        dest: "{{ publickey_tmp.path }}.json"
+        mode: "0600"
+        content: >-
+          {{ {
+            'issuer': issuer,
+            'jwks_uri': issuer ~ 'openid/v1/jwks',
+            'response_types_supported': ['id_token'],
+            'subject_types_supported': ['public'],
+            'id_token_signing_alg_values_supported': ['RS256']
+          } | to_nice_json }}
+      delegate_to: localhost
+
+    - name: Upload discovery document
+      azure.azcollection.azure_rm_storageblob:
+        resource_group: "{{ resource_group }}"
+        storage_account_name: "{{ storage_account_name }}"
+        container: "$web"
+        blob: ".well-known/openid-configuration"
+        src: "{{ publickey_tmp.path }}.json"
+        content_type: application/json
+        force: true
+        auth_mode: login
+      delegate_to: localhost
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
+
+    - name: Upload JWKS document
+      azure.azcollection.azure_rm_storageblob:
+        resource_group: "{{ resource_group }}"
+        storage_account_name: "{{ storage_account_name }}"
+        container: "$web"
+        blob: "openid/v1/jwks"
+        src: "{{ jwks_tmp.path }}"
+        content_type: application/json
+        force: true
+        auth_mode: login
+      delegate_to: localhost
+      vars:
+        ansible_python_interpreter: "{{ local_python_interpreter }}"
+
+    - name: Remove controller temporary files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ publickey_tmp.path }}"
+        - "{{ publickey_tmp.path }}.json"
+        - "{{ jwks_tmp.path }}"
+      delegate_to: localhost

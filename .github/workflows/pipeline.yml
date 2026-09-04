@@ -17,6 +17,14 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Install Ansible dependencies
+        run: |
+          pip install -r requirements.txt
+          ansible-galaxy collection install -r requirements.yml
       - name: terraform fmt -check
         run: terraform fmt -check -diff -recursive modules
       - name: terraform validate (per module)
@@ -28,6 +36,14 @@ jobs:
             terraform -chdir="$dir" validate
             echo "::endgroup::"
           done
+      - name: Ansible syntax check
+        run: |
+          set -euo pipefail
+          for playbook in modules/setup_cluster/*.yaml; do
+            ansible-playbook --syntax-check -i 'localhost,' "$playbook"
+          done
+      - name: Netcup helper syntax check
+        run: bash -n modules/provision_server/netcup_api.sh
 
   release:
     runs-on: ubuntu-latest

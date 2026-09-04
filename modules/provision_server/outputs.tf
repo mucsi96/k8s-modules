@@ -1,45 +1,45 @@
 output "ipv4_address" {
-  description = "Public IPv4 address of the provisioned Hetzner Cloud server."
-  value       = hcloud_server.this.ipv4_address
+  description = "Primary public IPv4 address of the Netcup RS."
+  value       = local.server.ipv4Addresses[0].ip
 }
 
 output "ipv6_address" {
-  description = "Public IPv6 address of the provisioned Hetzner Cloud server."
-  value       = hcloud_server.this.ipv6_address
+  description = "Primary public IPv6 network prefix of the Netcup RS, or null when none is assigned."
+  value       = try(local.server.ipv6Addresses[0].networkPrefix, null)
 }
 
 output "username" {
-  description = "Sudo user created via cloud-init."
+  description = "Passwordless sudo user created during Debian installation."
   value       = var.username
 }
 
 output "ssh_port" {
-  description = "Custom SSH port baked into the cloud-init sshd drop-in."
+  description = "Custom SSH port configured by the Netcup installation script."
   value       = random_integer.ssh_port.result
 }
 
 output "ssh_private_key" {
-  description = "Generated SSH private key in OpenSSH format. Stored in Key Vault for ad-hoc operator SSH; the apply itself uses ssh-agent."
+  description = "Generated SSH private key in OpenSSH format."
   value       = tls_private_key.user.private_key_openssh
   sensitive   = true
 }
 
 output "ssh_public_key" {
-  description = "Generated SSH public key in OpenSSH format, installed via cloud-init."
+  description = "Generated SSH public key registered with SCP and installed on the server."
   value       = tls_private_key.user.public_key_openssh
 }
 
 output "agent_loaded" {
-  description = "Sentinel that lets downstream modules wait until the SSH key has been added to ssh-agent."
+  description = "Sentinel that lets downstream modules wait until the SSH key is loaded in ssh-agent."
   value       = terraform_data.ssh_agent_loaded.id
 }
 
 output "ssh_ready" {
-  description = "Sentinel that lets downstream modules wait until cloud-init has finished and sshd is reachable on the custom port. Transitively depends on agent_loaded."
+  description = "Sentinel produced after the Debian bootstrap marker is reachable through Twingate SSH."
   value       = terraform_data.ssh_ready.id
 }
 
 output "server_id" {
-  description = "Hetzner Cloud server ID."
-  value       = hcloud_server.this.id
+  description = "Netcup SCP server ID."
+  value       = var.netcup_server_id
 }

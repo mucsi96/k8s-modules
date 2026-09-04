@@ -1,20 +1,37 @@
 variable "host" {
-  description = "Public IPv4 address (or DNS name) of the target Hetzner Cloud server."
+  description = "Twingate-reachable public IPv4 address or DNS name of the Netcup cluster server."
   type        = string
 }
 
 variable "ssh_port" {
-  description = "SSH port the server listens on (set by cloud-init at provisioning time)."
+  description = "SSH port configured during Netcup image installation."
   type        = number
 }
 
 variable "username" {
-  description = "Sudo user on the target host. Must have NOPASSWD sudo configured by cloud-init."
+  description = "Passwordless sudo user on the Debian 13 host."
   type        = string
 }
 
+variable "k3s_version" {
+  description = "Pinned k3s release. This also pins the bundled Traefik and Metrics Server versions."
+  type        = string
+  default     = "v1.36.4+k3s1"
+}
+
+variable "k3s_api_port" {
+  description = "k3s Kubernetes API port. Use the same value for setup_twingate_access.k8s_port."
+  type        = number
+  default     = 6443
+
+  validation {
+    condition     = var.k3s_api_port >= 1 && var.k3s_api_port <= 65535
+    error_message = "k3s_api_port must be a valid TCP port."
+  }
+}
+
 variable "azure_key_vault_name" {
-  description = "Name of the Azure Key Vault to store Kubernetes secrets."
+  description = "Name of the Azure Key Vault used for Kubernetes credentials."
   type        = string
 }
 
@@ -23,34 +40,33 @@ variable "azure_subscription_id" {
   type        = string
 }
 
-
 variable "environment_name" {
-  description = "Name of the Azure Resource Group containing the Key Vault."
+  description = "Name of the Azure resource group containing the Key Vault."
   type        = string
 }
 
 variable "storage_account_name" {
-  description = "Name of the Azure Storage Account to store OIDC configuration."
+  description = "Azure Storage Account that publishes workload identity OIDC documents."
   type        = string
 }
 
 variable "azure_tenant_id" {
-  description = "Azure tenant ID used by the workload identity webhook."
+  description = "Azure tenant ID used by workload identity and API server authentication."
   type        = string
 }
 
 variable "owner" {
-  description = "Object ID of the owner for the Entra applications this module creates."
+  description = "Object ID of the owner for the Entra applications created by this module."
   type        = string
 }
 
 variable "local_python_interpreter" {
-  description = "Absolute path to the Python interpreter on the Ansible controller (localhost) that has the azure.azcollection requirements installed."
+  description = "Controller Python interpreter containing azure.azcollection requirements."
   type        = string
 }
 
 variable "wait_for" {
-  description = "Optional dependency token (e.g. provision_server.ssh_ready). Threaded through ansible_playbook.system_update.extra_vars so Terraform's data-flow tracker serializes Ansible execution behind ssh_ready — i.e. until ssh-agent has the key AND cloud-init has finished bringing sshd up on the custom port. depends_on on a terraform_data sentinel does not serialize correctly here."
+  description = "Optional provision_server.ssh_ready dependency token."
   type        = string
   default     = null
 }

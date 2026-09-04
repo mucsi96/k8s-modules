@@ -1,0 +1,46 @@
+#!/bin/bash
+set -euo pipefail
+
+username=${username}
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y ca-certificates curl gnupg openssh-server python3 sudo
+
+if ! id "$username" >/dev/null 2>&1; then
+  useradd --create-home --shell /bin/bash "$username"
+fi
+install -d -m 0700 -o "$username" -g "$username" "/home/$username/.ssh"
+printf '%s' '${ssh_public_key_base64}' | base64 --decode > "/home/$username/.ssh/authorized_keys"
+chown "$username:$username" "/home/$username/.ssh/authorized_keys"
+chmod 0600 "/home/$username/.ssh/authorized_keys"
+printf '%s ALL=(ALL) NOPASSWD:ALL\n' "$username" > "/etc/sudoers.d/$username"
+chmod 0440 "/etc/sudoers.d/$username"
+
+cat > /etc/ssh/sshd_config.d/00-k8s-modules.conf <<'EOF'
+Port ${ssh_port}
+PasswordAuthentication no
+PermitRootLogin no
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+EOF
+systemctl enable ssh.service
+systemctl restart ssh.service
+
+curl -fsSL https://packages.twingate.com/apt/gpg.key -o /tmp/twingate.gpg.key
+gpg --batch --dearmor -o /usr/share/keyrings/twingate-connector-keyring.gpg /tmp/twingate.gpg.key
+rm -f /tmp/twingate.gpg.key
+printf '%s\n' 'deb [signed-by=/usr/share/keyrings/twingate-connector-keyring.gpg] https://packages.twingate.com/apt/ /' > /etc/apt/sources.list.d/twingate.list
+apt-get update
+apt-get install -y twingate-connector
+
+install -d -m 0700 /etc/twingate
+{
+  printf 'TWINGATE_NETWORK=%s\n' "$(printf '%s' '${twingate_network_base64}' | base64 --decode)"
+  printf 'TWINGATE_ACCESS_TOKEN=%s\n' "$(printf '%s' '${twingate_access_token_base64}' | base64 --decode)"
+  printf 'TWINGATE_REFRESH_TOKEN=%s\n' "$(printf '%s' '${twingate_refresh_token_base64}' | base64 --decode)"
+} > /etc/twingate/connector.conf
+chmod 0600 /etc/twingate/connector.conf
+systemctl enable --now twingate-connector.service
+
+touch /var/lib/netcup-bootstrap-complete

@@ -1,62 +1,102 @@
 variable "server_name" {
-  description = "Name of the Hetzner Cloud server."
+  description = "Hostname assigned while installing Debian on the existing Netcup RS 1000 G12."
+  type        = string
+
+  validation {
+    condition     = length(var.server_name) <= 200 && can(regex("^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])(\\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]))*$", var.server_name))
+    error_message = "server_name must be a valid DNS hostname no longer than 200 characters."
+  }
+}
+
+variable "netcup_server_id" {
+  description = "SCP server ID of the already-contracted Netcup RS 1000 G12. The SCP API cannot order servers."
+  type        = number
+}
+
+variable "netcup_user_id" {
+  description = "SCP user ID used to manage account-level SSH keys and firewall policies."
+  type        = number
+}
+
+variable "netcup_access_token" {
+  description = "Short-lived SCP OpenID Connect bearer token. Obtain and refresh it outside Terraform."
+  type        = string
+  sensitive   = true
+}
+
+variable "netcup_api_url" {
+  description = "Netcup Server Control Panel REST API base URL."
+  type        = string
+  default     = "https://www.servercontrolpanel.de/scp-core"
+}
+
+variable "netcup_image_flavour_id" {
+  description = "Server-specific Debian 13 image flavour ID returned by GET /api/v1/servers/{id}/imageflavours."
+  type        = number
+}
+
+variable "netcup_disk_name" {
+  description = "Target disk returned by GET /api/v1/servers/{id}/disks, for example scsi0. Its contents are erased."
   type        = string
 }
 
-variable "server_type" {
-  description = "Hetzner Cloud server type. CX42 = 8 vCPU shared Intel, 16 GB RAM, 160 GB SSD (~€16/month)."
+variable "reinstall_generation" {
+  description = "Explicit non-empty approval token for the destructive Debian reinstall. Change it only to intentionally reinstall and erase the selected disk again."
   type        = string
-  default     = "cx42"
-}
+  sensitive   = true
 
-variable "location" {
-  description = "Hetzner Cloud datacenter location (e.g. fsn1, nbg1, hel1, ash, hil)."
-  type        = string
-  default     = "fsn1"
-}
-
-variable "image" {
-  description = "Operating system image. setup_cluster requires Ubuntu 24.04+."
-  type        = string
-  default     = "ubuntu-24.04"
+  validation {
+    condition     = length(trimspace(var.reinstall_generation)) > 0
+    error_message = "reinstall_generation must be non-empty to approve the destructive Netcup image installation."
+  }
 }
 
 variable "username" {
-  description = "Sudo user created via cloud-init. Authenticates with the generated SSH key and has NOPASSWD sudo."
+  description = "Passwordless sudo user created by the Netcup image installer and hardened by its custom script."
   type        = string
-  default     = "ubuntu"
-}
+  default     = "debian"
 
-variable "labels" {
-  description = "Optional labels applied to the Hetzner Cloud server."
-  type        = map(string)
-  default     = {}
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9_]{0,30}$", var.username))
+    error_message = "username must match Netcup's additionalUserUsername format."
+  }
 }
 
 variable "https_source_ips" {
-  description = "CIDRs allowed to reach port 443 — the Cloudflare edge ranges. All other inbound HTTPS is dropped by the hcloud firewall."
+  description = "Cloudflare edge CIDRs allowed to reach public TCP port 443. Any ingress rule makes Netcup's implicit ingress action DROP."
   type        = list(string)
+
+  validation {
+    condition     = length(var.https_source_ips) > 0
+    error_message = "At least one Cloudflare edge CIDR is required."
+  }
+}
+
+variable "netcup_interface_mac" {
+  description = "Optional public interface MAC. By default the first non-VLAN interface reported by the SCP API is used."
+  type        = string
+  default     = null
 }
 
 variable "twingate_network" {
-  description = "Twingate network name (e.g. 'mynetwork' from mynetwork.twingate.com). Written to the host connector config as TWINGATE_NETWORK by cloud-init."
+  description = "Twingate network name, for example 'mynetwork' from mynetwork.twingate.com."
   type        = string
 }
 
 variable "twingate_access_token" {
-  description = "Twingate host connector access token, baked into cloud-init user_data."
+  description = "Twingate host connector access token embedded in the Netcup image installation script."
   type        = string
   sensitive   = true
 }
 
 variable "twingate_refresh_token" {
-  description = "Twingate host connector refresh token, baked into cloud-init user_data."
+  description = "Twingate host connector refresh token embedded in the Netcup image installation script."
   type        = string
   sensitive   = true
 }
 
 variable "ssh_ready_wait_for" {
-  description = "Optional ordering barrier folded into the ssh_ready provisioner environment so the Twingate SSH and Kubernetes API resources exist before cluster setup and remain through cluster teardown."
+  description = "Optional ordering barrier that keeps Twingate SSH and Kubernetes API resources alive through cluster teardown."
   type        = string
   default     = null
 }

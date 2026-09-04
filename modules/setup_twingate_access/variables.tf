@@ -17,7 +17,12 @@ variable "k8s_host" {
 variable "k8s_port" {
   description = "TCP port exposed by the Kubernetes API server."
   type        = number
-  default     = 16443
+  default     = 6443
+
+  validation {
+    condition     = var.k8s_port >= 1 && var.k8s_port <= 65535
+    error_message = "k8s_port must be a valid TCP port."
+  }
 }
 
 variable "ssh_address" {
