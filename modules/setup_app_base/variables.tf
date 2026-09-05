@@ -13,6 +13,13 @@ variable "app_name" {
   type        = string
 }
 
+variable "app_secrets" {
+  description = "Application-specific secrets to write to the app Key Vault, keyed by secret name."
+  type        = map(string)
+  sensitive   = true
+  default     = {}
+}
+
 variable "azure_location" {
   description = "The Azure location to deploy resources"
   type        = string

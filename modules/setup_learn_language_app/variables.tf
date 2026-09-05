@@ -8,6 +8,42 @@ variable "azure_location" {
   type        = string
 }
 
+variable "claude_api_key" {
+  description = "Anthropic API key used by the application."
+  type        = string
+  sensitive   = true
+}
+
+variable "eleven_labs_api_key" {
+  description = "ElevenLabs API key used by the application."
+  type        = string
+  sensitive   = true
+}
+
+variable "google_ai_api_key" {
+  description = "Google AI API key used by the application."
+  type        = string
+  sensitive   = true
+}
+
+variable "ideogram_api_key" {
+  description = "Ideogram API key used by the application."
+  type        = string
+  sensitive   = true
+}
+
+variable "openai_api_key" {
+  description = "OpenAI API key used by the application."
+  type        = string
+  sensitive   = true
+}
+
+variable "xai_api_key" {
+  description = "xAI API key used by the application."
+  type        = string
+  sensitive   = true
+}
+
 variable "k8s_oidc_issuer_url" {
   description = "The OIDC issuer URL for the Kubernetes cluster"
   type        = string

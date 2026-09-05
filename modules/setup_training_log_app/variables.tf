@@ -8,6 +8,30 @@ variable "azure_location" {
   type        = string
 }
 
+variable "strava_client_id" {
+  description = "OAuth client ID for Strava."
+  type        = string
+  sensitive   = true
+}
+
+variable "strava_client_secret" {
+  description = "OAuth client secret for Strava."
+  type        = string
+  sensitive   = true
+}
+
+variable "withings_client_id" {
+  description = "OAuth client ID for Withings."
+  type        = string
+  sensitive   = true
+}
+
+variable "withings_client_secret" {
+  description = "OAuth client secret for Withings."
+  type        = string
+  sensitive   = true
+}
+
 variable "k8s_oidc_issuer_url" {
   description = "The OIDC issuer URL for the Kubernetes cluster"
   type        = string

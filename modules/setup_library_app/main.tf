@@ -5,9 +5,12 @@ locals {
 module "app_base" {
   source = "../setup_app_base"
 
-  github_repository      = "library-app"
-  environment_name       = var.environment_name
-  app_name               = "library"
+  github_repository = "library-app"
+  environment_name  = var.environment_name
+  app_name          = "library"
+  app_secrets = {
+    openai-api-key = var.openai_api_key
+  }
   azure_location         = var.azure_location
   tenant_id              = var.tenant_id
   azure_subscription_id  = var.azure_subscription_id
