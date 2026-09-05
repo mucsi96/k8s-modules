@@ -25,6 +25,22 @@ resource "azurerm_role_assignment" "allow_deploy_to_read_kv" {
   principal_id         = azuread_service_principal.github_deploy.object_id
 }
 
+data "azurerm_key_vault_secret" "app" {
+  for_each = var.app_secret_names
+
+  key_vault_id = var.master_key_vault_id
+  name         = "${var.app_name}-${each.value}"
+}
+
+resource "azurerm_key_vault_secret" "app" {
+  for_each = data.azurerm_key_vault_secret.app
+
+  key_vault_id = azurerm_key_vault.app_kv.id
+  name         = each.key
+  value        = each.value.value
+  depends_on   = [azurerm_role_assignment.allow_owner_to_manage_kv]
+}
+
 resource "azurerm_key_vault_secret" "k8s_config" {
   key_vault_id = azurerm_key_vault.app_kv.id
   name         = "k8s-config"

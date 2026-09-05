@@ -8,6 +8,11 @@ variable "azure_location" {
   type        = string
 }
 
+variable "master_key_vault_id" {
+  description = "The persistent environment Key Vault containing the app's prefixed secrets."
+  type        = string
+}
+
 variable "k8s_oidc_issuer_url" {
   description = "The OIDC issuer URL for the Kubernetes cluster"
   type        = string

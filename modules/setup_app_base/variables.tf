@@ -13,6 +13,18 @@ variable "app_name" {
   type        = string
 }
 
+variable "master_key_vault_id" {
+  description = "The persistent environment Key Vault containing app secrets prefixed with the app name."
+  type        = string
+  default     = null
+}
+
+variable "app_secret_names" {
+  description = "Secret names to copy from `<app-name>-<secret-name>` in the master Key Vault to `<secret-name>` in the app Key Vault."
+  type        = set(string)
+  default     = []
+}
+
 variable "azure_location" {
   description = "The Azure location to deploy resources"
   type        = string
