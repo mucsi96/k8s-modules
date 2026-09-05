@@ -13,9 +13,8 @@ data "twingate_groups" "everyone" {
   types = ["SYSTEM"]
 }
 
-# Service account for GitHub Actions (app deploy workflows reach the K8s API
-# through this). Token is unchanged in shape from the previous module, so the
-# TWINGATE_SERVICE_KEY GitHub/Key Vault secret flow is identical.
+# Service account for application deployment workflows to reach the Kubernetes
+# API through Twingate.
 resource "twingate_service_account" "github_actions" {
   name = "${var.environment_name}-github-actions"
 }

@@ -1,9 +1,6 @@
 module "create_namespace" {
-  source                     = "../create_app_namespace"
-  environment_name           = var.environment_name
-  k8s_namespace              = var.app_name
-  k8s_host                   = var.k8s_host
-  k8s_cluster_ca_certificate = var.k8s_cluster_ca_certificate
+  source        = "../create_app_namespace"
+  k8s_namespace = var.app_name
 }
 
 # Bind the deploy SP (github_deploy.tf) to the per-namespace Role created by
@@ -29,4 +26,3 @@ resource "kubernetes_role_binding_v1" "deploy" {
     api_group = "rbac.authorization.k8s.io"
   }
 }
-

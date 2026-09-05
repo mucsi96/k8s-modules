@@ -9,8 +9,7 @@ resource "terraform_data" "wait_for" {
 # so it must run after create_postgres_database. But the postgres-db chart now
 # ships a ServiceMonitor, which needs these CRDs to already exist. Installing
 # them from the dedicated prometheus-operator-crds chart here breaks that
-# ordering cycle; kube-prometheus-stack then runs with crds.enabled = false so
-# it does not try to template or re-own the same CRDs.
+# ordering cycle and prevents the VictoriaMetrics stack from re-owning them.
 #
 # The chart contains only cluster-scoped CRDs, so the release is parked in
 # kube-system (which always exists) to avoid contending for ownership of the

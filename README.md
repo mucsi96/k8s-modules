@@ -214,9 +214,7 @@ Twingate connector
 
 k3s is pinned by `setup_cluster.k3s_version`; the default is
 `v1.36.4+k3s1`. That release also controls bundled Traefik and Metrics Server.
-ServiceLB is disabled because Traefik binds host port 443 directly. The
-standalone `setup_metrics_server` module was removed to prevent a duplicate
-Metrics Server.
+ServiceLB is disabled because Traefik binds host port 443 directly.
 
 The Traefik controller and its `HelmChartConfig` run in `kube-system`. The
 shared Gateway and Cloudflare Origin CA secret remain in `traefik`. The ingress
@@ -231,34 +229,10 @@ and the k3s API are not publicly accepted; SSH and port 6443 use Twingate. This
 restrictive upstream policy makes Twingate use its TCP relay path rather than
 direct UDP peer-to-peer connectivity.
 
-## Migration
+## Persistence and Reinstallation
 
-This is a blue/green host migration. Do not replace the old Hetzner module in a
-state where destroying it would remove the only copy of retained data. Keep the
-old host in a separate module instance or state until validation is complete.
-Use a separate Key Vault and workload-identity storage account for the new
-cluster during overlap so its fixed secret/blob names do not invalidate rollback.
-
-1. Order the Netcup RS 1000 G12 and collect the SCP API identifiers.
-2. Add the new module instances with `k8s_port = 6443`; review the explicit disk
-   and Debian image validation before applying.
-3. Remove `traefik_chart_version`, `traefik_version`, and the complete
-   `setup_metrics_server` module block from the consumer.
-4. Pass `gateway_parent_ref` to `setup_victoria_metrics` and
-   `setup_victoria_logs`.
-5. Back up and transfer `/data/database`, `/data/redis`, `/data/hello`,
-   `/data/learn-language`, `/data/training-log`, `/data/party`, `/data/library`,
-   `/data/expense-tracker`, and `/data/cooking` while writes are stopped.
-6. Restore ownership and permissions, then apply all in-cluster modules to the
-   new k3s endpoint. Keep `setup_ingress_controller.origin_ipv4` set to the old
-   host until the cutover plan; use a temporary test hostname if edge validation
-   is required first.
-7. Change `origin_ipv4` to the new host only after private access, identity,
-   ingress, persistence, metrics, logs, and applications pass verification.
-8. Keep the old host and a DNS rollback path until the cutover is accepted.
-
-The static host-path PVs do not migrate data. Use database-consistent backups
-and verify each PV/PVC binds to its intended path before permitting writes.
+Use database-consistent backups and verify each static host-path PV/PVC binds
+to its intended path before permitting writes after a restore.
 Changing `reinstall_generation` after resources exist requires destroying the
 in-cluster resources first and then rebuilding them after the disk erase; a
 single apply cannot refresh resources before and after replacing their cluster.
