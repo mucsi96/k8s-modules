@@ -11,6 +11,13 @@ resource "random_integer" "ssh_port" {
   max = 65000
 }
 
+resource "random_password" "user" {
+  length      = 32
+  min_lower   = 1
+  min_numeric = 1
+  min_upper   = 1
+}
+
 locals {
   netcup_client_id = "scp"
   netcup_token_url = "https://www.servercontrolpanel.de/realms/scp/protocol/openid-connect/token"
@@ -110,6 +117,7 @@ locals {
     locale                    = "en_US.UTF-8"
     timezone                  = "UTC"
     additionalUserUsername    = var.username
+    additionalUserPassword    = random_password.user.result
     sshPasswordAuthentication = false
     customScript              = local.bootstrap_script
     emailToExecutingUser      = true

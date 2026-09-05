@@ -13,11 +13,11 @@ refresh_token=$(jq -er '.refresh_token | select(type == "string" and length > 0)
 token_url=$(jq -er '.token_url | select(type == "string" and length > 0)' <<<"$query")
 client_id=$(jq -er '.client_id | select(type == "string" and length > 0)' <<<"$query")
 
-response=$(curl --fail-with-body --silent --show-error \
+response=$(printf '%s' "$refresh_token" | curl --fail-with-body --silent --show-error \
   --request POST "$token_url" \
   --data-urlencode 'grant_type=refresh_token' \
   --data-urlencode "client_id=$client_id" \
-  --data-urlencode "refresh_token=$refresh_token")
+  --data-urlencode 'refresh_token@-')
 
 access_token=$(jq -er '.access_token | select(type == "string" and length > 0)' <<<"$response")
 expires_in=$(jq -er '.expires_in | numbers | floor | tostring' <<<"$response")

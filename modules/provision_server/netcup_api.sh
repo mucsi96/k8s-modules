@@ -35,17 +35,43 @@ api_request() {
   local method=$1
   local path=$2
   local body=${3:-}
+  local header_file request_succeeded response
   ensure_access_token
+
+  header_file=$(mktemp)
+  chmod 600 "$header_file"
+  printf 'Authorization: Bearer %s\n' "$NETCUP_TOKEN" >"$header_file"
+
   local -a args=(
     --fail-with-body --silent --show-error
+    --connect-timeout 10
+    --max-time 30
     --request "$method"
     --header "Accept: application/json"
-    --header "Authorization: Bearer $NETCUP_TOKEN"
+    --header "@$header_file"
   )
   if [[ -n "$body" ]]; then
-    args+=(--header "Content-Type: application/json" --data "$body")
+    args+=(--header "Content-Type: application/json" --data-binary @-)
   fi
-  curl "${args[@]}" "$NETCUP_API_URL$path"
+
+  if [[ -n "$body" ]]; then
+    if response=$(printf '%s' "$body" | curl "${args[@]}" "$NETCUP_API_URL$path"); then
+      request_succeeded=true
+    else
+      request_succeeded=false
+    fi
+  elif response=$(curl "${args[@]}" "$NETCUP_API_URL$path"); then
+    request_succeeded=true
+  else
+    request_succeeded=false
+  fi
+  rm -f "$header_file"
+
+  if [[ $request_succeeded != true ]]; then
+    printf '%s\n' "$response" >&2
+    return 1
+  fi
+  API_RESPONSE=$response
 }
 
 wait_for_task() {
@@ -55,7 +81,11 @@ wait_for_task() {
 
   for _ in $(seq 1 180); do
     ensure_access_token
-    task=$(api_request GET "/api/v1/tasks/$uuid")
+    if ! api_request GET "/api/v1/tasks/$uuid"; then
+      sleep 5
+      continue
+    fi
+    task=$API_RESPONSE
     state=$(jq -r '.state' <<<"$task")
     case "$state" in
       FINISHED) return 0 ;;
@@ -75,7 +105,8 @@ ensure_access_token
 
 case "${1:-}" in
   install)
-    keys=$(api_request GET "/api/v1/users/$NETCUP_USER_ID/ssh-keys")
+    api_request GET "/api/v1/users/$NETCUP_USER_ID/ssh-keys"
+    keys=$API_RESPONSE
     key_name=$(jq -r '.name' <<<"$SSH_KEY_BODY")
     key_value=$(jq -r '.key' <<<"$SSH_KEY_BODY")
     matches=$(jq --arg name "$key_name" '[.[] | select(.name == $name)]' <<<"$keys")
@@ -84,7 +115,8 @@ case "${1:-}" in
       exit 1
     fi
     if [[ $(jq 'length' <<<"$matches") -eq 0 ]]; then
-      key=$(api_request POST "/api/v1/users/$NETCUP_USER_ID/ssh-keys" "$SSH_KEY_BODY")
+      api_request POST "/api/v1/users/$NETCUP_USER_ID/ssh-keys" "$SSH_KEY_BODY"
+      key=$API_RESPONSE
     else
       key=$(jq '.[0]' <<<"$matches")
       [[ $(jq -r '.key' <<<"$key") == "$key_value" ]] || {
@@ -98,32 +130,38 @@ case "${1:-}" in
       echo "Netcup reinstall approval $INSTALL_APPROVAL_NAME was already consumed. Inspect the server and SCP task history, then use a new reinstall_generation only if another disk erase is intended." >&2
       exit 1
     fi
-    api_request POST "/api/v1/users/$NETCUP_USER_ID/ssh-keys" "$INSTALL_APPROVAL_BODY" >/dev/null
+    api_request POST "/api/v1/users/$NETCUP_USER_ID/ssh-keys" "$INSTALL_APPROVAL_BODY"
     install_body=$(jq --argjson key_id "$key_id" '. + {sshKeyIds: [$key_id]}' <<<"$IMAGE_BODY")
-    task=$(api_request POST "/api/v1/servers/$SERVER_ID/image" "$install_body")
+    api_request POST "/api/v1/servers/$SERVER_ID/image" "$install_body"
+    task=$API_RESPONSE
     wait_for_task "$(jq -r '.uuid' <<<"$task")"
     ;;
 
   firewall)
-    policies=$(api_request GET "/api/v1/users/$NETCUP_USER_ID/firewall-policies?limit=500")
+    api_request GET "/api/v1/users/$NETCUP_USER_ID/firewall-policies?limit=500"
+    policies=$API_RESPONSE
     matches=$(jq --arg name "$FIREWALL_POLICY_NAME" '[.[] | select(.name == $name)]' <<<"$policies")
     if [[ $(jq 'length' <<<"$matches") -gt 1 ]]; then
       echo "Multiple Netcup firewall policies are named $FIREWALL_POLICY_NAME" >&2
       exit 1
     fi
     if [[ $(jq 'length' <<<"$matches") -eq 0 ]]; then
-      policy=$(api_request POST "/api/v1/users/$NETCUP_USER_ID/firewall-policies" "$FIREWALL_POLICY_BODY")
+      api_request POST "/api/v1/users/$NETCUP_USER_ID/firewall-policies" "$FIREWALL_POLICY_BODY"
+      policy=$API_RESPONSE
       policy_id=$(jq -r '.id' <<<"$policy")
     else
       policy_id=$(jq -r '.[0].id' <<<"$matches")
-      result=$(api_request PUT "/api/v1/users/$NETCUP_USER_ID/firewall-policies/$policy_id" "$FIREWALL_POLICY_BODY")
+      api_request PUT "/api/v1/users/$NETCUP_USER_ID/firewall-policies/$policy_id" "$FIREWALL_POLICY_BODY"
+      result=$API_RESPONSE
       wait_for_task "$(jq -r '.taskInfo.uuid // empty' <<<"$result")"
     fi
-    current_firewall=$(api_request GET "/api/v1/servers/$SERVER_ID/interfaces/$INTERFACE_MAC/firewall")
+    api_request GET "/api/v1/servers/$SERVER_ID/interfaces/$INTERFACE_MAC/firewall"
+    current_firewall=$API_RESPONSE
     copied_policies=$(jq '[.copiedPolicies[]? | {id}]' <<<"$current_firewall")
     assignment=$(jq -n --argjson id "$policy_id" --argjson copied "$copied_policies" \
       '{copiedPolicies: $copied, userPolicies: [{id: $id}], active: true}')
-    task=$(api_request PUT "/api/v1/servers/$SERVER_ID/interfaces/$INTERFACE_MAC/firewall" "$assignment")
+    api_request PUT "/api/v1/servers/$SERVER_ID/interfaces/$INTERFACE_MAC/firewall" "$assignment"
+    task=$API_RESPONSE
     wait_for_task "$(jq -r '.uuid' <<<"$task")"
     ;;
 
