@@ -20,6 +20,29 @@
         enabled: true
         state: started
 
+    - name: Ensure systemd-resolved drop-in directory exists
+      ansible.builtin.file:
+        path: /etc/systemd/resolved.conf.d
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Configure upstream DNS servers
+      ansible.builtin.copy:
+        dest: /etc/systemd/resolved.conf.d/upstream.conf
+        content: |
+          [Resolve]
+          DNS=46.38.225.230 46.38.252.230 2a03:4000:0:1::e1e6 2a03:4000:8000::fce6
+          FallbackDNS=1.1.1.1 9.9.9.9
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart systemd-resolved
+
+    - name: Apply resolver configuration
+      ansible.builtin.meta: flush_handlers
+
     - name: Point host resolv.conf at upstream resolver file
       ansible.builtin.file:
         src: /run/systemd/resolve/resolv.conf
@@ -38,3 +61,9 @@
       ansible.builtin.file:
         path: /tmp/k3s-connectivity-check
         state: absent
+
+  handlers:
+    - name: Restart systemd-resolved
+      ansible.builtin.systemd_service:
+        name: systemd-resolved
+        state: restarted

@@ -43,3 +43,9 @@ output "server_id" {
   description = "Netcup SCP server ID."
   value       = var.netcup_server_id
 }
+
+output "netcup_refresh_token" {
+  description = "Current SCP OAuth2 refresh token. Persist this in the caller's secret store after each apply."
+  value       = local.netcup_refresh_token
+  sensitive   = true
+}

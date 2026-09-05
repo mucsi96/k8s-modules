@@ -14,8 +14,8 @@ refresh_token=
 while (($#)); do
   if [[ $1 == --data-urlencode ]]; then
     shift
-    if [[ $1 == refresh_token=* ]]; then
-      refresh_token=${1#refresh_token=}
+    if [[ $1 == refresh_token@- ]]; then
+      refresh_token=$(</dev/stdin)
     fi
   fi
   shift
