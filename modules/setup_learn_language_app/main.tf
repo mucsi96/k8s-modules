@@ -5,18 +5,17 @@ locals {
 module "app_base" {
   source = "../setup_app_base"
 
-  github_repository   = "learn-language"
-  environment_name    = var.environment_name
-  app_name            = "learn-language"
-  master_key_vault_id = var.master_key_vault_id
-  app_secret_names = [
-    "claude-api-key",
-    "eleven-labs-api-key",
-    "google-ai-api-key",
-    "ideogram-api-key",
-    "openai-api-key",
-    "xai-api-key",
-  ]
+  github_repository = "learn-language"
+  environment_name  = var.environment_name
+  app_name          = "learn-language"
+  app_secrets = {
+    claude-api-key      = var.claude_api_key
+    eleven-labs-api-key = var.eleven_labs_api_key
+    google-ai-api-key   = var.google_ai_api_key
+    ideogram-api-key    = var.ideogram_api_key
+    openai-api-key      = var.openai_api_key
+    xai-api-key         = var.xai_api_key
+  }
   azure_location         = var.azure_location
   tenant_id              = var.tenant_id
   azure_subscription_id  = var.azure_subscription_id

@@ -8,9 +8,28 @@ variable "azure_location" {
   type        = string
 }
 
-variable "master_key_vault_id" {
-  description = "The persistent environment Key Vault containing the app's prefixed secrets."
+variable "strava_client_id" {
+  description = "OAuth client ID for Strava."
   type        = string
+  sensitive   = true
+}
+
+variable "strava_client_secret" {
+  description = "OAuth client secret for Strava."
+  type        = string
+  sensitive   = true
+}
+
+variable "withings_client_id" {
+  description = "OAuth client ID for Withings."
+  type        = string
+  sensitive   = true
+}
+
+variable "withings_client_secret" {
+  description = "OAuth client secret for Withings."
+  type        = string
+  sensitive   = true
 }
 
 variable "k8s_oidc_issuer_url" {

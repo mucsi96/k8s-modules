@@ -25,19 +25,12 @@ resource "azurerm_role_assignment" "allow_deploy_to_read_kv" {
   principal_id         = azuread_service_principal.github_deploy.object_id
 }
 
-data "azurerm_key_vault_secret" "app" {
-  for_each = var.app_secret_names
-
-  key_vault_id = var.master_key_vault_id
-  name         = "${var.app_name}-${each.value}"
-}
-
 resource "azurerm_key_vault_secret" "app" {
-  for_each = data.azurerm_key_vault_secret.app
+  for_each = nonsensitive(toset(keys(var.app_secrets)))
 
   key_vault_id = azurerm_key_vault.app_kv.id
   name         = each.key
-  value        = each.value.value
+  value        = var.app_secrets[each.key]
   depends_on   = [azurerm_role_assignment.allow_owner_to_manage_kv]
 }
 

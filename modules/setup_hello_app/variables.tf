@@ -8,9 +8,10 @@ variable "azure_location" {
   type        = string
 }
 
-variable "master_key_vault_id" {
-  description = "The persistent environment Key Vault containing the app's prefixed secrets."
+variable "claude_api_key" {
+  description = "Anthropic API key used by the application."
   type        = string
+  sensitive   = true
 }
 
 variable "k8s_oidc_issuer_url" {

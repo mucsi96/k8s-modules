@@ -5,11 +5,12 @@ locals {
 module "app_base" {
   source = "../setup_app_base"
 
-  github_repository      = "skeleton-app"
-  environment_name       = var.environment_name
-  app_name               = "hello"
-  master_key_vault_id    = var.master_key_vault_id
-  app_secret_names       = ["claude-api-key"]
+  github_repository = "skeleton-app"
+  environment_name  = var.environment_name
+  app_name          = "hello"
+  app_secrets = {
+    claude-api-key = var.claude_api_key
+  }
   azure_location         = var.azure_location
   tenant_id              = var.tenant_id
   azure_subscription_id  = var.azure_subscription_id
