@@ -1,7 +1,3 @@
-output "k8s_user_config" {
-  value = module.app_base.k8s_user_config
-}
-
 output "backup_api_client_id" {
   value = module.setup_backup_api.client_id
 }
@@ -21,4 +17,3 @@ output "backup_api_resource_object_id" {
 output "backup_api_roles_ids" {
   value = module.setup_backup_api.roles_ids
 }
-

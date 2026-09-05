@@ -25,11 +25,16 @@ resource "azurerm_role_assignment" "allow_deploy_to_read_kv" {
   principal_id         = azuread_service_principal.github_deploy.object_id
 }
 
-resource "azurerm_key_vault_secret" "k8s_user_config" {
+resource "azurerm_key_vault_secret" "k8s_config" {
   key_vault_id = azurerm_key_vault.app_kv.id
   name         = "k8s-config"
   value        = var.k8s_oidc_config
   depends_on   = [azurerm_role_assignment.allow_owner_to_manage_kv]
+}
+
+moved {
+  from = azurerm_key_vault_secret.k8s_user_config
+  to   = azurerm_key_vault_secret.k8s_config
 }
 
 resource "azurerm_key_vault_secret" "tenant_id" {
@@ -68,11 +73,15 @@ resource "azurerm_key_vault_secret" "hostname" {
 }
 
 resource "azurerm_key_vault_secret" "twingate_service_key" {
-  count        = var.twingate_service_key == null ? 0 : 1
   key_vault_id = azurerm_key_vault.app_kv.id
   name         = "twingate-service-key"
   value        = var.twingate_service_key
   depends_on   = [azurerm_role_assignment.allow_owner_to_manage_kv]
+}
+
+moved {
+  from = azurerm_key_vault_secret.twingate_service_key[0]
+  to   = azurerm_key_vault_secret.twingate_service_key
 }
 
 resource "azurerm_key_vault_secret" "client_log_url" {

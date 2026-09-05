@@ -1,7 +1,3 @@
-output "k8s_user_config" {
-  value = module.app_base.k8s_user_config
-}
-
 output "learn_language_api_client_id" {
   value = module.setup_learn_language_api.client_id
 }

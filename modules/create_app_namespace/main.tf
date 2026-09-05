@@ -17,44 +17,6 @@ resource "kubernetes_namespace_v1" "namespace" {
   }
 }
 
-resource "kubernetes_service_account_v1" "service_account" {
-  metadata {
-    name      = "${var.k8s_namespace}-namespace-admin"
-    namespace = kubernetes_namespace_v1.namespace.metadata[0].name
-  }
-  automount_service_account_token = false
-}
-
-resource "kubernetes_cluster_role_v1" "cluster_role" {
-  metadata {
-    name = var.k8s_namespace
-  }
-
-  rule {
-    api_groups = [
-      "",
-    ]
-    resources = [
-      "namespaces"
-    ]
-    verbs = [
-      "list",
-    ]
-  }
-
-  rule {
-    api_groups = [
-      "apiextensions.k8s.io",
-    ]
-    resources = [
-      "customresourcedefinitions"
-    ]
-    verbs = [
-      "list",
-    ]
-  }
-}
-
 resource "kubernetes_role_v1" "role" {
   metadata {
     name      = var.k8s_namespace
@@ -71,57 +33,5 @@ resource "kubernetes_role_v1" "role" {
     verbs = [
       "*",
     ]
-  }
-}
-
-resource "kubernetes_secret_v1" "service_account_token_secret" {
-  metadata {
-    name      = "service-account-token"
-    namespace = kubernetes_namespace_v1.namespace.metadata[0].name
-    annotations = {
-      "kubernetes.io/service-account.name" = kubernetes_service_account_v1.service_account.metadata.0.name
-    }
-  }
-
-  type                           = "kubernetes.io/service-account-token"
-  wait_for_service_account_token = true
-}
-
-resource "kubernetes_role_binding_v1" "role_binding" {
-  metadata {
-    name      = var.k8s_namespace
-    namespace = kubernetes_namespace_v1.namespace.metadata[0].name
-  }
-
-  subject {
-    kind      = "ServiceAccount"
-    name      = kubernetes_service_account_v1.service_account.metadata.0.name
-    namespace = kubernetes_namespace_v1.namespace.metadata[0].name
-
-  }
-
-  role_ref {
-    kind      = "Role"
-    name      = kubernetes_role_v1.role.metadata.0.name
-    api_group = "rbac.authorization.k8s.io"
-  }
-}
-
-resource "kubernetes_cluster_role_binding_v1" "cluster_role_binding" {
-  metadata {
-    name = var.k8s_namespace
-  }
-
-  subject {
-    kind      = "ServiceAccount"
-    name      = kubernetes_service_account_v1.service_account.metadata.0.name
-    namespace = kubernetes_namespace_v1.namespace.metadata[0].name
-
-  }
-
-  role_ref {
-    kind      = "ClusterRole"
-    name      = kubernetes_cluster_role_v1.cluster_role.metadata.0.name
-    api_group = "rbac.authorization.k8s.io"
   }
 }

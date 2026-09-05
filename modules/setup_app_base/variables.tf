@@ -39,23 +39,10 @@ variable "owner" {
   type        = string
 }
 
-variable "k8s_host" {
-  description = "The Kubernetes API server endpoint"
-  type        = string
-  sensitive   = true
-}
-
-variable "k8s_cluster_ca_certificate" {
-  description = "The cluster CA certificate for the Kubernetes cluster"
-  type        = string
-  sensitive   = true
-}
-
 variable "twingate_service_key" {
-  description = "Twingate service key. Required only for local clusters reachable via Twingate; leave null for cloud-hosted clusters."
+  description = "Twingate service key used by application deployment workflows to reach the Kubernetes API."
   type        = string
   sensitive   = true
-  default     = null
 }
 
 variable "app_hostname" {

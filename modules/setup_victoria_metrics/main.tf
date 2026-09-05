@@ -160,7 +160,7 @@ resource "kubernetes_job_v1" "grafana_database_init" {
 #
 # The VM operator converts Prometheus Operator objects (ServiceMonitor,
 # PodMonitor, ...) into its own VMServiceScrape / VMPodMonitor equivalents, so
-# the ServiceMonitors shipped by postgres-db, Loki and the app modules keep
+# the ServiceMonitors shipped by postgres-db and the app modules keep
 # working untouched - that is why the monitoring CRDs must still be installed
 # first (setup_monitoring_crds) and stay in place.
 # crds.plain (default true) installs the VictoriaMetrics operator CRDs as part

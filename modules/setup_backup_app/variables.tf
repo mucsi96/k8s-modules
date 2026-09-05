@@ -33,18 +33,6 @@ variable "hostname" {
   type        = string
 }
 
-variable "k8s_host" {
-  description = "The Kubernetes API server endpoint"
-  type        = string
-  sensitive   = true
-}
-
-variable "k8s_cluster_ca_certificate" {
-  description = "The cluster CA certificate for the Kubernetes cluster"
-  type        = string
-  sensitive   = true
-}
-
 variable "tenant_id" {
   description = "The Azure AD tenant ID"
   type        = string
@@ -73,10 +61,9 @@ variable "dbs_config" {
 }
 
 variable "twingate_service_key" {
-  description = "Twingate service key for this app's GitHub Actions pipeline. Required only for local clusters reachable via Twingate; leave null for cloud-hosted clusters."
+  description = "Twingate service key for this app's GitHub Actions pipeline."
   type        = string
   sensitive   = true
-  default     = null
 }
 
 variable "k8s_oidc_config" {
@@ -88,10 +75,4 @@ variable "k8s_oidc_config" {
 variable "client_log_url" {
   description = "URL the app's SPA POSTs client-side telemetry to. Forwarded to setup_app_base, which stores it in this app's Key Vault as `client-log-url`."
   type        = string
-}
-
-variable "wait_for" {
-  description = "Optional dependency to wait for before setting up app (e.g., ingress controller status)"
-  type        = string
-  default     = null
 }

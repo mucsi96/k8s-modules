@@ -5,23 +5,21 @@ locals {
 module "app_base" {
   source = "../setup_app_base"
 
-  github_repository          = "learn-language"
-  environment_name           = var.environment_name
-  app_name                   = "learn-language"
-  azure_location             = var.azure_location
-  tenant_id                  = var.tenant_id
-  azure_subscription_id      = var.azure_subscription_id
-  owner                      = var.owner
-  twingate_service_key       = var.twingate_service_key
-  k8s_host                   = var.k8s_host
-  k8s_cluster_ca_certificate = var.k8s_cluster_ca_certificate
-  app_hostname               = local.app_hostname
-  api_client_id              = module.setup_learn_language_api.client_id
-  api_client_secret          = module.setup_learn_language_api.client_secret
-  spa_client_id              = module.setup_learn_language_spa.client_id
-  api_resource_object_id     = module.setup_learn_language_api.resource_object_id
-  k8s_oidc_config            = var.k8s_oidc_config
-  client_log_url             = var.client_log_url
+  github_repository      = "learn-language"
+  environment_name       = var.environment_name
+  app_name               = "learn-language"
+  azure_location         = var.azure_location
+  tenant_id              = var.tenant_id
+  azure_subscription_id  = var.azure_subscription_id
+  owner                  = var.owner
+  twingate_service_key   = var.twingate_service_key
+  app_hostname           = local.app_hostname
+  api_client_id          = module.setup_learn_language_api.client_id
+  api_client_secret      = module.setup_learn_language_api.client_secret
+  spa_client_id          = module.setup_learn_language_spa.client_id
+  api_resource_object_id = module.setup_learn_language_api.resource_object_id
+  k8s_oidc_config        = var.k8s_oidc_config
+  client_log_url         = var.client_log_url
 }
 
 module "setup_learn_language_api" {
