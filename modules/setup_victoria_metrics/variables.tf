@@ -1,23 +1,3 @@
-variable "environment_name" {
-  description = "Environment resource group and prefix for the Grafana Key Vault."
-  type        = string
-}
-
-variable "azure_location" {
-  description = "Azure location for the Grafana vault and provisioning identity."
-  type        = string
-}
-
-variable "owner" {
-  description = "Object ID granted permission to populate the Grafana vault."
-  type        = string
-}
-
-variable "k8s_oidc_issuer_url" {
-  description = "Published Kubernetes workload identity issuer, ready after the webhook installation."
-  type        = string
-}
-
 variable "grafana_hostname" {
   description = "Public hostname where the Grafana dashboard is exposed (e.g. grafana.example.com)"
   type        = string
@@ -73,12 +53,18 @@ variable "session_redis" {
 variable "database" {
   description = "PostgreSQL instance in which this module owns the grafana role and schema."
   type = object({
-    host              = string
-    port              = number
-    name              = string
-    jdbc_url          = string
-    namespace         = string
-    admin_secret_name = string
+    host        = string
+    port        = number
+    name        = string
+    jdbc_url    = string
+    namespace   = string
+    deployment  = string
+    instance_id = string
+    ssh = object({
+      host     = string
+      port     = number
+      username = string
+    })
   })
 }
 

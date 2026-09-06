@@ -7,14 +7,6 @@ module "postgres_schema" {
 
   database = var.database
   schema   = "learn_language"
-
-  resource_group_name = var.environment_name
-  azure_location      = var.azure_location
-  k8s_oidc_issuer_url = var.k8s_oidc_issuer_url
-  password_secret = {
-    id                      = azurerm_key_vault_secret.learn_language_db_password.id
-    resource_versionless_id = azurerm_key_vault_secret.learn_language_db_password.resource_versionless_id
-  }
 }
 
 module "app_base" {
