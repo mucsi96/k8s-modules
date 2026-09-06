@@ -39,20 +39,16 @@ variable "azure_subscription_id" {
   type        = string
 }
 
-variable "db_jdbc_url" {
-  description = "The JDBC URL for the database"
-  type        = string
-}
-
-variable "db_username" {
-  description = "The database username"
-  type        = string
-}
-
-variable "db_password" {
-  description = "The database password"
-  type        = string
-  sensitive   = true
+variable "database" {
+  description = "PostgreSQL instance in which this module owns the hello role and schema."
+  type = object({
+    host              = string
+    port              = number
+    name              = string
+    jdbc_url          = string
+    namespace         = string
+    admin_secret_name = string
+  })
 }
 
 variable "twingate_service_key" {

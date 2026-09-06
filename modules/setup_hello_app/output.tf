@@ -17,3 +17,8 @@ output "hello_api_resource_object_id" {
 output "hello_api_roles_ids" {
   value = module.setup_hello_api.roles_ids
 }
+
+output "database_credentials" {
+  value     = module.postgres_schema.credentials
+  sensitive = true
+}

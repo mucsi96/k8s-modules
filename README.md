@@ -19,6 +19,7 @@ to the same release tag rather than a moving branch.
 | `setup_ingress_controller` | Configures k3s-packaged Traefik, Gateway API, Cloudflare DNS/security, and origin TLS. |
 | `setup_monitoring_crds` | Installs monitoring CRDs before charts that create monitoring resources. |
 | `create_postgres_database` | Installs PostgreSQL with a retained host-path volume and `ServiceMonitor`. |
+| `setup_postgres_schema` | Provisions a dedicated login role and owned schema for one application. |
 | `setup_redis` | Installs shared Redis with a retained host-path volume. |
 | `setup_victoria_metrics` | Installs VictoriaMetrics, Grafana, exporters, and Grafana ingress. |
 | `setup_victoria_logs` | Installs Alloy pod-log/Faro collection and Faro ingress. |

@@ -1,19 +1,19 @@
 resource "azurerm_key_vault_secret" "learn_language_db_url" {
   key_vault_id = module.app_base.key_vault_id
   name         = "db-url"
-  value        = var.db_jdbc_url
+  value        = module.postgres_schema.jdbc_url
 }
 
 resource "azurerm_key_vault_secret" "learn_language_db_username" {
   key_vault_id = module.app_base.key_vault_id
   name         = "db-username"
-  value        = var.db_username
+  value        = module.postgres_schema.credentials.username
 }
 
 resource "azurerm_key_vault_secret" "learn_language_db_password" {
   key_vault_id = module.app_base.key_vault_id
   name         = "db-password"
-  value        = var.db_password
+  value        = module.postgres_schema.credentials.password
 }
 
 resource "random_bytes" "learn_language_token_encryption_key" {

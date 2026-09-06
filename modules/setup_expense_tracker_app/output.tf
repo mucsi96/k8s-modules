@@ -22,3 +22,8 @@ output "bank_notification_token" {
   value     = random_password.bank_notification_token.result
   sensitive = true
 }
+
+output "database_credentials" {
+  value     = module.postgres_schema.credentials
+  sensitive = true
+}

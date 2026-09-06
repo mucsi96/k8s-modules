@@ -2,6 +2,13 @@ locals {
   app_hostname = "cooking.${var.hostname}"
 }
 
+module "postgres_schema" {
+  source = "../setup_postgres_schema"
+
+  database = var.database
+  schema   = "cooking"
+}
+
 module "app_base" {
   source = "../setup_app_base"
 

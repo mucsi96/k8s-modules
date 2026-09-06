@@ -2,6 +2,13 @@ locals {
   app_hostname = "training.${var.hostname}"
 }
 
+module "postgres_schema" {
+  source = "../setup_postgres_schema"
+
+  database = var.database
+  schema   = "training_log"
+}
+
 module "app_base" {
   source = "../setup_app_base"
 
