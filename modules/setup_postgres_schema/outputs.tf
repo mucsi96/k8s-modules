@@ -1,3 +1,9 @@
+output "password" {
+  description = "Password to publish to Key Vault before initialization; deliberately not gated on the Job."
+  value       = random_password.password.result
+  sensitive   = true
+}
+
 output "credentials" {
   description = "Credentials for the same-named login role that owns the schema."
   value = {

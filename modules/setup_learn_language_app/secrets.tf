@@ -13,7 +13,7 @@ resource "azurerm_key_vault_secret" "learn_language_db_username" {
 resource "azurerm_key_vault_secret" "learn_language_db_password" {
   key_vault_id = module.app_base.key_vault_id
   name         = "db-password"
-  value        = module.postgres_schema.credentials.password
+  value        = module.postgres_schema.password
 }
 
 resource "random_bytes" "learn_language_token_encryption_key" {

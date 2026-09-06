@@ -8,3 +8,4 @@ tfplan
 backend.tf
 .generated/
 .venv/
+__pycache__/
