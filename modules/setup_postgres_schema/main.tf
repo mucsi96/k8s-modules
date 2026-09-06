@@ -41,48 +41,6 @@ resource "kubernetes_config_map_v1" "init" {
       SELECT format('GRANT CONNECT, CREATE ON DATABASE %I TO %I', :'database', :'app_user') \gexec
       SELECT format('CREATE SCHEMA IF NOT EXISTS %I AUTHORIZATION %I', :'schema', :'app_user') \gexec
       SELECT format('REVOKE ALL ON SCHEMA %I FROM PUBLIC', :'schema') \gexec
-
-      SELECT format(
-        CASE c.relkind
-          WHEN 'S' THEN 'ALTER SEQUENCE %s OWNER TO %I'
-          WHEN 'v' THEN 'ALTER VIEW %s OWNER TO %I'
-          WHEN 'm' THEN 'ALTER MATERIALIZED VIEW %s OWNER TO %I'
-          WHEN 'f' THEN 'ALTER FOREIGN TABLE %s OWNER TO %I'
-          ELSE 'ALTER TABLE %s OWNER TO %I'
-        END,
-        format('%I.%I', n.nspname, c.relname),
-        :'app_user'
-      )
-      FROM pg_class c
-      JOIN pg_namespace n ON n.oid = c.relnamespace
-      WHERE n.nspname = :'schema'
-        AND c.relkind IN ('r', 'p', 'S', 'v', 'm', 'f')
-      ORDER BY CASE WHEN c.relkind = 'S' THEN 1 ELSE 0 END
-      \gexec
-
-      SELECT format(
-        CASE p.prokind
-          WHEN 'p' THEN 'ALTER PROCEDURE %s OWNER TO %I'
-          WHEN 'a' THEN 'ALTER AGGREGATE %s OWNER TO %I'
-          ELSE 'ALTER FUNCTION %s OWNER TO %I'
-        END,
-        format('%I.%I(%s)', n.nspname, p.proname, pg_get_function_identity_arguments(p.oid)),
-        :'app_user'
-      )
-      FROM pg_proc p
-      JOIN pg_namespace n ON n.oid = p.pronamespace
-      WHERE n.nspname = :'schema'
-      \gexec
-
-      SELECT format('ALTER TYPE %I.%I OWNER TO %I', n.nspname, t.typname, :'app_user')
-      FROM pg_type t
-      JOIN pg_namespace n ON n.oid = t.typnamespace
-      LEFT JOIN pg_class c ON c.oid = t.typrelid
-      WHERE n.nspname = :'schema'
-        AND (t.typtype IN ('d', 'e', 'r', 'm') OR (t.typtype = 'c' AND c.relkind = 'c'))
-      \gexec
-
-      SELECT format('ALTER SCHEMA %I OWNER TO %I', :'schema', :'app_user') \gexec
       SELECT format('ALTER ROLE %I IN DATABASE %I SET search_path TO %I, public', :'app_user', :'database', :'schema') \gexec
     SQL
   }
