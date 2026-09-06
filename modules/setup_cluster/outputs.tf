@@ -65,7 +65,7 @@ output "k8s_cluster_ca_certificate" {
 output "oidc_issuer_url" {
   description = "Public issuer URL exposing the k3s workload identity OIDC discovery document."
   value       = data.azurerm_storage_account.oidc.primary_web_endpoint
-  depends_on  = [ansible_playbook.publish_k3s_oidc, helm_release.workload_identity_webhook]
+  depends_on  = [ansible_playbook.publish_k3s_oidc]
 }
 
 output "apiserver_oidc_client_id" {

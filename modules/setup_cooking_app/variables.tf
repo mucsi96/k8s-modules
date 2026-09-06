@@ -48,12 +48,18 @@ variable "azure_subscription_id" {
 variable "database" {
   description = "PostgreSQL instance in which this module owns the cooking role and schema."
   type = object({
-    host              = string
-    port              = number
-    name              = string
-    jdbc_url          = string
-    namespace         = string
-    admin_secret_name = string
+    host        = string
+    port        = number
+    name        = string
+    jdbc_url    = string
+    namespace   = string
+    deployment  = string
+    instance_id = string
+    ssh = object({
+      host     = string
+      port     = number
+      username = string
+    })
   })
 }
 

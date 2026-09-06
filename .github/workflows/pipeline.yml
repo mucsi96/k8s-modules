@@ -46,10 +46,8 @@ jobs:
         run: bash -n modules/provision_server/netcup_api.sh modules/provision_server/netcup_auth.sh modules/provision_server/test_netcup_auth.sh
       - name: Netcup authentication helper test
         run: bash modules/provision_server/test_netcup_auth.sh
-      - name: PostgreSQL Key Vault fetcher test
-        run: python3 -m unittest discover -s modules/setup_postgres_schema -p 'test_*.py'
-      - name: PostgreSQL workload identity wiring test
-        run: terraform -chdir=modules/setup_postgres_schema test
+      - name: PostgreSQL helper syntax check
+        run: bash -n modules/setup_postgres_schema/provision.sh
 
   release:
     runs-on: ubuntu-latest

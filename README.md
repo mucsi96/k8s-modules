@@ -30,45 +30,62 @@ resources. They do not install application workloads.
 
 ## PostgreSQL Credentials
 
-Each application's `setup_postgres_schema` generates its password at the existing
-`random_password.password` address. The application publishes the ungated
-`password` output into its Key Vault, then passes that secret's versioned URL and
-versionless ARM ID back to the schema module. Do not add module-level
-`depends_on` to this wiring: the vault secret must precede the Job, not password
-generation. The `credentials` output remains gated on successful provisioning.
+Each application's `setup_postgres_schema` has one password generator and one
+apply-time `terraform_data` action. A Bash helper uses the operator's existing
+SSH agent to run `sudo -n k3s kubectl exec` into PostgreSQL. The application
+password travels through encrypted stdin, not command arguments, temporary
+files, or Kubernetes objects. Administrator credentials stay inside the
+database container. The SQL creates/hardens the login and schema transactionally;
+credential outputs and app Key Vault publication wait for it to succeed.
 
-Each provisioning Job has a dedicated user-assigned managed identity, federated
-only to its database-namespace ServiceAccount, with `Key Vault Secrets User`
-access scoped to its single password secret. An init container exchanges the
-projected workload token for Key Vault access and fetches the exact managed
-secret version. It writes the password with owner-only permissions to a
-memory-backed volume; the PostgreSQL container consumes it without putting the
-password in its command arguments or Kubernetes manifests. Access propagation
-is retried within the Job's ten-minute deadline. The ServiceAccount has no
-Kubernetes RBAC grants, and the PostgreSQL container receives no workload token.
+The runner needs Bash, SSH, GNU `timeout`, the loaded cluster SSH key, and
+operator Twingate access. No local PostgreSQL client or provisioning identity
+is required. SSH uses `StrictHostKeyChecking=accept-new`: it records new hosts
+in the runner's known-hosts file and rejects changed keys. Preload a verified
+host key to avoid first-use trust; after a server rebuild, verify its new key
+before updating that entry. Agent forwarding is disabled. Provisioning has a
+ten-minute timeout and a failed apply must be retried.
 
-Use `setup_cluster.oidc_issuer_url` for federation; it also waits for the workload
-identity webhook. Completed Jobs are retained so Terraform does not rerun them
-on every apply. Their containers terminate after provisioning. Changes to the
-secret version, SQL/fetch script, or identity configuration rerun initialization.
+Pass the same non-secret database descriptor to each database-backed app and
+Grafana. The deployment output orders provisioning after PostgreSQL's Helm
+release; the volume instance ID reruns it when storage/cluster resources are
+recreated:
 
-Upgrading removes the seven duplicate `*-postgres-owner` Kubernetes Secrets;
-existing random passwords and app vault secret addresses are preserved. Grafana
-gets a `${environment_name}-grafana` vault for its provisioning password.
-`setup_victoria_metrics` now also requires `environment_name`, `azure_location`,
-`owner`, and `k8s_oidc_issuer_url`. Pass the same environment/location/owner used
-by application modules and the issuer from `setup_cluster`. Update all consumer
-module references to the release containing this change together.
+```hcl
+locals {
+  database = {
+    host        = module.create_database.host
+    port        = module.create_database.port
+    name        = module.create_database.name
+    jdbc_url    = module.create_database.jdbc_url
+    namespace   = module.create_database.namespace
+    deployment  = module.create_database.deployment
+    instance_id = module.create_database.instance_id
+    ssh = {
+      host     = module.provision_server.ipv4_address
+      port     = module.provision_server.ssh_port
+      username = module.provision_server.username
+    }
+  }
+}
+```
 
-On initial vault creation, Azure may temporarily reject Terraform's secret
-write while the vault-writer RBAC grant propagates. Retry a failed apply after
-propagation; the Job's fetch retries cover its own read grant, not that earlier
-Terraform write.
+The action also reruns when the password, target, SQL, or helper changes. Normal
+plans do not execute SQL or detect database-level drift. For a database reset
+outside Terraform, explicitly replace the affected action, for example
+`terraform apply -replace=module.setup_hello_app.module.postgres_schema.terraform_data.init`.
+There is no destroy-time SQL: deleting Terraform resources does not drop schemas.
 
-This change does not remove Grafana's runtime `grafana-database` Secret, the
-database administrator/exporter Secrets, backup's vault credential copies, or
-passwords in Terraform state. Applications must reload credentials after any
-future password rotation, after provisioning succeeds.
+Upgrading removes provisioning Jobs, ConfigMaps, workload identities, and the
+Grafana vault introduced only for those Jobs. Password generator and application
+vault secret addresses remain unchanged. Replace `admin_secret_name` in consumer
+database descriptors with the fields above and pin all modules to the release
+containing this change together. Grafana no longer needs the four additional
+vault/workload-identity inputs introduced for Job provisioning.
+
+Grafana's runtime `grafana-database` Secret, database administrator/exporter
+Secrets, backup vault credentials, and passwords in Terraform state remain.
+Applications must reload credentials after future password rotations.
 
 ## Netcup Prerequisites
 
@@ -229,10 +246,6 @@ module "setup_ingress_controller" {
 
 module "setup_victoria_metrics" {
   # Other inputs omitted.
-  environment_name    = var.environment_name
-  azure_location      = var.azure_location
-  owner               = data.azurerm_client_config.current.object_id
-  k8s_oidc_issuer_url  = module.setup_cluster.oidc_issuer_url
   gateway_parent_ref  = module.setup_ingress_controller.gateway_parent_ref
   wait_for            = module.setup_ingress_controller.ingress_controller_ready
 }
@@ -325,6 +338,9 @@ only after the contract is intentionally retired.
 
 ## Development
 
+CI runs formatting, Terraform validation, Bash/Ansible syntax checks, and the
+focused Netcup authentication helper test.
+
 ```bash
 terraform fmt -check -diff -recursive modules
 
@@ -332,6 +348,9 @@ for dir in modules/*/; do
   terraform -chdir="$dir" init -backend=false
   terraform -chdir="$dir" validate
 done
+
+bash -n modules/provision_server/netcup_api.sh modules/provision_server/netcup_auth.sh modules/setup_postgres_schema/provision.sh
+bash modules/provision_server/test_netcup_auth.sh
 
 ansible-galaxy collection install -r requirements.yml
 ansible-playbook --syntax-check -i 'localhost,' modules/setup_cluster/system_update.yaml

@@ -3,13 +3,18 @@ output "jdbc_url" {
 }
 
 output "namespace" {
-  description = "Namespace containing PostgreSQL and its administrator Secret."
+  description = "Namespace containing PostgreSQL."
   value       = var.k8s_namespace
 }
 
-output "admin_secret_name" {
-  description = "Name of the database-namespace Secret used only by schema provisioning Jobs."
+output "deployment" {
+  description = "PostgreSQL deployment and container name, available after the Helm release is ready."
   value       = helm_release.database.name
+}
+
+output "instance_id" {
+  description = "Storage resource UID; a recreated volume or cluster reruns schema provisioning."
+  value       = kubernetes_persistent_volume_v1.database_pv.metadata[0].uid
 }
 
 output "host" {

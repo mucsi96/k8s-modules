@@ -31,15 +31,8 @@ locals {
 module "postgres_schema" {
   source = "../setup_postgres_schema"
 
-  database            = var.database
-  schema              = "grafana"
-  resource_group_name = var.environment_name
-  azure_location      = var.azure_location
-  k8s_oidc_issuer_url = var.k8s_oidc_issuer_url
-  password_secret = {
-    id                      = azurerm_key_vault_secret.grafana_db_password.id
-    resource_versionless_id = azurerm_key_vault_secret.grafana_db_password.resource_versionless_id
-  }
+  database = var.database
+  schema   = "grafana"
 }
 
 resource "terraform_data" "wait_for" {
