@@ -12,3 +12,8 @@ output "victoria_logs_url" {
   description = "In-cluster base URL of the VLSingle HTTP API (9428). Log shippers append the Loki-compatible /insert/loki/api/v1/push path to it."
   value       = "http://vlsingle-${local.release_name}.${kubernetes_namespace_v1.monitoring.metadata[0].name}.svc.cluster.local:9428"
 }
+
+output "database_credentials" {
+  value     = module.postgres_schema.credentials
+  sensitive = true
+}

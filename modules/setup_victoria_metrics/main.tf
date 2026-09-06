@@ -28,6 +28,13 @@ locals {
   grafana_secret_key = "123"
 }
 
+module "postgres_schema" {
+  source = "../setup_postgres_schema"
+
+  database = var.database
+  schema   = "grafana"
+}
+
 resource "terraform_data" "wait_for" {
   input = var.wait_for
 }
@@ -47,8 +54,8 @@ resource "kubernetes_secret_v1" "grafana_database" {
   }
 
   data = {
-    GRAFANA_USER     = var.database.username
-    GRAFANA_PASSWORD = var.database.password
+    GRAFANA_USER     = module.postgres_schema.credentials.username
+    GRAFANA_PASSWORD = module.postgres_schema.credentials.password
   }
 
   type = "Opaque"

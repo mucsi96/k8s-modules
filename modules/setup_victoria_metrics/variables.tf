@@ -51,15 +51,15 @@ variable "session_redis" {
 }
 
 variable "database" {
-  description = "PostgreSQL instance and dedicated schema-owner credentials Grafana uses to store its state."
+  description = "PostgreSQL instance in which this module owns the grafana role and schema."
   type = object({
-    host     = string
-    port     = number
-    name     = string
-    username = string
-    password = string
+    host              = string
+    port              = number
+    name              = string
+    jdbc_url          = string
+    namespace         = string
+    admin_secret_name = string
   })
-  sensitive = true
 }
 
 variable "wait_for" {
