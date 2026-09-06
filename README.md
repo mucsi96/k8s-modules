@@ -28,6 +28,48 @@ The registration, application-base, and opinionated application modules create
 their Entra, Cloudflare, Key Vault, namespace, persistence, and deployment
 resources. They do not install application workloads.
 
+## PostgreSQL Credentials
+
+Each application's `setup_postgres_schema` generates its password at the existing
+`random_password.password` address. The application publishes the ungated
+`password` output into its Key Vault, then passes that secret's versioned URL and
+versionless ARM ID back to the schema module. Do not add module-level
+`depends_on` to this wiring: the vault secret must precede the Job, not password
+generation. The `credentials` output remains gated on successful provisioning.
+
+Each provisioning Job has a dedicated user-assigned managed identity, federated
+only to its database-namespace ServiceAccount, with `Key Vault Secrets User`
+access scoped to its single password secret. An init container exchanges the
+projected workload token for Key Vault access and fetches the exact managed
+secret version. It writes the password with owner-only permissions to a
+memory-backed volume; the PostgreSQL container consumes it without putting the
+password in its command arguments or Kubernetes manifests. Access propagation
+is retried within the Job's ten-minute deadline. The ServiceAccount has no
+Kubernetes RBAC grants, and the PostgreSQL container receives no workload token.
+
+Use `setup_cluster.oidc_issuer_url` for federation; it also waits for the workload
+identity webhook. Completed Jobs are retained so Terraform does not rerun them
+on every apply. Their containers terminate after provisioning. Changes to the
+secret version, SQL/fetch script, or identity configuration rerun initialization.
+
+Upgrading removes the seven duplicate `*-postgres-owner` Kubernetes Secrets;
+existing random passwords and app vault secret addresses are preserved. Grafana
+gets a `${environment_name}-grafana` vault for its provisioning password.
+`setup_victoria_metrics` now also requires `environment_name`, `azure_location`,
+`owner`, and `k8s_oidc_issuer_url`. Pass the same environment/location/owner used
+by application modules and the issuer from `setup_cluster`. Update all consumer
+module references to the release containing this change together.
+
+On initial vault creation, Azure may temporarily reject Terraform's secret
+write while the vault-writer RBAC grant propagates. Retry a failed apply after
+propagation; the Job's fetch retries cover its own read grant, not that earlier
+Terraform write.
+
+This change does not remove Grafana's runtime `grafana-database` Secret, the
+database administrator/exporter Secrets, backup's vault credential copies, or
+passwords in Terraform state. Applications must reload credentials after any
+future password rotation, after provisioning succeeds.
+
 ## Netcup Prerequisites
 
 Netcup's SCP REST API manages existing contracts but cannot order a server.
@@ -187,7 +229,11 @@ module "setup_ingress_controller" {
 
 module "setup_victoria_metrics" {
   # Other inputs omitted.
-  gateway_parent_ref = module.setup_ingress_controller.gateway_parent_ref
+  environment_name    = var.environment_name
+  azure_location      = var.azure_location
+  owner               = data.azurerm_client_config.current.object_id
+  k8s_oidc_issuer_url  = module.setup_cluster.oidc_issuer_url
+  gateway_parent_ref  = module.setup_ingress_controller.gateway_parent_ref
   wait_for            = module.setup_ingress_controller.ingress_controller_ready
 }
 

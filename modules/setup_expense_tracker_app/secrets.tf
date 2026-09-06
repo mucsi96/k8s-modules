@@ -13,7 +13,7 @@ resource "azurerm_key_vault_secret" "expense_tracker_db_username" {
 resource "azurerm_key_vault_secret" "expense_tracker_db_password" {
   key_vault_id = module.app_base.key_vault_id
   name         = "db-password"
-  value        = module.postgres_schema.credentials.password
+  value        = module.postgres_schema.password
 }
 
 # Shared bearer token for the bank email notification endpoint. The
