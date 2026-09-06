@@ -3,6 +3,9 @@
 \getenv app_password APP_PASSWORD
 \getenv database POSTGRES_DB
 
+-- GRANT updates a shared database ACL; serialize parallel schema provisioning.
+SELECT pg_advisory_xact_lock(hashtext('k8s-modules'), hashtext('setup_postgres_schema'));
+
 SELECT format('CREATE ROLE %I LOGIN', :'app_user')
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'app_user')
 \gexec
