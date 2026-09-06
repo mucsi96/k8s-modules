@@ -1,16 +1,17 @@
-output "username" {
-  value     = random_string.db_username.result
-  sensitive = true
-}
-
-output "password" {
-  value     = random_password.db_password.result
-  sensitive = true
-}
-
-
 output "jdbc_url" {
   value = "jdbc:postgresql://${var.k8s_name}.${var.k8s_namespace}:5432/${var.db_name}"
+}
+
+output "schema_credentials" {
+  description = "Credentials keyed by schema. Each login role owns only its corresponding schema."
+  value = {
+    for schema in var.application_schemas : schema => {
+      username = schema
+      password = random_password.schema_owner[schema].result
+    }
+  }
+  sensitive  = true
+  depends_on = [kubernetes_job_v1.admin_rotation]
 }
 
 output "host" {

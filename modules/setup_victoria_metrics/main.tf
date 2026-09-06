@@ -4,8 +4,6 @@ locals {
   grafana_service_name = "${local.release_name}-grafana"
   grafana_port         = 80
   email_header_name    = "X-Auth-Request-Email"
-  grafana_db_user      = "grafana"
-  grafana_db_schema    = "grafana"
 
   # Grafana's server-admin account. Pinned here rather than left to the grafana
   # subchart's random adminPassword (regenerated on every from-scratch install)
@@ -42,12 +40,6 @@ resource "kubernetes_namespace_v1" "monitoring" {
   depends_on = [terraform_data.wait_for]
 }
 
-resource "random_password" "grafana_db_password" {
-  length           = 20
-  special          = true
-  override_special = "-_=+:[]{}"
-}
-
 resource "kubernetes_secret_v1" "grafana_database" {
   metadata {
     name      = "grafana-database"
@@ -55,101 +47,11 @@ resource "kubernetes_secret_v1" "grafana_database" {
   }
 
   data = {
-    PG_HOST           = var.database.host
-    PG_PORT           = tostring(var.database.port)
-    PG_DATABASE       = var.database.name
-    PG_ADMIN_USER     = var.database.admin_username
-    PG_ADMIN_PASSWORD = var.database.admin_password
-    PG_SCHEMA         = local.grafana_db_schema
-    GRAFANA_USER      = local.grafana_db_user
-    GRAFANA_PASSWORD  = random_password.grafana_db_password.result
+    GRAFANA_USER     = var.database.username
+    GRAFANA_PASSWORD = var.database.password
   }
 
   type = "Opaque"
-}
-
-resource "kubernetes_config_map_v1" "grafana_database_init" {
-  metadata {
-    name      = "grafana-database-init"
-    namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
-  }
-
-  data = {
-    "init.sql" = <<-SQL
-      SELECT format('CREATE USER %I WITH PASSWORD %L', :'gusr', :'gpwd')
-      WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'gusr')
-      \gexec
-      SELECT format('ALTER USER %I WITH PASSWORD %L', :'gusr', :'gpwd') \gexec
-      SELECT format('CREATE SCHEMA IF NOT EXISTS %I AUTHORIZATION %I', :'gschema', :'gusr') \gexec
-      SELECT format('ALTER SCHEMA %I OWNER TO %I', :'gschema', :'gusr') \gexec
-      SELECT format('GRANT USAGE, CREATE ON SCHEMA %I TO %I', :'gschema', :'gusr') \gexec
-      SELECT format('ALTER ROLE %I IN DATABASE %I SET search_path TO %I, public', :'gusr', :'gdb', :'gschema') \gexec
-    SQL
-  }
-}
-
-# Provision the dedicated 'grafana' role and schema inside the shared Postgres
-# instance. The Job is rerun automatically when the password changes (via the
-# replace_triggered_by lifecycle), and is idempotent on repeated runs: it
-# creates the role+schema only when missing and always rewrites the password
-# and search_path so the secret stays authoritative.
-resource "kubernetes_job_v1" "grafana_database_init" {
-  metadata {
-    name      = "grafana-database-init"
-    namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
-  }
-
-  spec {
-    backoff_limit = 5
-
-    template {
-      metadata {}
-      spec {
-        restart_policy = "OnFailure"
-
-        container {
-          name  = "psql"
-          image = "postgres:18.6"
-
-          env_from {
-            secret_ref {
-              name = kubernetes_secret_v1.grafana_database.metadata[0].name
-            }
-          }
-
-          volume_mount {
-            name       = "init-sql"
-            mount_path = "/sql"
-            read_only  = true
-          }
-
-          # The DDL lives in a ConfigMap and uses \gexec + format() so the
-          # username, schema and password are quoted by Postgres rather than
-          # spliced into SQL by string concatenation.
-          command = ["/bin/sh", "-euc"]
-          args = [
-            "export PGPASSWORD=\"$PG_ADMIN_PASSWORD\"; exec psql -h \"$PG_HOST\" -p \"$PG_PORT\" -U \"$PG_ADMIN_USER\" -d \"$PG_DATABASE\" -v ON_ERROR_STOP=1 -v gusr=\"$GRAFANA_USER\" -v gpwd=\"$GRAFANA_PASSWORD\" -v gschema=\"$PG_SCHEMA\" -v gdb=\"$PG_DATABASE\" -f /sql/init.sql"
-          ]
-        }
-
-        volume {
-          name = "init-sql"
-          config_map {
-            name = kubernetes_config_map_v1.grafana_database_init.metadata[0].name
-          }
-        }
-      }
-    }
-  }
-
-  timeouts {
-    create = "5m"
-    update = "5m"
-  }
-
-  lifecycle {
-    replace_triggered_by = [random_password.grafana_db_password]
-  }
 }
 
 # victoria-metrics-k8s-stack replaces Prometheus with VictoriaMetrics as the
@@ -394,8 +296,8 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
       # Persist Grafana's metadata (dashboards, folders, users, datasources,
       # ...) in the shared PostgreSQL so changes survive pod restarts and
       # chart upgrades. Grafana logs in as a dedicated role whose default
-      # search_path points at the 'grafana' schema (set up by the init Job),
-      # so its tables stay isolated from the apps that share the database.
+      # search_path points at its owned 'grafana' schema, so its tables stay
+      # isolated from the apps that share the database.
       # Credentials are mounted from the secret to avoid baking them into the
       # rendered Helm values.
       envValueFrom = {
@@ -499,9 +401,6 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
     }
   })]
 
-  # Wait for the grafana role + schema to exist before Grafana boots,
-  # otherwise the pod's first connection fails authentication.
-  depends_on = [kubernetes_job_v1.grafana_database_init]
 }
 
 module "grafana_oauth2_proxy" {
