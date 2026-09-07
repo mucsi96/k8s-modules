@@ -111,6 +111,26 @@ resource "helm_release" "alloy" {
         varlog           = true
         dockercontainers = false
       }
+      resources = {
+        requests = {
+          cpu    = "10m"
+          memory = "96Mi"
+        }
+        limits = {
+          memory = "256Mi"
+        }
+      }
+    }
+    configReloader = {
+      resources = {
+        requests = {
+          cpu    = "5m"
+          memory = "16Mi"
+        }
+        limits = {
+          memory = "64Mi"
+        }
+      }
     }
     controller = {
       type = "daemonset"
@@ -289,10 +309,21 @@ resource "helm_release" "faro_alloy" {
       resources = {
         requests = {
           cpu    = "5m"
-          memory = "64Mi"
+          memory = "96Mi"
         }
         limits = {
-          memory = "128Mi"
+          memory = "160Mi"
+        }
+      }
+    }
+    configReloader = {
+      resources = {
+        requests = {
+          cpu    = "5m"
+          memory = "16Mi"
+        }
+        limits = {
+          memory = "64Mi"
         }
       }
     }

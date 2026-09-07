@@ -115,11 +115,10 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
           # byte count (10 * 1024^3) — Kubernetes-style quantities like
           # "10Gi" fail to parse and crash-loop the container on startup.
           "storage.minFreeDiskSpaceBytes" = "10737418240"
-          # Caps the share of the container's memory limit VM may use for
-          # caches/index blocks (default 60%). Most of the ~460Mi working set
-          # was cache, so dropping to 40% trims idle RAM without touching
-          # ingestion; the trade-off is slightly more frequent cache misses.
-          "memory.allowedPercent" = "40"
+          # The 36h production sample showed 255Mi in VM caches and a 783Mi
+          # working-set peak. Keep the cache budget bounded on this small node;
+          # the trade-off is slightly more frequent cache misses.
+          "memory.allowedPercent" = "25"
         }
         storage = {
           accessModes = ["ReadWriteOnce"]
@@ -129,14 +128,14 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
             }
           }
         }
-        # Sized from observed usage (~52m / ~459Mi).
+        # The 36h working set averaged 653Mi and peaked at 783Mi.
         resources = {
           requests = {
             cpu    = "60m"
             memory = "512Mi"
           }
           limits = {
-            memory = "1Gi"
+            memory = "960Mi"
           }
         }
       }
@@ -152,14 +151,24 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
         extraArgs = {
           "promscrape.streamParse" = "true"
         }
-        # Sized from observed usage (~25m / ~139Mi).
+        # The 36h RSS averaged 134Mi and peaked at 180Mi; working-set peak was
+        # 223Mi.
         resources = {
           requests = {
             cpu    = "25m"
             memory = "160Mi"
           }
           limits = {
-            memory = "512Mi"
+            memory = "320Mi"
+          }
+        }
+        configReloaderResources = {
+          requests = {
+            cpu    = "5m"
+            memory = "16Mi"
+          }
+          limits = {
+            memory = "64Mi"
           }
         }
       }
@@ -181,7 +190,16 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
             memory = "64Mi"
           }
           limits = {
-            memory = "256Mi"
+            memory = "128Mi"
+          }
+        }
+        configReloaderResources = {
+          requests = {
+            cpu    = "5m"
+            memory = "16Mi"
+          }
+          limits = {
+            memory = "64Mi"
           }
         }
       }
@@ -256,15 +274,15 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
             }
           }
         }
-        # Sized from observed usage (~10m / ~52Mi): the request tracks the
-        # real working set instead of the previous 128Mi guess.
+        # The 36h RSS averaged 81Mi and peaked at 178Mi; working-set peak was
+        # 197Mi.
         resources = {
           requests = {
             cpu    = "10m"
-            memory = "64Mi"
+            memory = "96Mi"
           }
           limits = {
-            memory = "512Mi"
+            memory = "320Mi"
           }
         }
       }
@@ -334,16 +352,15 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
           }
         }
       }
-      # Sized from observed usage (~59m / ~286Mi): the working set settled
-      # back down after the dashboard/plugin churn, so the request tracks it
-      # again and the limit stays a comfortable margin above.
+      # The 36h RSS averaged 224Mi and peaked at 331Mi; working-set peak was
+      # 449Mi.
       resources = {
         requests = {
           cpu    = "60m"
           memory = "288Mi"
         }
         limits = {
-          memory = "640Mi"
+          memory = "576Mi"
         }
       }
       # Trust the email header injected by oauth2-proxy. oauth2-proxy already
@@ -398,14 +415,38 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
         }
       }
     }
+    internal = {
+      vmauth = {
+        spec = {
+          resources = {
+            requests = {
+              cpu    = "5m"
+              memory = "24Mi"
+            }
+            limits = {
+              memory = "64Mi"
+            }
+          }
+          configReloaderResources = {
+            requests = {
+              cpu    = "5m"
+              memory = "16Mi"
+            }
+            limits = {
+              memory = "64Mi"
+            }
+          }
+        }
+      }
+    }
     "prometheus-node-exporter" = {
       resources = {
         requests = {
           cpu    = "10m"
-          memory = "48Mi"
+          memory = "16Mi"
         }
         limits = {
-          memory = "128Mi"
+          memory = "64Mi"
         }
       }
     }
