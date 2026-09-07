@@ -173,41 +173,18 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
         }
       }
     }
+    # There are no alert receivers. Disabling VMAlert also removes its config
+    # reloader; dashboards that depend on precomputed recording rules must use
+    # direct queries instead.
     vmalert = {
-      enabled = true
-      spec = {
-        evaluationInterval = "60s"
-        extraArgs = {
-          "http.pathPrefix" = "/"
-          # No alert receivers exist anywhere in this setup (Alertmanager is
-          # disabled below), so vmalert is told to blackhole notifications
-          # instead of failing validation without any notifier.
-          "notifier.blackhole" = "true"
-        }
-        resources = {
-          requests = {
-            cpu    = "10m"
-            memory = "64Mi"
-          }
-          limits = {
-            memory = "128Mi"
-          }
-        }
-        configReloaderResources = {
-          requests = {
-            cpu    = "5m"
-            memory = "16Mi"
-          }
-          limits = {
-            memory = "64Mi"
-          }
-        }
-      }
+      enabled = false
+    }
+    # Do not keep unevaluated VMRule objects after VMAlert is removed.
+    defaultRules = {
+      enabled = false
     }
     # No alert receivers are configured anywhere in this setup, so
     # Alertmanager would only sit idle collecting firing alerts nobody sees.
-    # vmalert still evaluates the VMRules (Grafana dashboards use their
-    # recording rules); re-enable this if alert delivery is ever set up.
     alertmanager = {
       enabled = false
     }
@@ -340,8 +317,16 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
         }
       }
       sidecar = {
+        dashboards = {
+          # Fetch provisioned dashboards before Grafana starts instead of
+          # keeping an approximately 80Mi watcher running permanently.
+          initDashboards = true
+          skipReload     = true
+          watchMethod    = "LIST"
+        }
         # Applies to both kiwigrid/k8s-sidecar containers (sc-dashboard and
-        # sc-datasources); each idles around 80Mi watching ConfigMaps.
+        # sc-datasources). The dashboard container now exits before Grafana
+        # starts; the datasource watcher remains resident.
         resources = {
           requests = {
             cpu    = "5m"
