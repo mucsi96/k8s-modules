@@ -33,6 +33,15 @@ resource "helm_release" "redis" {
   # https://github.com/mucsi96/k8s-helm-charts/tree/main/charts/redis
   values = [yamlencode({
     password = random_password.password.result
+    resources = {
+      requests = {
+        cpu    = "10m"
+        memory = "32Mi"
+      }
+      limits = {
+        memory = "64Mi"
+      }
+    }
     persistentVolumeClaim = {
       storageClassName = ""
       volumeName       = kubernetes_persistent_volume_v1.redis.metadata[0].name
