@@ -42,6 +42,7 @@
         mode: "0644"
       notify:
         - Restart systemd-resolved
+        - Schedule Twingate connector restart
 
     - name: Point host resolv.conf at systemd-resolved
       ansible.builtin.file:
@@ -50,6 +51,7 @@
         state: link
         force: true
         follow: false
+      notify: Schedule Twingate connector restart
 
     - name: Ensure Twingate systemd drop-in directory exists
       ansible.builtin.file:
@@ -71,9 +73,18 @@
         mode: "0644"
       notify:
         - Reload systemd
+        - Schedule Twingate connector restart
 
     - name: Apply resolver configuration
       ansible.builtin.meta: flush_handlers
+
+    - name: Reset the SSH connection before the scheduled restart
+      ansible.builtin.meta: reset_connection
+
+    - name: Wait for Twingate SSH to recover
+      ansible.builtin.wait_for_connection:
+        delay: 10
+        timeout: 300
 
     - name: Verify Twingate connector health
       ansible.builtin.command: twingate-connectorctl health
@@ -103,3 +114,13 @@
       ansible.builtin.systemd_service:
         name: systemd-resolved
         state: restarted
+
+    - name: Schedule Twingate connector restart
+      ansible.builtin.command:
+        argv:
+          - systemd-run
+          - --on-active=5s
+          - --collect
+          - /usr/bin/systemctl
+          - restart
+          - twingate-connector.service
