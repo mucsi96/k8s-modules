@@ -360,6 +360,9 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
           # the connection stays inside the cluster network.
           ssl_mode = "disable"
         }
+        date_formats = {
+          default_timezone = "Europe/Zurich"
+        }
         "auth.proxy" = {
           enabled         = true
           header_name     = local.email_header_name
