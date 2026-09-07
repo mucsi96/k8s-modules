@@ -35,13 +35,9 @@ resource "azuread_application" "spa" {
   required_resource_access {
     resource_app_id = var.api_client_id
 
-    dynamic "resource_access" {
-      for_each = var.api_scope_ids
-
-      content {
-        id   = resource_access.value
-        type = "Scope"
-      }
+    resource_access {
+      id   = var.api_scope_id
+      type = "Scope"
     }
   }
 }
@@ -56,7 +52,7 @@ resource "azuread_service_principal" "spa_service_principal" {
 resource "azuread_application_pre_authorized" "allow_spa_to_access_api" {
   application_id       = var.api_id
   authorized_client_id = azuread_application.spa.client_id
-  permission_ids       = var.api_scope_ids
+  permission_ids       = [var.api_scope_id]
 }
 
 resource "azuread_service_principal_delegated_permission_grant" "allow_spa_to_access_msgraph_user_profile" {

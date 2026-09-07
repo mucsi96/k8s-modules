@@ -37,8 +37,7 @@ module "setup_hello_api" {
   owner  = var.owner
 
   display_name = "Hello API"
-  roles        = ["GreetingReader", "GreetingCreator"]
-  scopes       = ["readGreetings", "createGreeting"]
+  roles        = ["readGreetings", "createGreeting"]
 
   k8s_oidc_issuer_url           = var.k8s_oidc_issuer_url
   k8s_service_account_namespace = "hello"
@@ -54,10 +53,7 @@ module "setup_hello_spa" {
 
   api_id        = module.setup_hello_api.application_id
   api_client_id = module.setup_hello_api.client_id
-  api_scope_ids = [
-    module.setup_hello_api.scope_ids["readGreetings"],
-    module.setup_hello_api.scope_ids["createGreeting"]
-  ]
+  api_scope_id  = module.setup_hello_api.scope_id
 }
 
 resource "kubernetes_persistent_volume_v1" "hello_app_pv" {

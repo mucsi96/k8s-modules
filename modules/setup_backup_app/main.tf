@@ -27,8 +27,7 @@ module "setup_backup_api" {
   owner  = var.owner
 
   display_name = "Backup API"
-  roles        = ["DatabaseBackupsReader", "DatabaseBackupCreator", "DatabaseBackupCleaner", "DatabaseBackupRestorer", "DatabaseBackupDownloader"]
-  scopes       = ["readBackups", "createBackup", "cleanupBackups", "restoreBackup", "downloadBackup"]
+  roles        = ["readBackups", "createBackup", "cleanupBackups", "restoreBackup", "downloadBackup"]
 
   k8s_oidc_issuer_url           = var.k8s_oidc_issuer_url
   k8s_service_account_namespace = "backup"
@@ -44,13 +43,7 @@ module "setup_backup_spa" {
 
   api_id        = module.setup_backup_api.application_id
   api_client_id = module.setup_backup_api.client_id
-  api_scope_ids = [
-    module.setup_backup_api.scope_ids["readBackups"],
-    module.setup_backup_api.scope_ids["createBackup"],
-    module.setup_backup_api.scope_ids["cleanupBackups"],
-    module.setup_backup_api.scope_ids["restoreBackup"],
-    module.setup_backup_api.scope_ids["downloadBackup"]
-  ]
+  api_scope_id  = module.setup_backup_api.scope_id
 }
 
 data "azurerm_storage_account" "storage_account" {

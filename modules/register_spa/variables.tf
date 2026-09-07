@@ -18,9 +18,9 @@ variable "api_client_id" {
   type        = string
 }
 
-variable "api_scope_ids" {
-  description = "The scope IDs of the API"
-  type        = list(string)
+variable "api_scope_id" {
+  description = "The scope ID of the API"
+  type        = string
 }
 
 variable "api_id" {

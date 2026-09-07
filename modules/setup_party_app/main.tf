@@ -27,8 +27,7 @@ module "setup_party_api" {
   owner  = var.owner
 
   display_name = "Party API"
-  roles        = ["PartyReader", "PartyCreator"]
-  scopes       = ["readParties", "createParty"]
+  roles        = ["readParties", "createParty"]
 
   k8s_oidc_issuer_url           = var.k8s_oidc_issuer_url
   k8s_service_account_namespace = "party"
@@ -44,10 +43,7 @@ module "setup_party_spa" {
 
   api_id        = module.setup_party_api.application_id
   api_client_id = module.setup_party_api.client_id
-  api_scope_ids = [
-    module.setup_party_api.scope_ids["readParties"],
-    module.setup_party_api.scope_ids["createParty"]
-  ]
+  api_scope_id  = module.setup_party_api.scope_id
 }
 
 resource "kubernetes_persistent_volume_v1" "party_app_pv" {

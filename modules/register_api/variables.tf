@@ -14,12 +14,6 @@ variable "roles" {
   default     = []
 }
 
-variable "scopes" {
-  description = "The scopes to create for the API"
-  type        = list(string)
-  default     = []
-}
-
 variable "k8s_oidc_issuer_url" {
   description = "The OIDC issuer URL of the Kubernetes cluster"
   type        = string

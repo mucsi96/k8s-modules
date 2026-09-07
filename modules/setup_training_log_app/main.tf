@@ -40,8 +40,7 @@ module "setup_training_log_api" {
   owner  = var.owner
 
   display_name = "Training Log API"
-  roles        = ["WorkoutReader", "WorkoutCreator"]
-  scopes       = ["readWorkouts", "createWorkout"]
+  roles        = ["readWorkouts", "createWorkout"]
 
   k8s_oidc_issuer_url           = var.k8s_oidc_issuer_url
   k8s_service_account_namespace = "training-log"
@@ -57,10 +56,7 @@ module "setup_training_log_spa" {
 
   api_id        = module.setup_training_log_api.application_id
   api_client_id = module.setup_training_log_api.client_id
-  api_scope_ids = [
-    module.setup_training_log_api.scope_ids["readWorkouts"],
-    module.setup_training_log_api.scope_ids["createWorkout"]
-  ]
+  api_scope_id  = module.setup_training_log_api.scope_id
 }
 
 resource "kubernetes_persistent_volume_v1" "training_log_app_pv" {
