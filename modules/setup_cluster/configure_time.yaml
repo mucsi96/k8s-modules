@@ -1,0 +1,53 @@
+# Configures authenticated time synchronization required by Twingate.
+- name: Configure system time synchronization
+  hosts: all
+  gather_facts: false
+  become: true
+
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
+  tasks:
+    - name: Ensure chrony is installed
+      ansible.builtin.apt:
+        name: chrony
+        state: present
+        update_cache: true
+
+    - name: Configure authenticated Cloudflare time synchronization
+      ansible.builtin.copy:
+        dest: /etc/chrony/chrony.conf
+        content: |
+          pool time.cloudflare.com iburst nts maxsources 4
+
+          keyfile /etc/chrony/chrony.keys
+          driftfile /var/lib/chrony/chrony.drift
+          ntsdumpdir /var/lib/chrony
+
+          rtcsync
+          makestep 1 3
+          leapseclist /usr/share/zoneinfo/leap-seconds.list
+          cmdport 0
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart chrony
+
+    - name: Apply chrony configuration
+      ansible.builtin.meta: flush_handlers
+
+    - name: Ensure chrony is enabled and running
+      ansible.builtin.systemd_service:
+        name: chrony.service
+        enabled: true
+        state: started
+
+    - name: Wait for clock synchronization
+      ansible.builtin.command: chronyc waitsync 30 5
+      changed_when: false
+
+  handlers:
+    - name: Restart chrony
+      ansible.builtin.systemd_service:
+        name: chrony.service
+        state: restarted

@@ -51,7 +51,20 @@ resource "ansible_playbook" "configure_dns" {
   name       = var.host
   playbook   = "${path.module}/configure_dns.yaml"
   replayable = false
-  extra_vars = local.ansible_connection_vars
+  extra_vars = merge(local.ansible_connection_vars, {
+    _configure_dns_sha256 = filesha256("${path.module}/configure_dns.yaml")
+  })
+
+  depends_on = [ansible_playbook.configure_time]
+}
+
+resource "ansible_playbook" "configure_time" {
+  name       = var.host
+  playbook   = "${path.module}/configure_time.yaml"
+  replayable = false
+  extra_vars = merge(local.ansible_connection_vars, {
+    _configure_time_sha256 = filesha256("${path.module}/configure_time.yaml")
+  })
 
   depends_on = [terraform_data.wait_for_system]
 }
