@@ -37,8 +37,7 @@ module "setup_library_api" {
   owner  = var.owner
 
   display_name = "Library API"
-  roles        = ["LibraryUser"]
-  scopes       = ["readItems", "writeItems"]
+  roles        = ["readItems", "writeItems"]
 
   k8s_oidc_issuer_url           = var.k8s_oidc_issuer_url
   k8s_service_account_namespace = "library"
@@ -54,10 +53,7 @@ module "setup_library_spa" {
 
   api_id        = module.setup_library_api.application_id
   api_client_id = module.setup_library_api.client_id
-  api_scope_ids = [
-    module.setup_library_api.scope_ids["readItems"],
-    module.setup_library_api.scope_ids["writeItems"]
-  ]
+  api_scope_id  = module.setup_library_api.scope_id
 }
 
 resource "kubernetes_persistent_volume_v1" "library_app_pv" {

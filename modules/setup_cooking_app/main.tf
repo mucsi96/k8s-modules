@@ -38,8 +38,7 @@ module "setup_cooking_api" {
   owner  = var.owner
 
   display_name = "Cooking API"
-  roles        = ["RecipeReader", "RecipeCreator"]
-  scopes       = ["readRecipes", "createRecipe"]
+  roles        = ["readRecipes", "createRecipe"]
 
   k8s_oidc_issuer_url           = var.k8s_oidc_issuer_url
   k8s_service_account_namespace = "cooking"
@@ -55,10 +54,7 @@ module "setup_cooking_spa" {
 
   api_id        = module.setup_cooking_api.application_id
   api_client_id = module.setup_cooking_api.client_id
-  api_scope_ids = [
-    module.setup_cooking_api.scope_ids["readRecipes"],
-    module.setup_cooking_api.scope_ids["createRecipe"]
-  ]
+  api_scope_id  = module.setup_cooking_api.scope_id
 }
 
 # Every user in the tenant gets both recipe roles — the whole household uses
@@ -71,7 +67,7 @@ data "azuread_users" "all" {
 resource "azuread_app_role_assignment" "all_users" {
   for_each = {
     for pair in setproduct(
-      ["RecipeReader", "RecipeCreator"],
+      ["readRecipes", "createRecipe"],
       [for user in data.azuread_users.all.users : user.object_id if user.object_id != var.owner]
     ) : "${pair[0]}-${pair[1]}" => pair
   }

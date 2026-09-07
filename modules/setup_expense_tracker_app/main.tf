@@ -34,8 +34,7 @@ module "setup_expense_tracker_api" {
   owner  = var.owner
 
   display_name = "Expense Tracker API"
-  roles        = ["ExpenseReader"]
-  scopes       = ["readExpenses", "createExpenses", "deleteExpenses"]
+  roles        = ["readExpenses", "createExpenses", "deleteExpenses"]
 
   k8s_oidc_issuer_url           = var.k8s_oidc_issuer_url
   k8s_service_account_namespace = "expense-tracker"
@@ -51,11 +50,7 @@ module "setup_expense_tracker_spa" {
 
   api_id        = module.setup_expense_tracker_api.application_id
   api_client_id = module.setup_expense_tracker_api.client_id
-  api_scope_ids = [
-    module.setup_expense_tracker_api.scope_ids["readExpenses"],
-    module.setup_expense_tracker_api.scope_ids["createExpenses"],
-    module.setup_expense_tracker_api.scope_ids["deleteExpenses"]
-  ]
+  api_scope_id  = module.setup_expense_tracker_api.scope_id
 }
 
 resource "kubernetes_persistent_volume_v1" "expense_tracker_app_pv" {

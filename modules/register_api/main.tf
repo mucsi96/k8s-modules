@@ -2,9 +2,7 @@ resource "random_uuid" "role_id" {
   for_each = toset(var.roles)
 }
 
-resource "random_uuid" "scope_id" {
-  for_each = toset(var.scopes)
-}
+resource "random_uuid" "scope_id" {}
 
 resource "azuread_application" "api" {
   display_name = var.display_name
@@ -25,15 +23,11 @@ resource "azuread_application" "api" {
   api {
     requested_access_token_version = 2
 
-    dynamic "oauth2_permission_scope" {
-      for_each = toset(var.scopes)
-
-      content {
-        admin_consent_description  = "${var.display_name} ${oauth2_permission_scope.value} scope"
-        admin_consent_display_name = "${var.display_name} ${oauth2_permission_scope.value} scope"
-        id                         = random_uuid.scope_id[oauth2_permission_scope.value].result
-        value                      = oauth2_permission_scope.value
-      }
+    oauth2_permission_scope {
+      admin_consent_description  = "Access ${var.display_name}"
+      admin_consent_display_name = "api-access"
+      id                         = random_uuid.scope_id.result
+      value                      = "api-access"
     }
   }
 

@@ -42,8 +42,7 @@ module "setup_learn_language_api" {
   owner  = var.owner
 
   display_name = "Learn Language API"
-  roles        = ["DeckReader", "DeckCreator"]
-  scopes       = ["readDecks", "createDeck"]
+  roles        = ["readDecks", "createDeck"]
 
   k8s_oidc_issuer_url           = var.k8s_oidc_issuer_url
   k8s_service_account_namespace = "learn-language"
@@ -59,10 +58,7 @@ module "setup_learn_language_spa" {
 
   api_id        = module.setup_learn_language_api.application_id
   api_client_id = module.setup_learn_language_api.client_id
-  api_scope_ids = [
-    module.setup_learn_language_api.scope_ids["readDecks"],
-    module.setup_learn_language_api.scope_ids["createDeck"]
-  ]
+  api_scope_id  = module.setup_learn_language_api.scope_id
 }
 
 resource "kubernetes_persistent_volume_v1" "learn_language_app_pv" {
