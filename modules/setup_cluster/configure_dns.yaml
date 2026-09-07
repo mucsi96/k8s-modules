@@ -33,23 +33,55 @@
         dest: /etc/systemd/resolved.conf.d/upstream.conf
         content: |
           [Resolve]
-          DNS=46.38.225.230 46.38.252.230 2a03:4000:0:1::e1e6 2a03:4000:8000::fce6
+          DNS=
+          DNS=46.38.225.230 46.38.252.230
+          FallbackDNS=
           FallbackDNS=1.1.1.1 9.9.9.9
         owner: root
         group: root
         mode: "0644"
-      notify: Restart systemd-resolved
+      notify:
+        - Restart systemd-resolved
 
-    - name: Apply resolver configuration
-      ansible.builtin.meta: flush_handlers
-
-    - name: Point host resolv.conf at upstream resolver file
+    - name: Point host resolv.conf at systemd-resolved
       ansible.builtin.file:
-        src: /run/systemd/resolve/resolv.conf
+        src: /run/systemd/resolve/stub-resolv.conf
         dest: /etc/resolv.conf
         state: link
         force: true
         follow: false
+
+    - name: Ensure Twingate systemd drop-in directory exists
+      ansible.builtin.file:
+        path: /etc/systemd/system/twingate-connector.service.d
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Order Twingate after network and DNS
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/twingate-connector.service.d/10-network-online.conf
+        content: |
+          [Unit]
+          Wants=network-online.target systemd-resolved.service
+          After=network-online.target systemd-resolved.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Reload systemd
+
+    - name: Apply resolver configuration
+      ansible.builtin.meta: flush_handlers
+
+    - name: Verify Twingate connector health
+      ansible.builtin.command: twingate-connectorctl health
+      register: twingate_health
+      retries: 30
+      delay: 2
+      until: twingate_health.rc == 0
+      changed_when: false
 
     - name: Verify DNS resolution
       ansible.builtin.get_url:
@@ -63,6 +95,10 @@
         state: absent
 
   handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+
     - name: Restart systemd-resolved
       ansible.builtin.systemd_service:
         name: systemd-resolved

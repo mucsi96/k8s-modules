@@ -2,22 +2,38 @@ locals {
   firewall_policy_name = "${var.server_name}-cloudflare-https"
   firewall_policy_body = jsonencode({
     name        = local.firewall_policy_name
-    description = "Terraform managed: public HTTPS from Cloudflare only"
-    rules = [{
-      description      = "HTTPS from the Cloudflare edge only"
-      direction        = "INGRESS"
-      protocol         = "TCP"
-      action           = "ACCEPT"
-      sources          = var.https_source_ips
-      destinationPorts = "443"
-    }]
+    description = "Terraform managed: public HTTPS from Cloudflare and NTP replies"
+    rules = [
+      {
+        description      = "HTTPS from the Cloudflare edge only"
+        direction        = "INGRESS"
+        protocol         = "TCP"
+        action           = "ACCEPT"
+        sources          = var.https_source_ips
+        destinationPorts = "443"
+      },
+      {
+        description = "NTP replies to the host"
+        direction   = "INGRESS"
+        protocol    = "UDP"
+        action      = "ACCEPT"
+        sources = [
+          "162.159.200.1/32",
+          "162.159.200.123/32",
+          "2606:4700:f1::1/128",
+          "2606:4700:f1::123/128",
+        ]
+        sourcePorts = "123"
+      },
+    ]
   })
 }
 
 # Netcup changes the implicit ingress action to DROP as soon as this policy has
-# an ingress rule. Netcup's copied mandatory policies are preserved for DNS and
-# installation traffic. No egress rule is defined, so implicit egress remains
-# ACCEPT. SSH and the k3s API are reachable only through Twingate.
+# an ingress rule. Its UDP handling is stateless, so NTP replies need an
+# explicit ingress rule. Netcup's copied mandatory policies are preserved for
+# DNS and installation traffic. No egress rule is defined, so implicit egress
+# remains ACCEPT. SSH and the k3s API are reachable only through Twingate.
 data "http" "firewall_policies" {
   url             = "${trimsuffix(var.netcup_api_url, "/")}/api/v1/users/${var.netcup_user_id}/firewall-policies?limit=500"
   request_headers = local.netcup_headers
