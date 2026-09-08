@@ -34,3 +34,9 @@ variable "ssh_port" {
   description = "Randomized SSH port the host listens on."
   type        = number
 }
+
+variable "github_actions_ssh_access" {
+  description = "Allow the GitHub Actions service account to reach the host's SSH endpoint."
+  type        = bool
+  default     = false
+}
