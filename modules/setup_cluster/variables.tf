@@ -60,6 +60,38 @@ variable "owner" {
   type        = string
 }
 
+variable "server_maintenance_github_repository" {
+  description = "GitHub repository whose Actions workflow invokes server maintenance."
+  type        = string
+}
+
+variable "server_maintenance_github_repository_owner" {
+  description = "GitHub owner or organization that hosts the server maintenance repository."
+  type        = string
+}
+
+variable "server_maintenance_github_branch" {
+  description = "Branch allowed to authenticate as the server maintenance Entra application."
+  type        = string
+  default     = "main"
+}
+
+variable "server_maintenance_secret_scopes" {
+  description = "Versionless Key Vault secret resource IDs the maintenance workflow may read."
+  type = object({
+    host            = string
+    ssh_port        = string
+    ssh_private_key = string
+    ssh_user_name   = string
+  })
+}
+
+variable "server_maintenance_twingate_service_key" {
+  description = "Twingate service key used by the maintenance workflow to reach the server."
+  type        = string
+  sensitive   = true
+}
+
 variable "local_python_interpreter" {
   description = "Controller Python interpreter containing azure.azcollection requirements."
   type        = string

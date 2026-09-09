@@ -227,7 +227,17 @@ module "setup_cluster" {
   username = module.provision_server.username
   wait_for = module.provision_server.ssh_ready
 
-  # Azure inputs omitted.
+  server_maintenance_github_repository       = "example-infrastructure"
+  server_maintenance_github_repository_owner = "example-owner"
+  server_maintenance_secret_scopes = {
+    host            = azurerm_key_vault_secret.host.resource_versionless_id
+    ssh_port        = azurerm_key_vault_secret.ssh_port.resource_versionless_id
+    ssh_private_key = azurerm_key_vault_secret.ssh_private_key.resource_versionless_id
+    ssh_user_name   = azurerm_key_vault_secret.ssh_user_name.resource_versionless_id
+  }
+  server_maintenance_twingate_service_key = module.setup_twingate_access.service_key
+
+  # Other Azure inputs omitted.
 }
 ```
 
@@ -279,6 +289,11 @@ prunes unused container images when invoked. Debian package maintenance also
 explicitly updates the host-level `twingate-connector` package before the
 remaining distribution upgrade. ServiceLB is disabled because Traefik binds
 host port 443 directly.
+
+`setup_cluster` also creates the maintenance workflow's Entra identity, GitHub
+OIDC credential, secret-scoped Key Vault access, and repository Actions
+secrets. The caller supplies the repository identity, Twingate service key, and
+versionless resource IDs of the four SSH connection secrets.
 
 The maintenance helper runs as `update-server.service`. Its journal is persisted
 on the host and the logging Alloy DaemonSet forwards only that unit to
