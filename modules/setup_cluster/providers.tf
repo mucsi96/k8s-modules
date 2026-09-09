@@ -20,6 +20,10 @@ terraform {
       source = "hashicorp/kubernetes"
     }
 
+    github = {
+      source = "integrations/github"
+    }
+
     random = {
       source = "hashicorp/random"
     }
