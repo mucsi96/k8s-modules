@@ -171,15 +171,37 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
         }
       }
     }
-    # There are no alert receivers. Disabling VMAlert also removes its config
-    # reloader; dashboards that depend on precomputed recording rules must use
-    # direct queries instead.
+    # The bundled dashboards depend on the stack's recording rules. There are
+    # no alert receivers, so discard notifications instead of deploying an
+    # otherwise idle Alertmanager.
     vmalert = {
-      enabled = false
+      enabled = true
+      spec = {
+        extraArgs = {
+          "notifier.blackhole" = "true"
+        }
+        resources = {
+          requests = {
+            cpu    = "10m"
+            memory = "64Mi"
+          }
+          limits = {
+            memory = "128Mi"
+          }
+        }
+        configReloaderResources = {
+          requests = {
+            cpu    = "5m"
+            memory = "16Mi"
+          }
+          limits = {
+            memory = "64Mi"
+          }
+        }
+      }
     }
-    # Do not keep unevaluated VMRule objects after VMAlert is removed.
     defaultRules = {
-      enabled = false
+      enabled = true
     }
     # No alert receivers are configured anywhere in this setup, so
     # Alertmanager would only sit idle collecting firing alerts nobody sees.
