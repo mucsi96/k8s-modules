@@ -25,8 +25,3 @@ resource "helm_release" "monitoring_crds" {
 
   depends_on = [terraform_data.wait_for]
 }
-
-moved {
-  from = helm_release.prometheus_operator_crds
-  to   = helm_release.monitoring_crds
-}

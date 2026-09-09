@@ -212,14 +212,14 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
     kubeEtcd = {
       enabled = false
     }
-    # Grafana uses its PromQL-compatible datasource plugin to query VMSingle.
+    # Grafana uses the native VictoriaMetrics datasource plugin to query VMSingle.
     # timeInterval matches the 60s scrape interval so Grafana doesn't request
     # more resolution than was stored.
     defaultDatasources = {
       victoriametrics = {
         datasources = [{
           name      = "VictoriaMetrics"
-          type      = "prometheus"
+          type      = "victoriametrics-metrics-datasource"
           access    = "proxy"
           uid       = "VictoriaMetrics"
           isDefault = true
@@ -241,40 +241,6 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
         }
       }
     }
-    # Grafana keeps provisioned datasources in its database after their source
-    # is removed. Explicit deletion also handles databases restored from an old
-    # backup without affecting the active VictoriaMetrics and VictoriaLogs
-    # datasources.
-    extraObjects = [{
-      apiVersion = "v1"
-      kind       = "ConfigMap"
-      metadata = {
-        name      = "grafana-obsolete-datasources"
-        namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
-        labels = {
-          grafana_datasource = "1"
-        }
-      }
-      data = {
-        "cleanup.yaml" = yamlencode({
-          apiVersion = 1
-          deleteDatasources = [
-            {
-              name  = "Prometheus"
-              orgId = 1
-            },
-            {
-              name  = "Loki"
-              orgId = 1
-            },
-            {
-              name  = "Alertmanager"
-              orgId = 1
-            },
-          ]
-        })
-      }
-    }]
     # VictoriaLogs single-node store. The log pipeline (Alloy, deployed by
     # setup_victoria_logs) ships pod logs and Faro browser telemetry to its
     # compatible push API.
@@ -305,13 +271,14 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
         }
       }
     }
-    # Grafana plugin for querying VictoriaLogs (LogsQL). The stack provisions
-    # the matching "VictoriaLogs (DS)" datasource pointing at VLSingle once
-    # vlsingle is enabled; without the plugin installed that datasource is
-    # broken. The plugin is fetched from grafana.com when the Grafana pod
-    # starts, so the pod needs internet access on first boot.
+    # Grafana plugins for querying VictoriaMetrics (MetricsQL) and VictoriaLogs
+    # (LogsQL). They are fetched from grafana.com when the Grafana pod starts,
+    # so the pod needs internet access on first boot.
     grafana = {
-      plugins = ["victoriametrics-logs-datasource"]
+      plugins = [
+        "victoriametrics-metrics-datasource",
+        "victoriametrics-logs-datasource",
+      ]
       service = {
         type = "ClusterIP"
         port = local.grafana_port
