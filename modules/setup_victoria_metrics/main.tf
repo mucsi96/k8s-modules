@@ -241,40 +241,6 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
         }
       }
     }
-    # Grafana keeps provisioned datasources in its database after their source
-    # is removed. Explicit deletion also handles databases restored from an old
-    # backup without affecting the active VictoriaMetrics and VictoriaLogs
-    # datasources.
-    extraObjects = [{
-      apiVersion = "v1"
-      kind       = "ConfigMap"
-      metadata = {
-        name      = "grafana-obsolete-datasources"
-        namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
-        labels = {
-          grafana_datasource = "1"
-        }
-      }
-      data = {
-        "cleanup.yaml" = yamlencode({
-          apiVersion = 1
-          deleteDatasources = [
-            {
-              name  = "Prometheus"
-              orgId = 1
-            },
-            {
-              name  = "Loki"
-              orgId = 1
-            },
-            {
-              name  = "Alertmanager"
-              orgId = 1
-            },
-          ]
-        })
-      }
-    }]
     # VictoriaLogs single-node store. The log pipeline (Alloy, deployed by
     # setup_victoria_logs) ships pod logs and Faro browser telemetry to its
     # compatible push API.
