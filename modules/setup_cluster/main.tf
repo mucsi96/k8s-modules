@@ -23,6 +23,10 @@ resource "ansible_playbook" "system_update" {
 
   extra_vars = merge(local.ansible_connection_vars, {
     _wait_for = coalesce(var.wait_for, "")
+    _system_update_sha256 = sha256(join(":", [
+      filesha256("${path.module}/system_update.yaml"),
+      filesha256("${path.module}/update_server.sh"),
+    ]))
   })
 }
 

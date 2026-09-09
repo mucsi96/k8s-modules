@@ -38,6 +38,14 @@
       until: connectivity_check.status == 200
 
   tasks:
+    - name: Install server update script
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/update_server.sh"
+        dest: /usr/local/sbin/update-server
+        owner: root
+        group: root
+        mode: "0755"
+
     - name: Update package cache and upgrade packages
       ansible.builtin.apt:
         update_cache: true
