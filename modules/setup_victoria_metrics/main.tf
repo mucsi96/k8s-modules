@@ -212,14 +212,14 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
     kubeEtcd = {
       enabled = false
     }
-    # Grafana uses its PromQL-compatible datasource plugin to query VMSingle.
+    # Grafana uses the native VictoriaMetrics datasource plugin to query VMSingle.
     # timeInterval matches the 60s scrape interval so Grafana doesn't request
     # more resolution than was stored.
     defaultDatasources = {
       victoriametrics = {
         datasources = [{
           name      = "VictoriaMetrics"
-          type      = "prometheus"
+          type      = "victoriametrics-metrics-datasource"
           access    = "proxy"
           uid       = "VictoriaMetrics"
           isDefault = true
@@ -271,13 +271,14 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
         }
       }
     }
-    # Grafana plugin for querying VictoriaLogs (LogsQL). The stack provisions
-    # the matching "VictoriaLogs (DS)" datasource pointing at VLSingle once
-    # vlsingle is enabled; without the plugin installed that datasource is
-    # broken. The plugin is fetched from grafana.com when the Grafana pod
-    # starts, so the pod needs internet access on first boot.
+    # Grafana plugins for querying VictoriaMetrics (MetricsQL) and VictoriaLogs
+    # (LogsQL). They are fetched from grafana.com when the Grafana pod starts,
+    # so the pod needs internet access on first boot.
     grafana = {
-      plugins = ["victoriametrics-logs-datasource"]
+      plugins = [
+        "victoriametrics-metrics-datasource",
+        "victoriametrics-logs-datasource",
+      ]
       service = {
         type = "ClusterIP"
         port = local.grafana_port
