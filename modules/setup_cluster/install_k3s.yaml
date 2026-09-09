@@ -1,4 +1,4 @@
-# Installs a pinned k3s release on Debian 13 and exports its admin credentials.
+# Installs at least the configured k3s release and exports its admin credentials.
 - name: Install k3s
   hosts: all
   gather_facts: true
@@ -71,20 +71,42 @@
       failed_when: false
       changed_when: false
 
+    - name: Check whether the configured k3s version is newer
+      ansible.builtin.command:
+        argv:
+          - dpkg
+          - --compare-versions
+          - "{{ installed_k3s.stdout | regex_search('v[0-9]+\\.[0-9]+\\.[0-9]+\\+k3s[0-9]+') | regex_replace('^v', '') }}"
+          - lt
+          - "{{ k3s_version | regex_replace('^v', '') }}"
+      register: configured_k3s_is_newer
+      when: installed_k3s.rc == 0
+      failed_when: configured_k3s_is_newer.rc not in [0, 1]
+      changed_when: false
+
+    - name: Create k3s installer directory
+      ansible.builtin.file:
+        path: /usr/local/libexec
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
     - name: Download the k3s installer
       ansible.builtin.get_url:
         url: "https://raw.githubusercontent.com/k3s-io/k3s/{{ k3s_version | urlencode }}/install.sh"
-        dest: /tmp/install-k3s.sh
-        mode: "0755"
-      when: installed_k3s.rc != 0 or k3s_version not in installed_k3s.stdout
+        dest: /usr/local/libexec/install-k3s.sh
+        owner: root
+        group: root
+        mode: "0700"
 
     # The official installer downloads the release checksum and verifies the
     # binary before installing it.
-    - name: Install the pinned k3s release
-      ansible.builtin.command: /tmp/install-k3s.sh
+    - name: Install the configured k3s release
+      ansible.builtin.command: /usr/local/libexec/install-k3s.sh
       environment:
         INSTALL_K3S_VERSION: "{{ k3s_version }}"
-      when: installed_k3s.rc != 0 or k3s_version not in installed_k3s.stdout
+      when: installed_k3s.rc != 0 or (configured_k3s_is_newer.rc | default(1)) == 0
 
     - name: Apply pending k3s configuration changes
       ansible.builtin.meta: flush_handlers

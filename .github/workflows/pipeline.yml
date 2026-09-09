@@ -48,6 +48,8 @@ jobs:
         run: bash modules/provision_server/test_netcup_auth.sh
       - name: PostgreSQL helper syntax check
         run: bash -n modules/setup_postgres_schema/provision.sh
+      - name: Server update helper syntax check
+        run: bash -n modules/setup_cluster/update_server.sh
 
   release:
     runs-on: ubuntu-latest

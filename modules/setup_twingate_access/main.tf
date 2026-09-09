@@ -51,8 +51,8 @@ resource "twingate_resource" "k8s_api" {
   }
 }
 
-# SSH: operators and, when explicitly enabled, GitHub Actions. ICMP allows
-# operators to ping the host for diagnostics (the public ICMP rule is removed).
+# SSH: operators and GitHub Actions. ICMP allows operators to ping the host for
+# diagnostics (the public ICMP rule is removed).
 resource "twingate_resource" "ssh" {
   name              = "${var.environment_name} SSH"
   remote_network_id = var.remote_network_id
@@ -73,11 +73,7 @@ resource "twingate_resource" "ssh" {
     group_id = data.twingate_groups.everyone.groups[0].id
   }
 
-  dynamic "access_service" {
-    for_each = var.github_actions_ssh_access ? [true] : []
-
-    content {
-      service_account_id = twingate_service_account.github_actions.id
-    }
+  access_service {
+    service_account_id = twingate_service_account.github_actions.id
   }
 }

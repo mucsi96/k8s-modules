@@ -14,7 +14,7 @@ variable "username" {
 }
 
 variable "k3s_version" {
-  description = "Pinned k3s release. This also pins the bundled Traefik and Metrics Server versions."
+  description = "Minimum k3s release installed during provisioning. Automated maintenance may advance it to a newer stable release."
   type        = string
   default     = "v1.36.4+k3s1"
 }
