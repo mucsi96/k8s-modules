@@ -16,6 +16,17 @@ if [[ "${UPDATE_SERVER_BACKGROUND:-}" != 1 ]]; then
     /usr/local/sbin/update-server
 fi
 
+prefix_output_with_timestamp() {
+  local line
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    printf '%s %s\n' "$(date --utc '+%d/%b/%Y:%H:%M:%S')" "$line"
+  done
+}
+
+exec > >(prefix_output_with_timestamp)
+exec 2> >(prefix_output_with_timestamp >&2)
+
 if [[ ! -r /etc/os-release ]]; then
   echo "Error: unable to identify the operating system." >&2
   exit 1

@@ -298,7 +298,8 @@ versionless resource IDs of the four SSH connection secrets.
 The maintenance helper runs as `update-server.service`. Its journal is persisted
 on the host and the logging Alloy DaemonSet forwards only that unit to
 VictoriaLogs. In Grafana, use `{app="update-server"}` to inspect package, k3s,
-image-pruning, and reboot scheduling output.
+image-pruning, and reboot scheduling output. Each line starts with its UTC
+timestamp in `DD/Mon/YYYY:HH:MM:SS` format.
 
 The Traefik controller and its `HelmChartConfig` run in `kube-system`. The
 shared Gateway and Cloudflare Origin CA secret remain in `traefik`. The ingress
