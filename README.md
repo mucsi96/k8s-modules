@@ -280,6 +280,11 @@ explicitly updates the host-level `twingate-connector` package before the
 remaining distribution upgrade. ServiceLB is disabled because Traefik binds
 host port 443 directly.
 
+The maintenance helper runs as `update-server.service`. Its journal is persisted
+on the host and the logging Alloy DaemonSet forwards only that unit to
+VictoriaLogs. In Grafana, use `{app="update-server"}` to inspect package, k3s,
+image-pruning, and reboot scheduling output.
+
 The Traefik controller and its `HelmChartConfig` run in `kube-system`. The
 shared Gateway and Cloudflare Origin CA secret remain in `traefik`. The ingress
 readiness token is the UID of a Gateway that has reported both `Accepted=True`

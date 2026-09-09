@@ -96,6 +96,33 @@ resource "helm_release" "alloy" {
             stage.cri {}
           }
 
+          loki.relabel "update_server_journal" {
+            forward_to = []
+
+            rule {
+              source_labels = ["__journal__hostname"]
+              target_label  = "node"
+            }
+            rule {
+              source_labels = ["__journal_priority_keyword"]
+              target_label  = "level"
+            }
+          }
+
+          loki.source.journal "update_server" {
+            path          = "/var/log/journal"
+            matches       = "_SYSTEMD_UNIT=update-server.service"
+            max_age       = "168h"
+            relabel_rules = loki.relabel.update_server_journal.rules
+            forward_to    = [loki.write.default.receiver]
+
+            labels = {
+              app          = "update-server",
+              source       = "journald",
+              systemd_unit = "update-server.service",
+            }
+          }
+
           loki.write "default" {
             endpoint {
               url = "${local.victoria_logs_push_url}"
@@ -103,10 +130,9 @@ resource "helm_release" "alloy" {
           }
         RIVER
       }
-      # The chart mounts /var/log from the host into the Alloy container so
-      # loki.source.file can read /var/log/pods/*. dockercontainers stays
-      # off; k3s uses containerd, not docker, and pod log symlinks under
-      # /var/log/pods already point at the right files.
+      # The chart mounts /var/log from the host into the Alloy container so it
+      # can read both pod logs and the persistent update-server journal.
+      # dockercontainers stays off because k3s uses containerd, not docker.
       mounts = {
         varlog           = true
         dockercontainers = false

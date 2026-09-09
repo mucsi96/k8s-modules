@@ -38,6 +38,29 @@
       until: connectivity_check.status == 200
 
   tasks:
+    - name: Create journald configuration directory
+      ansible.builtin.file:
+        path: /etc/systemd/journald.conf.d
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Persist the system journal
+      ansible.builtin.copy:
+        dest: /etc/systemd/journald.conf.d/persistent.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [Journal]
+          Storage=persistent
+          SystemMaxUse=256M
+      notify: Restart systemd-journald
+
+    - name: Apply journald configuration changes
+      ansible.builtin.meta: flush_handlers
+
     - name: Install server update script
       ansible.builtin.copy:
         src: "{{ playbook_dir }}/update_server.sh"
@@ -72,3 +95,9 @@
     - name: Ensure SSH recovered after updates
       ansible.builtin.wait_for_connection:
         timeout: 600
+
+  handlers:
+    - name: Restart systemd-journald
+      ansible.builtin.systemd_service:
+        name: systemd-journald
+        state: restarted
