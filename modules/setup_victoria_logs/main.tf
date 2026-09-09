@@ -42,6 +42,7 @@ resource "helm_release" "alloy" {
       create = false
     }
     alloy = {
+      storagePath = "/var/lib/alloy"
       configMap = {
         create  = true
         content = <<-RIVER
@@ -136,6 +137,10 @@ resource "helm_release" "alloy" {
       mounts = {
         varlog           = true
         dockercontainers = false
+        extra = [{
+          name      = "storage"
+          mountPath = "/var/lib/alloy"
+        }]
       }
       resources = {
         requests = {
@@ -160,6 +165,15 @@ resource "helm_release" "alloy" {
     }
     controller = {
       type = "daemonset"
+      volumes = {
+        extra = [{
+          name = "storage"
+          hostPath = {
+            path = "/var/lib/alloy"
+            type = "DirectoryOrCreate"
+          }
+        }]
+      }
     }
   })]
 }
