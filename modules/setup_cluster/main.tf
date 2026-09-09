@@ -85,6 +85,7 @@ resource "ansible_playbook" "install_k3s" {
     workload_identity_issuer = data.azurerm_storage_account.oidc.primary_web_endpoint
     oidc_issuer_url          = local.apiserver_oidc_issuer_url
     apiserver_client_id      = local.apiserver_oidc_client_id
+    _install_k3s_sha256      = filesha256("${path.module}/install_k3s.yaml")
     azure_key_vault_name     = var.azure_key_vault_name
     azure_subscription_id    = var.azure_subscription_id
     local_python_interpreter = var.local_python_interpreter

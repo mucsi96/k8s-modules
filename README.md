@@ -272,9 +272,13 @@ Twingate connector
 
 ## Platform Details
 
-k3s is pinned by `setup_cluster.k3s_version`; the default is
-`v1.36.4+k3s1`. That release also controls bundled Traefik and Metrics Server.
-ServiceLB is disabled because Traefik binds host port 443 directly.
+`setup_cluster.k3s_version` defines the minimum version installed during
+provisioning; the default is `v1.36.4+k3s1`. The server's `update-server`
+maintenance helper advances k3s to newer releases from the stable channel and
+prunes unused container images when invoked. Debian package maintenance also
+explicitly updates the host-level `twingate-connector` package before the
+remaining distribution upgrade. ServiceLB is disabled because Traefik binds
+host port 443 directly.
 
 The Traefik controller and its `HelmChartConfig` run in `kube-system`. The
 shared Gateway and Cloudflare Origin CA secret remain in `traefik`. The ingress
