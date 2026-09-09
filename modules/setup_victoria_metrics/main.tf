@@ -61,11 +61,9 @@ resource "kubernetes_secret_v1" "grafana_database" {
   type = "Opaque"
 }
 
-# victoria-metrics-k8s-stack replaces Prometheus with VictoriaMetrics as the
-# metrics store: VMSingle stores the time series (a fraction of Prometheus'
-# RAM for the same workload), vmagent scrapes targets, and VMAlert evaluates
-# the recording rules Grafana dashboards rely on. Grafana, node-exporter and
-# kube-state-metrics stay as the same subcharts kube-prometheus-stack used.
+# VMSingle stores time series, vmagent scrapes targets, and VMAlert evaluates
+# recording rules used by Grafana dashboards. Grafana, node-exporter, and
+# kube-state-metrics are deployed by the same stack.
 #
 # The VM operator converts Prometheus Operator objects (ServiceMonitor,
 # PodMonitor, ...) into its own VMServiceScrape / VMPodMonitor equivalents, so
@@ -214,18 +212,16 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
     kubeEtcd = {
       enabled = false
     }
-    # Provision the datasource under the same name and UID kube-prometheus-stack
-    # used ("Prometheus" / "prometheus") but pointed at VMSingle, so existing
-    # dashboards in the persisted Grafana database keep resolving it. timeInterval
-    # matches the 60s scrape interval so Grafana doesn't request more resolution
-    # than was stored.
+    # Grafana uses its PromQL-compatible datasource plugin to query VMSingle.
+    # timeInterval matches the 60s scrape interval so Grafana doesn't request
+    # more resolution than was stored.
     defaultDatasources = {
       victoriametrics = {
         datasources = [{
-          name      = "Prometheus"
+          name      = "VictoriaMetrics"
           type      = "prometheus"
           access    = "proxy"
-          uid       = "prometheus"
+          uid       = "VictoriaMetrics"
           isDefault = true
           jsonData = {
             timeInterval = "60s"
@@ -233,15 +229,60 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
         }]
       }
     }
+    defaultDashboards = {
+      dashboards = {
+        # These dashboards inspect a Prometheus server and its remote-write
+        # pipeline, neither of which exists in this VictoriaMetrics setup.
+        prometheus = {
+          enabled = false
+        }
+        "prometheus-remote-write" = {
+          enabled = false
+        }
+      }
+    }
+    # Grafana keeps provisioned datasources in its database after their source
+    # is removed. Explicit deletion also handles databases restored from an old
+    # backup without affecting the active VictoriaMetrics and VictoriaLogs
+    # datasources.
+    extraObjects = [{
+      apiVersion = "v1"
+      kind       = "ConfigMap"
+      metadata = {
+        name      = "grafana-obsolete-datasources"
+        namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
+        labels = {
+          grafana_datasource = "1"
+        }
+      }
+      data = {
+        "cleanup.yaml" = yamlencode({
+          apiVersion = 1
+          deleteDatasources = [
+            {
+              name  = "Prometheus"
+              orgId = 1
+            },
+            {
+              name  = "Loki"
+              orgId = 1
+            },
+            {
+              name  = "Alertmanager"
+              orgId = 1
+            },
+          ]
+        })
+      }
+    }]
     # VictoriaLogs single-node store. The log pipeline (Alloy, deployed by
     # setup_victoria_logs) ships pod logs and Faro browser telemetry to its
-    # Loki-compatible push API, replacing the standalone Loki release. VL is
-    # dramatically lighter than Loki's ingester, which buffers chunks in RAM.
+    # compatible push API.
     vlsingle = {
       enabled = true
       spec = {
-        # Matches the 168h (7d) retention the Loki release used, so disk usage
-        # stays bounded the same way.
+        # Seven days keeps disk usage bounded while retaining enough history
+        # for operational investigation.
         retentionPeriod = "7d"
         storage = {
           accessModes = ["ReadWriteOnce"]

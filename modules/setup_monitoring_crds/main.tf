@@ -14,14 +14,19 @@ resource "terraform_data" "wait_for" {
 # The chart contains only cluster-scoped CRDs, so the release is parked in
 # kube-system (which always exists) to avoid contending for ownership of the
 # monitoring namespace that setup_victoria_metrics manages.
-resource "helm_release" "prometheus_operator_crds" {
+resource "helm_release" "monitoring_crds" {
   name       = "prometheus-operator-crds"
   repository = "https://prometheus-community.github.io/helm-charts"
   chart      = "prometheus-operator-crds"
-  version    = var.prometheus_operator_crds_chart_version
+  version    = var.monitoring_crds_chart_version
   namespace  = "kube-system"
   wait       = true
   timeout    = 600
 
   depends_on = [terraform_data.wait_for]
+}
+
+moved {
+  from = helm_release.prometheus_operator_crds
+  to   = helm_release.monitoring_crds
 }

@@ -1,4 +1,4 @@
-variable "prometheus_operator_crds_chart_version" {
+variable "monitoring_crds_chart_version" {
   description = "Helm chart version for prometheus-community/prometheus-operator-crds. Keep the bundled CRDs compatible with the VictoriaMetrics operator shipped by setup_victoria_metrics."
   type        = string
 }
