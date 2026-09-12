@@ -1,6 +1,5 @@
-// Cloudflare Email Worker: target of the Email Routing rule for the bank
-// notification address. Forwards received card notification emails to the
-// expense tracker's REST API, authenticated with a bearer token.
+// Shared Cloudflare Email Worker for bank notifications and recipe imports.
+// Forwards raw email to the configured REST API with a bearer token.
 //
 // Only mail whose sender Cloudflare could authenticate (passing SPF and an
 // aligned DKIM signature) is forwarded; everything else is dropped without
@@ -38,9 +37,8 @@ export default {
 
     if (!response.ok) {
       // Failing the delivery makes the sending mail server retry later, so a
-      // temporarily unreachable expense tracker doesn't silently drop the
-      // notification.
-      throw new Error(`Expense tracker responded with HTTP ${response.status}`);
+      // temporarily unreachable API doesn't silently drop the email.
+      throw new Error(`Email receiver responded with HTTP ${response.status}`);
     }
   },
 };

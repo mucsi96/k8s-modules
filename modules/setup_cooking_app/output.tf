@@ -1,3 +1,8 @@
+output "recipe_email_token" {
+  value     = random_password.recipe_email_token.result
+  sensitive = true
+}
+
 output "cooking_api_client_id" {
   value = module.setup_cooking_api.client_id
 }
