@@ -3,7 +3,7 @@ locals {
   apps = concat(var.apps, [{
     name       = "Observatory"
     namespace  = local.name
-    repository = "mucsi96/p07"
+    repository = "${var.github_repository_owner}/${var.github_repository}"
     url        = "https://${nonsensitive(var.hostname)}"
   }])
 }
@@ -71,97 +71,16 @@ resource "kubernetes_secret_v1" "github" {
   data = { token = var.github_token }
 }
 
-resource "kubernetes_deployment_v1" "dashboard" {
-  metadata {
-    name      = local.name
-    namespace = kubernetes_namespace_v1.dashboard.metadata[0].name
-  }
-  spec {
-    replicas = 1
-    selector { match_labels = { app = local.name } }
-    template {
-      metadata {
-        labels = { app = local.name }
-        annotations = {
-          "checksum/config" = sha256(kubernetes_config_map_v1.dashboard.data["config.json"])
-          "checksum/token"  = sha256(var.github_token)
-        }
-      }
-      spec {
-        service_account_name = kubernetes_service_account_v1.dashboard.metadata[0].name
-        security_context {
-          run_as_non_root = true
-          run_as_user     = 65532
-          fs_group        = 65532
-          seccomp_profile { type = "RuntimeDefault" }
-        }
-        container {
-          name  = local.name
-          image = var.image
-          port { container_port = 8080 }
-          env {
-            name  = "CONFIG_FILE"
-            value = "/config/config.json"
-          }
-          env {
-            name = "GITHUB_TOKEN"
-            value_from {
-              secret_key_ref {
-                name = kubernetes_secret_v1.github.metadata[0].name
-                key  = "token"
-              }
-            }
-          }
-          volume_mount {
-            name       = "config"
-            mount_path = "/config"
-            read_only  = true
-          }
-          resources {
-            requests = { cpu = "5m", memory = "32Mi" }
-            limits   = { memory = "128Mi" }
-          }
-          security_context {
-            read_only_root_filesystem  = true
-            allow_privilege_escalation = false
-            capabilities { drop = ["ALL"] }
-          }
-          readiness_probe {
-            http_get {
-              path = "/healthz"
-              port = 8080
-            }
-          }
-          liveness_probe {
-            http_get {
-              path = "/healthz"
-              port = 8080
-            }
-            initial_delay_seconds = 5
-          }
-        }
-        volume {
-          name = "config"
-          config_map { name = kubernetes_config_map_v1.dashboard.metadata[0].name }
-        }
-      }
-    }
-  }
-  depends_on = [kubernetes_role_binding_v1.reader]
+// Workloads are now owned by observatory-app's deployment pipeline. Preserve the
+// live resources during the handoff; kubectl apply adopts the same names.
+removed {
+  from = kubernetes_deployment_v1.dashboard
+  lifecycle { destroy = false }
 }
 
-resource "kubernetes_service_v1" "dashboard" {
-  metadata {
-    name      = local.name
-    namespace = kubernetes_namespace_v1.dashboard.metadata[0].name
-  }
-  spec {
-    selector = { app = local.name }
-    port {
-      port        = 8080
-      target_port = 8080
-    }
-  }
+removed {
+  from = kubernetes_service_v1.dashboard
+  lifecycle { destroy = false }
 }
 
 module "registration" {

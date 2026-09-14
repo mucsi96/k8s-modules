@@ -23,13 +23,22 @@ to the same release tag rather than a moving branch.
 | `setup_redis` | Installs shared Redis with a retained host-path volume. |
 | `setup_victoria_metrics` | Installs VictoriaMetrics, Grafana, exporters, and Grafana ingress. |
 | `setup_victoria_logs` | Installs Alloy pod-log/Faro collection and Faro ingress. |
-| `setup_app_dashboard` | Deploys the dependency-free Observatory app with namespace-scoped deployment reads, Entra OIDC, and a Gateway route. |
+| `setup_app_dashboard` | Provisions Observatory inventory, runtime/deploy RBAC, GitHub OIDC credentials, Entra proxy, and a Gateway route. |
 
 The registration, application-base, and opinionated application modules create
 their Entra, Cloudflare, Key Vault, namespace, persistence, and deployment
-resources. They do not install application workloads, except `setup_app_dashboard`,
-which owns its small Go dashboard Deployment. Application modules expose a
-non-secret `dashboard_app` inventory descriptor consumed by this dashboard.
+resources. Application workloads are installed by their own repositories.
+Application modules expose a non-secret `dashboard_app` inventory descriptor
+consumed by [observatory-app](https://github.com/mucsi96/observatory-app).
+
+`setup_app_dashboard` requires Terraform 1.7+ for its workload handoff: `removed`
+blocks forget the earlier Deployment and Service without deleting them. Apply
+the updated module before running observatory-app's pipeline, which adopts those
+resources. The module grants its GitHub deploy identity read access only to the
+platform `k8s-oidc-config` secret and workload deployment access in `observatory`.
+OIDC, routing, runtime configuration and the collector's read-only access remain
+Terraform-managed. After inventory or runtime-token updates, rerun the app pipeline
+to restart the collector and load the updated values.
 
 ## PostgreSQL Credentials
 
