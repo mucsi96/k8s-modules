@@ -23,10 +23,13 @@ to the same release tag rather than a moving branch.
 | `setup_redis` | Installs shared Redis with a retained host-path volume. |
 | `setup_victoria_metrics` | Installs VictoriaMetrics, Grafana, exporters, and Grafana ingress. |
 | `setup_victoria_logs` | Installs Alloy pod-log/Faro collection and Faro ingress. |
+| `setup_app_dashboard` | Deploys the dependency-free Observatory app with namespace-scoped deployment reads, Entra OIDC, and a Gateway route. |
 
 The registration, application-base, and opinionated application modules create
 their Entra, Cloudflare, Key Vault, namespace, persistence, and deployment
-resources. They do not install application workloads.
+resources. They do not install application workloads, except `setup_app_dashboard`,
+which owns its small Go dashboard Deployment. Application modules expose a
+non-secret `dashboard_app` inventory descriptor consumed by this dashboard.
 
 ## PostgreSQL Credentials
 
