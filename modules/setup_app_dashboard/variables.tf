@@ -1,12 +1,21 @@
 variable "environment_name" { type = string }
 variable "hostname" { type = string }
-variable "image" {
-  description = "Published dashboard image, pinned to an immutable sha tag or digest."
+variable "github_repository_owner" {
+  type    = string
+  default = "mucsi96"
+}
+variable "github_repository" {
+  type    = string
+  default = "observatory-app"
+}
+variable "azure_subscription_id" { type = string }
+variable "kubeconfig_secret_id" {
+  description = "Versionless resource ID of the platform k8s-oidc-config Key Vault secret."
   type        = string
-  validation {
-    condition     = can(regex("(:sha-[a-f0-9]{40}|@sha256:[a-f0-9]{64})$", var.image))
-    error_message = "Use an immutable :sha-<40 character commit> tag or @sha256 digest."
-  }
+}
+variable "twingate_service_key" {
+  type      = string
+  sensitive = true
 }
 variable "apps" {
   description = "Application descriptors exported by setup_*_app modules."
