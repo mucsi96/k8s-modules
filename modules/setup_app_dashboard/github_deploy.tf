@@ -92,6 +92,5 @@ resource "github_actions_variable" "deploy_enabled" {
     kubernetes_role_binding_v1.reader,
     kubernetes_config_map_v1.dashboard,
     kubernetes_secret_v1.github,
-    kubernetes_secret_v1.database,
   ]
 }

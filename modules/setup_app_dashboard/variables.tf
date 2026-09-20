@@ -36,23 +36,6 @@ variable "client_log_url" {
   description = "Faro collector endpoint exposed in the public client environment."
   type        = string
 }
-variable "database" {
-  description = "PostgreSQL instance in which Observatory owns its snapshot schema and role."
-  type = object({
-    host        = string
-    port        = number
-    name        = string
-    jdbc_url    = string
-    namespace   = string
-    deployment  = string
-    instance_id = string
-    ssh = object({
-      host     = string
-      port     = number
-      username = string
-    })
-  })
-}
 variable "k8s_oidc_issuer_url" {
   description = "Cluster OIDC issuer for the shared API registration's workload identity."
   type        = string

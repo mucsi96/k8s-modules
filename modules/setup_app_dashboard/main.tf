@@ -1,5 +1,6 @@
 locals {
-  name = "observatory"
+  name                     = "observatory"
+  api_service_account_name = "${local.name}-api-workload-identity"
   apps = concat(var.apps, [{
     name       = "Observatory"
     namespace  = local.name
@@ -10,19 +11,13 @@ locals {
 
 resource "terraform_data" "ready" { input = var.wait_for }
 
-module "postgres_schema" {
-  source   = "../setup_postgres_schema"
-  database = var.database
-  schema   = "observatory"
-}
-
 resource "kubernetes_namespace_v1" "dashboard" {
   metadata { name = local.name }
   depends_on = [terraform_data.ready]
 }
 
-# go-app owns the service account. Keep the existing account for Helm's
-# --take-ownership handoff so collector RBAC and workload identity remain stable.
+# Preserve the legacy account during the staged migration. go-app creates the
+# conventional <app>-api-workload-identity account used by the other apps.
 removed {
   from = kubernetes_service_account_v1.dashboard
   lifecycle { destroy = false }
@@ -56,7 +51,7 @@ resource "kubernetes_role_binding_v1" "reader" {
   }
   subject {
     kind      = "ServiceAccount"
-    name      = local.name
+    name      = local.api_service_account_name
     namespace = kubernetes_namespace_v1.dashboard.metadata[0].name
   }
 }
@@ -84,21 +79,6 @@ resource "kubernetes_secret_v1" "github" {
     namespace = kubernetes_namespace_v1.dashboard.metadata[0].name
   }
   data = { token = var.github_token }
-}
-
-resource "kubernetes_secret_v1" "database" {
-  metadata {
-    name      = "observatory-database"
-    namespace = kubernetes_namespace_v1.dashboard.metadata[0].name
-  }
-  data = {
-    DB_HOST     = var.database.host
-    DB_PORT     = tostring(var.database.port)
-    DB_NAME     = var.database.name
-    DB_USERNAME = module.postgres_schema.credentials.username
-    DB_PASSWORD = module.postgres_schema.credentials.password
-    DB_SSLMODE  = "disable"
-  }
 }
 
 // Workloads are now owned by observatory-app's deployment pipeline. Preserve the
@@ -130,7 +110,7 @@ module "setup_observatory_api" {
 
   k8s_oidc_issuer_url           = var.k8s_oidc_issuer_url
   k8s_service_account_namespace = kubernetes_namespace_v1.dashboard.metadata[0].name
-  k8s_service_account_name      = local.name
+  k8s_service_account_name      = local.api_service_account_name
 }
 
 module "setup_observatory_spa" {
