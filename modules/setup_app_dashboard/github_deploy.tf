@@ -38,26 +38,11 @@ resource "kubernetes_role_v1" "deploy" {
     namespace = kubernetes_namespace_v1.dashboard.metadata[0].name
   }
   rule {
-    api_groups = ["apps"]
-    resources  = ["deployments"]
-    verbs      = ["get", "list", "watch", "create"]
-  }
-  rule {
-    api_groups     = ["apps"]
-    resources      = ["deployments"]
-    resource_names = [local.name]
-    verbs          = ["update", "patch"]
-  }
-  rule {
-    api_groups = [""]
-    resources  = ["services"]
-    verbs      = ["get", "create"]
-  }
-  rule {
-    api_groups     = [""]
-    resources      = ["services"]
-    resource_names = [local.name]
-    verbs          = ["update", "patch"]
+    # Helm release storage and the resources emitted by go-app/client-app.
+    # As for the other app deployers, access stays inside this app namespace.
+    api_groups = ["", "apps", "gateway.networking.k8s.io"]
+    resources  = ["deployments", "replicasets", "pods", "services", "serviceaccounts", "secrets", "configmaps", "httproutes"]
+    verbs      = ["get", "list", "watch", "create", "update", "patch", "delete"]
   }
 }
 
