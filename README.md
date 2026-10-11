@@ -44,8 +44,10 @@ to restart the collector and load the updated values.
 
 Application repositories publish to GitHub Container Registry (GHCR) with their
 workflow's `GITHUB_TOKEN` and job-scoped `packages: write` permission, following
-`observatory-app`. Server and client images use immutable `sha-<full commit SHA>`
-tags, and deployment consumes the exact images published by that pipeline run.
+`observatory-app` for registry authentication. The other p07 applications retain
+their numbered server/client versions from `get-next-version` and publish only
+changed components. Deployment consumes the resolved version for each component,
+retaining the last reachable release version when publication is skipped.
 Make each GHCR package public after its first publication so Kubernetes can pull
 it anonymously.
 
