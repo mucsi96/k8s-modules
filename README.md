@@ -47,7 +47,10 @@ workflow's `GITHUB_TOKEN` and job-scoped `packages: write` permission, following
 `observatory-app` for registry authentication. The other p07 applications retain
 their numbered server/client versions from `get-next-version` and publish only
 changed components. Deployment consumes the resolved version for each component,
-retaining the last reachable release version when publication is skipped.
+retaining the last reachable release version when publication is skipped. The
+action supplies that version directly even when `hasNextVersion` is false;
+merge [get-next-version#6](https://github.com/mucsi96/get-next-version/pull/6)
+before the application migrations.
 Make each GHCR package public after its first publication so Kubernetes can pull
 it anonymously.
 
