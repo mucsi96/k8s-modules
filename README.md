@@ -40,29 +40,6 @@ OIDC, routing, runtime configuration and the collector's read-only access remain
 Terraform-managed. After inventory or runtime-token updates, rerun the app pipeline
 to restart the collector and load the updated values.
 
-## Application Image Publishing
-
-Application repositories publish to GitHub Container Registry (GHCR) with their
-workflow's `GITHUB_TOKEN` and job-scoped `packages: write` permission, following
-`observatory-app` for registry authentication. The other p07 applications retain
-their numbered server/client versions from `get-next-version` and publish only
-changed components. Deployment consumes the resolved version for each component,
-retaining the last reachable release version when publication is skipped. The
-action supplies that version directly even when `hasNextVersion` is false;
-merge [get-next-version#6](https://github.com/mucsi96/get-next-version/pull/6)
-before the application migrations.
-Make each GHCR package public after its first publication so Kubernetes can pull
-it anonymously.
-
-`setup_app_base` no longer provisions the `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`
-Actions secrets, Docker Hub access tokens, or Docker provider dependencies. Merge
-the application workflow/deploy changes before applying the module upgrade. For
-an existing environment, the upgrade deletes the two managed Actions secrets and
-revokes each managed Docker Hub token; keep the operator's Docker Hub login
-available for that one-time cleanup. Terraform can still install the provider
-referenced by existing state until the tokens have been removed. Fresh
-environments need no Docker Hub credentials.
-
 ## PostgreSQL Credentials
 
 Each application's `setup_postgres_schema` has one password generator and one
