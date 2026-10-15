@@ -19,8 +19,13 @@ cookie-auth builds, then switch it to false to remove the SPA redirect type.
 Hello/Cooking opt in using their optional `forward_auth` input. Supply a published
 chart version, shared Redis descriptor, trusted Traefik source CIDRs and Gateway
 reference. Enable `setup_ingress_controller.enable_forward_auth` first. Update
-the application charts' `routeMiddlewares` and deploy cookie-auth-capable clients
+the application charts' `routeFilters` and deploy cookie-auth-capable clients
 and exact-Origin-protected APIs as one coordinated rollout.
+
+The chart publishes document/API JSON policies in its non-secret
+`<release>-route-filters` ConfigMap. App deployment jobs read those policies;
+identity stripping and cache controls are standard Gateway API header filters.
+Only the two ForwardAuth authenticators require Traefik Middleware resources.
 
 `machine_routes` adds exact path/method HTTPRoutes directly to an API Service,
 without browser ForwardAuth. Backend token/role checks remain mandatory. Cooking
