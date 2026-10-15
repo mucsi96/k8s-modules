@@ -49,12 +49,42 @@ module "setup_cooking_spa" {
   source = "../register_spa"
   owner  = var.owner
 
-  display_name  = "Cooking SPA"
+  display_name  = nonsensitive(var.forward_auth == null) ? "Cooking SPA" : "Cooking Web"
   redirect_uris = ["https://${local.app_hostname}/", "http://localhost:4260/"]
 
-  api_id        = module.setup_cooking_api.application_id
-  api_client_id = module.setup_cooking_api.client_id
-  api_scope_id  = module.setup_cooking_api.scope_id
+  api_id               = module.setup_cooking_api.application_id
+  api_client_id        = module.setup_cooking_api.client_id
+  api_scope_id         = module.setup_cooking_api.scope_id
+  web_redirect_uris    = nonsensitive(var.forward_auth == null) ? [] : ["https://${local.app_hostname}/oauth2/callback"]
+  retain_spa_redirects = nonsensitive(try(var.forward_auth.retain_spa_redirects, false))
+  allowed_user_ids     = toset([for user in data.azuread_users.all.users : user.object_id])
+}
+
+module "forward_auth" {
+  source = "../setup_app_forwardauth"
+  count  = nonsensitive(var.forward_auth == null ? 0 : 1)
+
+  name                = "cooking"
+  namespace           = module.app_base.namespace
+  hostname            = local.app_hostname
+  tenant_id           = var.tenant_id
+  client_id           = module.setup_cooking_spa.client_id
+  client_secret       = module.setup_cooking_spa.client_secret
+  api_client_id       = module.setup_cooking_api.client_id
+  chart_version       = var.forward_auth.chart_version
+  trusted_proxy_cidrs = nonsensitive(var.forward_auth.trusted_proxy_cidrs)
+  session_redis       = var.forward_auth.session_redis
+  gateway_parent_ref  = var.forward_auth.gateway_parent_ref
+  protected_apps = {
+    cooking-client = { port = 8000 }
+    cooking-server = { port = 8080, management_port = 8082 }
+  }
+  machine_routes = [{
+    path    = "/api/integrations/recipes/import"
+    method  = "POST"
+    service = "cooking-server"
+    port    = 8080
+  }]
 }
 
 # Every user in the tenant gets both recipe roles — the whole household uses

@@ -45,3 +45,9 @@ variable "edge_firewall_exceptions" {
   }))
   default = []
 }
+
+variable "enable_forward_auth" {
+  description = "Enable the Traefik CRD provider needed for Middleware HTTPRoute ExtensionRefs."
+  type        = bool
+  default     = false
+}

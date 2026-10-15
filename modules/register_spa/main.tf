@@ -14,21 +14,29 @@ resource "azuread_application" "spa" {
     requested_access_token_version = 2
   }
 
-  single_page_application {
-    redirect_uris = var.redirect_uris
+  dynamic "single_page_application" {
+    for_each = length(var.web_redirect_uris) == 0 || var.retain_spa_redirects ? [true] : []
+    content {
+      redirect_uris = var.redirect_uris
+    }
+  }
+
+  dynamic "web" {
+    for_each = length(var.web_redirect_uris) > 0 ? [true] : []
+    content {
+      redirect_uris = var.web_redirect_uris
+    }
   }
 
   required_resource_access {
     resource_app_id = data.azuread_application_published_app_ids.well_known.result.MicrosoftGraph
 
-    resource_access {
-      id   = azuread_service_principal.msgraph.oauth2_permission_scope_ids["openid"]
-      type = "Scope"
-    }
-
-    resource_access {
-      id   = azuread_service_principal.msgraph.oauth2_permission_scope_ids["User.Read"]
-      type = "Scope"
+    dynamic "resource_access" {
+      for_each = toset(length(var.web_redirect_uris) > 0 ? ["openid", "profile", "email", "offline_access"] : ["openid", "User.Read"])
+      content {
+        id   = azuread_service_principal.msgraph.oauth2_permission_scope_ids[resource_access.value]
+        type = "Scope"
+      }
     }
   }
 
@@ -46,7 +54,7 @@ resource "azuread_service_principal" "spa_service_principal" {
   client_id                    = azuread_application.spa.client_id
   owners                       = [var.owner]
   tags                         = ["WindowsAzureActiveDirectoryIntegratedApp"]
-  app_role_assignment_required = false
+  app_role_assignment_required = length(var.web_redirect_uris) > 0
 }
 
 resource "azuread_application_pre_authorized" "allow_spa_to_access_api" {
@@ -58,5 +66,18 @@ resource "azuread_application_pre_authorized" "allow_spa_to_access_api" {
 resource "azuread_service_principal_delegated_permission_grant" "allow_spa_to_access_msgraph_user_profile" {
   service_principal_object_id          = azuread_service_principal.spa_service_principal.object_id
   resource_service_principal_object_id = azuread_service_principal.msgraph.object_id
-  claim_values                         = ["openid", "User.Read"]
+  claim_values                         = length(var.web_redirect_uris) > 0 ? ["openid", "profile", "email", "offline_access"] : ["openid", "User.Read"]
+}
+
+resource "azuread_application_password" "web" {
+  count          = length(var.web_redirect_uris) > 0 ? 1 : 0
+  application_id = azuread_application.spa.id
+  display_name   = "oauth2-proxy"
+}
+
+resource "azuread_app_role_assignment" "web_users" {
+  for_each            = length(var.web_redirect_uris) > 0 ? setunion(toset([var.owner]), var.allowed_user_ids) : toset([])
+  app_role_id         = "00000000-0000-0000-0000-000000000000"
+  principal_object_id = each.value
+  resource_object_id  = azuread_service_principal.spa_service_principal.object_id
 }
