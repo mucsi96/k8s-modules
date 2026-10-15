@@ -15,7 +15,6 @@ variables {
   client_id           = "10000000-0000-0000-0000-000000000002"
   client_secret       = "fixture-web-secret"
   api_client_id       = "10000000-0000-0000-0000-000000000003"
-  chart_version       = "1.0.0"
   trusted_proxy_cidrs = ["10.42.0.0/16"]
   session_redis       = { connection_url = "redis://redis.redis.svc.cluster.local:6379", password = "fixture-redis-secret" }
   gateway_parent_ref  = { name = "traefik", namespace = "traefik", section_name = "websecure" }
@@ -28,7 +27,7 @@ variables {
 run "secret_references_and_ingress_boundary" {
   command = plan
   assert {
-    condition     = helm_release.auth.chart == "oauth2-proxy-forwardauth" && helm_release.auth.version == var.chart_version
+    condition     = helm_release.auth.chart == "oauth2-proxy-forwardauth" && helm_release.auth.version == "1.0.0"
     error_message = "The platform must pin the integration chart version."
   }
   assert {

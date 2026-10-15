@@ -71,7 +71,6 @@ module "forward_auth" {
   client_id           = module.setup_cooking_spa.client_id
   client_secret       = module.setup_cooking_spa.client_secret
   api_client_id       = module.setup_cooking_api.client_id
-  chart_version       = var.forward_auth.chart_version
   trusted_proxy_cidrs = nonsensitive(var.forward_auth.trusted_proxy_cidrs)
   session_redis       = var.forward_auth.session_redis
   gateway_parent_ref  = var.forward_auth.gateway_parent_ref

@@ -27,15 +27,6 @@ variable "api_client_id" {
   type = string
 }
 
-variable "chart_version" {
-  description = "Explicit published oauth2-proxy-forwardauth chart version."
-  type        = string
-  validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?$", var.chart_version))
-    error_message = "Pin a published semantic chart version; empty/latest versions are not supported."
-  }
-}
-
 variable "session_redis" {
   type = object({
     connection_url = string

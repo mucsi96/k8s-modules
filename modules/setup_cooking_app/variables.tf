@@ -83,7 +83,6 @@ variable "client_log_url" {
 variable "forward_auth" {
   description = "Opt-in confidential Web/ForwardAuth migration, preserving household API roles and Web assignments."
   type = object({
-    chart_version        = string
     retain_spa_redirects = optional(bool, false)
     trusted_proxy_cidrs  = list(string)
     session_redis = object({
