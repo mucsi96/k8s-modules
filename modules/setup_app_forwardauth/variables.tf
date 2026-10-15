@@ -36,7 +36,7 @@ variable "session_redis" {
 }
 
 variable "trusted_proxy_cidrs" {
-  description = "Pod/node CIDRs from which Traefik actually connects; the proxy NetworkPolicy further limits callers to Traefik."
+  description = "Pod/node CIDRs from which Traefik actually connects, used by oauth2-proxy to trust forwarded client-IP metadata."
   type        = list(string)
   validation {
     condition     = length(var.trusted_proxy_cidrs) > 0 && alltrue([for cidr in var.trusted_proxy_cidrs : can(cidrhost(cidr, 0))])
@@ -53,7 +53,7 @@ variable "gateway_parent_ref" {
 }
 
 variable "machine_routes" {
-  description = "Exact, independently authenticated host/path/method routes. Backend JWT/token checks remain mandatory."
+  description = "Exact path/method HTTPRoutes for independently authenticated API clients. Backend JWT/token checks remain mandatory."
   type = list(object({
     path    = string
     method  = string
