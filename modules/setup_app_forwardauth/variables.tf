@@ -52,14 +52,6 @@ variable "gateway_parent_ref" {
   })
 }
 
-variable "protected_apps" {
-  description = "Existing chart release names/ports to admit only from Traefik, preserving monitoring on management ports."
-  type = map(object({
-    port            = number
-    management_port = optional(number)
-  }))
-}
-
 variable "machine_routes" {
   description = "Exact, independently authenticated host/path/method routes. Backend JWT/token checks remain mandatory."
   type = list(object({

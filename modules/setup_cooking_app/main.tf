@@ -74,10 +74,6 @@ module "forward_auth" {
   trusted_proxy_cidrs = nonsensitive(var.forward_auth.trusted_proxy_cidrs)
   session_redis       = var.forward_auth.session_redis
   gateway_parent_ref  = var.forward_auth.gateway_parent_ref
-  protected_apps = {
-    cooking-client = { port = 8000 }
-    cooking-server = { port = 8080, management_port = 8082 }
-  }
   machine_routes = [{
     path    = "/api/integrations/recipes/import"
     method  = "POST"

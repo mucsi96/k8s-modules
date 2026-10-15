@@ -72,10 +72,6 @@ module "forward_auth" {
   trusted_proxy_cidrs = nonsensitive(var.forward_auth.trusted_proxy_cidrs)
   session_redis       = var.forward_auth.session_redis
   gateway_parent_ref  = var.forward_auth.gateway_parent_ref
-  protected_apps = {
-    hello-client = { port = 8000 }
-    hello-server = { port = 8080, management_port = 8082 }
-  }
 }
 
 resource "kubernetes_persistent_volume_v1" "hello_app_pv" {

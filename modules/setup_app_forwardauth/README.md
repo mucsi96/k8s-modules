@@ -35,9 +35,10 @@ placeholder. Release asset and Helm repository metadata were verified for
 without browser ForwardAuth. Backend token/role checks remain mandatory. Cooking
 uses `/api/integrations/recipes/import` for its email/background JWT contract.
 
-The `protected_apps` policies admit Traefik only on app ports and monitoring on
-management ports. Existing app labels, Services, workload identities, PVCs and
-database schemas are retained. Redis is shared, not provisioned by each module.
+The upstream chart owns the proxy's NetworkPolicy. Application access is
+enforced by the API's JWT/scope/role checks and mutation Origin validation.
+Existing app labels, Services, workload identities, PVCs and database schemas
+are retained. Redis is shared, not provisioned by each module.
 
 Validation must not apply infrastructure. See p07's ForwardAuth rollout document
 for publication order and the unpublished-module handoff.
