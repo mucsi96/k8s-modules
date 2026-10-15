@@ -73,3 +73,22 @@ variable "client_log_url" {
   description = "URL the app's SPA POSTs client-side telemetry to. Forwarded to setup_app_base, which stores it in this app's Key Vault as `client-log-url`."
   type        = string
 }
+
+variable "forward_auth" {
+  description = "Opt-in confidential Web/ForwardAuth migration. Deploy the matching cookie-auth app builds and middleware-capable charts together."
+  type = object({
+    retain_spa_redirects = optional(bool, false)
+    trusted_proxy_cidrs  = list(string)
+    session_redis = object({
+      connection_url = string
+      password       = string
+    })
+    gateway_parent_ref = object({
+      name         = string
+      namespace    = string
+      section_name = string
+    })
+  })
+  default   = null
+  sensitive = true
+}
