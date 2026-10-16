@@ -24,7 +24,19 @@ variable "client_secret" {
 }
 
 variable "api_client_id" {
-  type = string
+  description = "API audience used in api-token mode; header-authenticated and login-gated services do not require an API registration."
+  type        = string
+  default     = null
+}
+
+variable "mode" {
+  description = "api-token for JWT APIs, email-header for services such as Grafana, or login-gate for services needing only authenticated access."
+  type        = string
+  default     = "api-token"
+  validation {
+    condition     = contains(["api-token", "email-header", "login-gate"], var.mode)
+    error_message = "Choose api-token, email-header or login-gate."
+  }
 }
 
 variable "session_redis" {
@@ -50,6 +62,23 @@ variable "gateway_parent_ref" {
     namespace    = string
     section_name = string
   })
+}
+
+variable "public_api_routes" {
+  description = "Exact public GET routes for non-sensitive bootstrap metadata needed before login."
+  type = list(object({
+    path    = string
+    service = string
+    port    = number
+  }))
+  default = []
+  validation {
+    condition = alltrue([for route in var.public_api_routes :
+      can(regex("^/api/[^?# ]+$", route.path)) && length(trimspace(route.service)) > 0 &&
+      route.port >= 1 && route.port <= 65535 && floor(route.port) == route.port
+    ])
+    error_message = "Public bootstrap routes require an exact /api/ path, a Service name and an integer port from 1 to 65535."
+  }
 }
 
 variable "machine_routes" {

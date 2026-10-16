@@ -34,7 +34,7 @@ resource "helm_release" "auth" {
   namespace  = var.namespace
   repository = "https://mucsi96.github.io/k8s-helm-charts"
   chart      = "oauth2-proxy-forwardauth"
-  version    = "2.0.0"
+  version    = "3.0.0"
   wait       = true
   timeout    = 600
   values = [yamlencode({
@@ -43,8 +43,8 @@ resource "helm_release" "auth" {
         host              = var.hostname
         issuerURL         = "https://login.microsoftonline.com/${var.tenant_id}/v2.0"
         credentialsSecret = kubernetes_secret_v1.credentials.metadata[0].name
-        mode              = "api-token"
-        apiScope          = "api://${var.api_client_id}/api-access"
+        mode              = var.mode
+        apiScope          = var.mode == "api-token" && var.api_client_id != null ? "api://${var.api_client_id}/api-access" : ""
         trustedProxyCIDRs = var.trusted_proxy_cidrs
       }
     }
@@ -69,4 +69,54 @@ resource "helm_release" "auth" {
       }
     }
   })]
+
+  lifecycle {
+    precondition {
+      condition     = var.mode != "api-token" || try(length(trimspace(var.api_client_id)) > 0, false)
+      error_message = "api-token mode requires api_client_id."
+    }
+  }
+}
+
+resource "kubectl_manifest" "public_api" {
+  count = length(var.public_api_routes) == 0 ? 0 : 1
+
+  yaml_body = yamlencode({
+    apiVersion = "gateway.networking.k8s.io/v1"
+    kind       = "HTTPRoute"
+    metadata = {
+      name      = "${local.release_name}-public-api"
+      namespace = var.namespace
+    }
+    spec = {
+      parentRefs = [{
+        name        = var.gateway_parent_ref.name
+        namespace   = var.gateway_parent_ref.namespace
+        sectionName = var.gateway_parent_ref.section_name
+      }]
+      hostnames = [var.hostname]
+      rules = [for route in var.public_api_routes : {
+        matches = [{
+          path   = { type = "Exact", value = route.path }
+          method = "GET"
+        }]
+        filters = [{
+          type = "ResponseHeaderModifier"
+          responseHeaderModifier = {
+            set    = [{ name = "Cache-Control", value = "no-store" }]
+            remove = ["Authorization", "X-Auth-Request-Access-Token"]
+          }
+        }]
+        backendRefs = [{ name = route.service, port = route.port }]
+      }]
+    }
+  })
+}
+
+data "kubernetes_config_map_v1" "route_filters" {
+  metadata {
+    name      = "${helm_release.auth.name}-route-filters"
+    namespace = var.namespace
+  }
+  depends_on = [helm_release.auth, kubectl_manifest.public_api]
 }
