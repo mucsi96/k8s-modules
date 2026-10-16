@@ -1,6 +1,6 @@
 # setup_app_forwardauth
 
-Pins the published `oauth2-proxy-forwardauth` chart **3.0.0** with a per-service Web client,
+Pins the published `oauth2-proxy-forwardauth` chart **4.0.0** with a per-service Web client,
 platform Redis and persisted cookie secret. Only the proxy credential/Redis
 Secret references enter Helm values; secret hashes trigger rollouts on rotation.
 Keep this module platform-owned so application CI never needs auth credentials.
@@ -61,8 +61,11 @@ chart, and the two bootstrap URLs for server environment variables. It does not
 read the Kubernetes ConfigMap or Terraform state. No document
 policy or unused resource-name outputs are exported for these apps.
 
-`public_api_routes` provisions exact public GET HTTPRoutes for non-sensitive
-bootstrap. Hello/Cooking use this for `/api/environment?returnTo=<relative-path>`.
+`excluded_routes` supplies one list of explicit `path`, `method`, `service` and
+`port` entries as the chart's `excludedRoutes` value. Helm owns the generated
+HTTPRoute, alongside its OAuth and authentication resources. There is no
+Terraform routing manifest or extra `kubectl` provider in this module.
+Hello/Cooking exclude `GET /api/environment` for bootstrap.
 That endpoint checks the session through the internal proxy API, relays only
 session cookie updates and discards token-bearing headers. It returns config
 when authenticated or a server-selected redirect to `/oauth2/start`. External
@@ -72,17 +75,19 @@ page load. There is no SPA auth UI or popup reauthentication.
 
 The chart pin is centralized in this module; callers do not need a version
 placeholder. Release asset and Helm repository metadata were verified for
-[3.0.0](https://github.com/mucsi96/k8s-helm-charts/releases/tag/oauth2-proxy-forwardauth-3.0.0).
+[4.0.0](https://github.com/mucsi96/k8s-helm-charts/releases/tag/oauth2-proxy-forwardauth-4.0.0).
 
 When upgrading an existing API-app auth release from 2.0.0, first remove document
-auth filters from its frontend HTTPRoute: chart 3.0.0 removes the unused document
+auth filters from its frontend HTTPRoute: chart 4.0.0 omits the unused document
 Middleware/policy in API mode. All five stock control routes remain available.
 New pilot installations can preprovision with `retain_spa_redirects = true`
 before deploying the matching server/bootstrap and public frontend builds.
 
-`machine_routes` adds exact path/method HTTPRoutes directly to an API Service,
-without browser ForwardAuth. Backend token/role checks remain mandatory. Cooking
-uses `/api/integrations/recipes/import` for its email/background JWT contract.
+The same `excluded_routes` list contains Cooking's
+`POST /api/integrations/recipes/import` integration route. Exclusion skips only
+browser ForwardAuth: its backend still requires the caller's bearer token and
+role. The bootstrap handler checks the proxy session itself. Caller headers and
+cookies are preserved, and no path-prefix bypass is created.
 
 Application access is enforced by the API's JWT/scope/role checks and mutation
 Origin validation.

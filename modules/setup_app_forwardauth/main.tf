@@ -34,7 +34,7 @@ resource "helm_release" "auth" {
   namespace  = var.namespace
   repository = "https://mucsi96.github.io/k8s-helm-charts"
   chart      = "oauth2-proxy-forwardauth"
-  version    = "3.0.0"
+  version    = "4.0.0"
   wait       = true
   timeout    = 600
   values = [yamlencode({
@@ -53,7 +53,7 @@ resource "helm_release" "auth" {
       namespace   = var.gateway_parent_ref.namespace
       sectionName = var.gateway_parent_ref.section_name
     }
-    machineRoutes = var.machine_routes
+    excludedRoutes = var.excluded_routes
     oauth2-proxy = {
       sessionStorage = {
         redis = {
@@ -78,45 +78,10 @@ resource "helm_release" "auth" {
   }
 }
 
-resource "kubectl_manifest" "public_api" {
-  count = length(var.public_api_routes) == 0 ? 0 : 1
-
-  yaml_body = yamlencode({
-    apiVersion = "gateway.networking.k8s.io/v1"
-    kind       = "HTTPRoute"
-    metadata = {
-      name      = "${local.release_name}-public-api"
-      namespace = var.namespace
-    }
-    spec = {
-      parentRefs = [{
-        name        = var.gateway_parent_ref.name
-        namespace   = var.gateway_parent_ref.namespace
-        sectionName = var.gateway_parent_ref.section_name
-      }]
-      hostnames = [var.hostname]
-      rules = [for route in var.public_api_routes : {
-        matches = [{
-          path   = { type = "Exact", value = route.path }
-          method = "GET"
-        }]
-        filters = [{
-          type = "ResponseHeaderModifier"
-          responseHeaderModifier = {
-            set    = [{ name = "Cache-Control", value = "no-store" }]
-            remove = ["Authorization", "X-Auth-Request-Access-Token"]
-          }
-        }]
-        backendRefs = [{ name = route.service, port = route.port }]
-      }]
-    }
-  })
-}
-
 data "kubernetes_config_map_v1" "route_filters" {
   metadata {
     name      = "${helm_release.auth.name}-route-filters"
     namespace = var.namespace
   }
-  depends_on = [helm_release.auth, kubectl_manifest.public_api]
+  depends_on = [helm_release.auth]
 }

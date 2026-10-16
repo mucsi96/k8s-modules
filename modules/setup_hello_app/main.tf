@@ -75,8 +75,9 @@ module "forward_auth" {
   trusted_proxy_cidrs = nonsensitive(var.forward_auth.trusted_proxy_cidrs)
   session_redis       = var.forward_auth.session_redis
   gateway_parent_ref  = var.forward_auth.gateway_parent_ref
-  public_api_routes = [{
+  excluded_routes = [{
     path    = "/api/environment"
+    method  = "GET"
     service = "hello-server"
     port    = 8080
   }]
