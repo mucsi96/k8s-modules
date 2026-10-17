@@ -20,11 +20,13 @@ resource "azurerm_role_assignment" "allow_api_to_read_kv" {
 }
 
 resource "azurerm_role_assignment" "allow_deploy_to_read_kv" {
-  for_each = {
+  for_each = merge({
     api_client_id = azurerm_key_vault_secret.api_client_id.resource_versionless_id
     hostname      = azurerm_key_vault_secret.hostname.resource_versionless_id
     k8s_config    = azurerm_key_vault_secret.k8s_config.resource_versionless_id
-  }
+    }, {
+    for name, secret in azurerm_key_vault_secret.deployment : "deployment_${name}" => secret.resource_versionless_id
+  })
 
   scope                = each.value
   role_definition_name = "Key Vault Secrets User"
@@ -37,6 +39,15 @@ resource "azurerm_key_vault_secret" "app" {
   key_vault_id = azurerm_key_vault.app_kv.id
   name         = each.key
   value        = var.app_secrets[each.key]
+  depends_on   = [azurerm_role_assignment.allow_owner_to_manage_kv]
+}
+
+resource "azurerm_key_vault_secret" "deployment" {
+  for_each = nonsensitive(toset(keys(var.deployment_secrets)))
+
+  key_vault_id = azurerm_key_vault.app_kv.id
+  name         = each.key
+  value        = var.deployment_secrets[each.key]
   depends_on   = [azurerm_role_assignment.allow_owner_to_manage_kv]
 }
 

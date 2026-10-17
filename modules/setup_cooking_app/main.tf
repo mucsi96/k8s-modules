@@ -19,6 +19,9 @@ module "app_base" {
     claude-api-key = var.claude_api_key
     openai-api-key = var.openai_api_key
   }
+  deployment_secrets = nonsensitive(var.forward_auth == null) ? {} : {
+    forward-auth-config = jsonencode(module.forward_auth[0].deployment_config)
+  }
   azure_location         = var.azure_location
   tenant_id              = var.tenant_id
   azure_subscription_id  = var.azure_subscription_id
@@ -74,7 +77,12 @@ module "forward_auth" {
   trusted_proxy_cidrs = nonsensitive(var.forward_auth.trusted_proxy_cidrs)
   session_redis       = var.forward_auth.session_redis
   gateway_parent_ref  = var.forward_auth.gateway_parent_ref
-  machine_routes = [{
+  excluded_routes = [{
+    path    = "/api/environment"
+    method  = "GET"
+    service = "cooking-server"
+    port    = 8080
+    }, {
     path    = "/api/integrations/recipes/import"
     method  = "POST"
     service = "cooking-server"
