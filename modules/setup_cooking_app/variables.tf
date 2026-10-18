@@ -81,7 +81,7 @@ variable "client_log_url" {
 }
 
 variable "forward_auth" {
-  description = "Opt-in confidential Web/ForwardAuth migration, preserving household API roles and Web assignments."
+  description = "ForwardAuth configuration using a dedicated confidential Web client with household access."
   type = object({
     trusted_proxy_cidrs = list(string)
     session_redis = object({

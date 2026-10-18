@@ -25,12 +25,9 @@ Hello/Cooking use it exclusively when `forward_auth` is set. The legacy
 ForwardAuth is disabled. The Web module owns its credential, OIDC consent, API
 preauthorization and required owner/household assignments.
 
-Existing installations adopt the same registration using the documented module
-and resource state moves in [register_web](../register_web/README.md). IDs and
-existing password keys/values are retained. This is a Web-only cutover: deploy
-the cookie-auth app builds first, remove `retain_spa_redirects` from environment
-inputs, then apply the matching environment-level migration blocks. Complete both
-pilot app cutovers before advancing p07 to the Web-only migration release.
+The dedicated module creates Web-only registrations. Use the matching cookie-auth
+app builds and remove the old `retain_spa_redirects` input from environment
+configuration.
 
 Hello/Cooking opt in using their optional `forward_auth` input. Supply the
 shared Redis descriptor, trusted Traefik source CIDRs and Gateway
@@ -86,8 +83,7 @@ proxy's static CSS/font assets so stock login/error pages render correctly.
 When upgrading an existing API-app auth release from 2.0.0, first remove document
 auth filters from its frontend HTTPRoute: chart 5.0.0 omits the unused document
 Middleware/policy in API mode. All five stock control routes remain available.
-New installations provision a Web-only client. Existing pilot installations
-complete app cutover before adopting the dedicated Web registration module.
+The dedicated registration module provisions a Web-only client.
 
 The same `excluded_routes` list contains Cooking's
 `POST /api/integrations/recipes/import` integration route. Exclusion skips only
@@ -137,10 +133,6 @@ The owning service module's HTTPRoute consumes
 `auth.proxy.header_name = X-Auth-Request-Email` configuration; sign-in assignment
 remains enforced by the existing Entra Web registration. Use `login-gate` for
 a service that needs the session check but no identity header.
-
-Adopting this in the existing Grafana installation also requires preserving
-the existing Web-registration, Helm-release and cookie state addresses and updating its current
-HTTPRoute backend from the reverse proxy to the Grafana Service.
 
 ## Automatic login and control-route ownership
 

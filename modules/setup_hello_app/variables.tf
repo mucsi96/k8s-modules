@@ -75,7 +75,7 @@ variable "client_log_url" {
 }
 
 variable "forward_auth" {
-  description = "Opt-in confidential Web/ForwardAuth migration. Deploy the matching cookie-auth app builds and middleware-capable charts together."
+  description = "ForwardAuth configuration using a dedicated confidential Web client. Deploy matching cookie-auth app builds and routing."
   type = object({
     trusted_proxy_cidrs = list(string)
     session_redis = object({
