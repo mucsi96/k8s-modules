@@ -34,7 +34,7 @@ resource "helm_release" "auth" {
   namespace  = var.namespace
   repository = "https://mucsi96.github.io/k8s-helm-charts"
   chart      = "oauth2-proxy-forwardauth"
-  version    = "4.0.0"
+  version    = "5.0.0"
   wait       = true
   timeout    = 600
   values = [yamlencode({

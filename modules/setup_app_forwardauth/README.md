@@ -1,6 +1,6 @@
 # setup_app_forwardauth
 
-Pins the published `oauth2-proxy-forwardauth` chart **4.0.0** with a per-service Web client,
+Pins the published `oauth2-proxy-forwardauth` chart **5.0.0** with a per-service Web client,
 platform Redis and persisted cookie secret. Only the proxy credential/Redis
 Secret references enter Helm values; secret hashes trigger rollouts on rotation.
 Keep this module platform-owned so application CI never needs auth credentials.
@@ -75,10 +75,14 @@ page load. There is no SPA auth UI or popup reauthentication.
 
 The chart pin is centralized in this module; callers do not need a version
 placeholder. Release asset and Helm repository metadata were verified for
-[4.0.0](https://github.com/mucsi96/k8s-helm-charts/releases/tag/oauth2-proxy-forwardauth-4.0.0).
+[5.0.0](https://github.com/mucsi96/k8s-helm-charts/releases/tag/oauth2-proxy-forwardauth-5.0.0).
+
+Chart 5.0.0 reads API/login-gate identity from the verified ID token without
+attempting Graph profile lookups for missing optional claims. It also routes the
+proxy's static CSS/font assets so stock login/error pages render correctly.
 
 When upgrading an existing API-app auth release from 2.0.0, first remove document
-auth filters from its frontend HTTPRoute: chart 4.0.0 omits the unused document
+auth filters from its frontend HTTPRoute: chart 5.0.0 omits the unused document
 Middleware/policy in API mode. All five stock control routes remain available.
 New pilot installations can preprovision with `retain_spa_redirects = true`
 before deploying the matching server/bootstrap and public frontend builds.
@@ -90,7 +94,7 @@ role. The bootstrap handler checks the proxy session itself. Caller headers and
 cookies are preserved, and no path-prefix bypass is created.
 
 Application access is enforced by the API's JWT/scope/role checks and mutation
-Origin validation.
+Origin or CSRF-token validation.
 Existing app labels, Services, workload identities, PVCs and database schemas
 are retained. Redis is shared, not provisioned by each module.
 
