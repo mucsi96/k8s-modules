@@ -26,5 +26,6 @@ Graph `User.Read`. API preauthorization, when configured, uses only the supplied
 API scope. API role assignments remain owned by the API/application modules.
 
 The two outputs, `client_id` and sensitive `client_secret`, are consumed by
-`setup_app_forwardauth`. Hello/Cooking select this module whenever `forward_auth`
-is configured; `register_spa` is used only by their legacy browser-OAuth mode.
+`setup_app_forwardauth`. Hello always uses this Web registration and requires
+ForwardAuth configuration. Cooking selects it when ForwardAuth is configured,
+with `register_spa` available for its legacy browser-OAuth mode.

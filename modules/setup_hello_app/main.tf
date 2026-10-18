@@ -1,6 +1,5 @@
 locals {
-  app_hostname      = "hello.${var.hostname}"
-  browser_client_id = nonsensitive(var.forward_auth == null) ? module.setup_hello_spa[0].client_id : module.setup_hello_web[0].client_id
+  app_hostname = "hello.${var.hostname}"
 }
 
 module "postgres_schema" {
@@ -19,8 +18,8 @@ module "app_base" {
   app_secrets = {
     claude-api-key = var.claude_api_key
   }
-  deployment_secrets = nonsensitive(var.forward_auth == null) ? {} : {
-    forward-auth-config = jsonencode(module.forward_auth[0].deployment_config)
+  deployment_secrets = {
+    forward-auth-config = jsonencode(module.forward_auth.deployment_config)
   }
   azure_location         = var.azure_location
   tenant_id              = var.tenant_id
@@ -30,7 +29,7 @@ module "app_base" {
   app_hostname           = local.app_hostname
   api_client_id          = module.setup_hello_api.client_id
   api_client_secret      = module.setup_hello_api.client_secret
-  spa_client_id          = local.browser_client_id
+  spa_client_id          = module.setup_hello_web.client_id
   api_resource_object_id = module.setup_hello_api.resource_object_id
   k8s_oidc_config        = var.k8s_oidc_config
   client_log_url         = var.client_log_url
@@ -48,22 +47,8 @@ module "setup_hello_api" {
   k8s_service_account_name      = "hello-api-workload-identity"
 }
 
-module "setup_hello_spa" {
-  source = "../register_spa"
-  count  = nonsensitive(var.forward_auth == null ? 1 : 0)
-  owner  = var.owner
-
-  display_name  = "Hello SPA"
-  redirect_uris = ["https://${local.app_hostname}/", "http://localhost:4200/"]
-
-  api_id        = module.setup_hello_api.application_id
-  api_client_id = module.setup_hello_api.client_id
-  api_scope_id  = module.setup_hello_api.scope_id
-}
-
 module "setup_hello_web" {
   source = "../register_web"
-  count  = nonsensitive(var.forward_auth == null ? 0 : 1)
   owner  = var.owner
 
   display_name  = "Hello Web"
@@ -77,14 +62,13 @@ module "setup_hello_web" {
 
 module "forward_auth" {
   source = "../setup_app_forwardauth"
-  count  = nonsensitive(var.forward_auth == null ? 0 : 1)
 
   name                = "hello"
   namespace           = module.app_base.namespace
   hostname            = local.app_hostname
   tenant_id           = var.tenant_id
-  client_id           = module.setup_hello_web[0].client_id
-  client_secret       = module.setup_hello_web[0].client_secret
+  client_id           = module.setup_hello_web.client_id
+  client_secret       = module.setup_hello_web.client_secret
   api_client_id       = module.setup_hello_api.client_id
   trusted_proxy_cidrs = nonsensitive(var.forward_auth.trusted_proxy_cidrs)
   session_redis       = var.forward_auth.session_redis

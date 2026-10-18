@@ -20,17 +20,17 @@ scripts. Terraform-managed services consume its route policies directly.
 ## Public frontend and app deployment
 
 Use the dedicated `register_web` module to provision the confidential client.
-Hello/Cooking use it exclusively when `forward_auth` is set. The legacy
-`register_spa` module now configures only SPA clients and is selected only when
-ForwardAuth is disabled. The Web module owns its credential, OIDC consent, API
+Hello always uses it with required ForwardAuth configuration. Cooking uses it
+when ForwardAuth is enabled, and uses `register_spa` for legacy browser OAuth.
+The Web module owns its credential, OIDC consent, API
 preauthorization and required owner/household assignments.
 
 The dedicated module creates Web-only registrations. Use the matching cookie-auth
 app builds and remove the old `retain_spa_redirects` input from environment
 configuration.
 
-Hello/Cooking opt in using their optional `forward_auth` input. Supply the
-shared Redis descriptor, trusted Traefik source CIDRs and Gateway
+Hello requires the `forward_auth` input; Cooking currently makes it optional.
+Supply the shared Redis descriptor, trusted Traefik source CIDRs and Gateway
 reference. Enable `setup_ingress_controller.enable_forward_auth` first. Apply
 `routeFilters` only to the API chart. Frontend HTML, bundles and SPA routes are
 public. Before Angular starts, the environment controller checks the proxy

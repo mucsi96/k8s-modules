@@ -75,7 +75,7 @@ variable "client_log_url" {
 }
 
 variable "forward_auth" {
-  description = "ForwardAuth configuration using a dedicated confidential Web client. Deploy matching cookie-auth app builds and routing."
+  description = "Required ForwardAuth configuration for Hello's confidential Web client."
   type = object({
     trusted_proxy_cidrs = list(string)
     session_redis = object({
@@ -88,6 +88,6 @@ variable "forward_auth" {
       section_name = string
     })
   })
-  default   = null
+  nullable  = false
   sensitive = true
 }
