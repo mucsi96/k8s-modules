@@ -19,19 +19,18 @@ scripts. Terraform-managed services consume its route policies directly.
 
 ## Public frontend and app deployment
 
-Convert the existing client's redirect type with `register_spa.web_redirect_uris`:
-the Azure application/service-principal addresses and API preauthorization stay
-stable, while the SPA block is removed, a confidential credential is created,
-and Web-client assignment becomes mandatory. The owner is always assigned;
-Cooking additionally passes its household user IDs. Existing API role and
-workload-identity resources must remain intact.
+Use the dedicated `register_web` module to provision the confidential client.
+Hello always uses it with required ForwardAuth configuration. Cooking uses it
+when ForwardAuth is enabled, and uses `register_spa` for legacy browser OAuth.
+The Web module owns its credential, OIDC consent, API
+preauthorization and required owner/household assignments.
 
-For a staged rollout, set `retain_spa_redirects = true` temporarily: preprovision
-the Web client/proxy while existing SPA tabs can still authenticate. Deploy the
-cookie-auth builds, then switch it to false to remove the SPA redirect type.
+The dedicated module creates Web-only registrations. Use the matching cookie-auth
+app builds and remove the old `retain_spa_redirects` input from environment
+configuration.
 
-Hello/Cooking opt in using their optional `forward_auth` input. Supply the
-shared Redis descriptor, trusted Traefik source CIDRs and Gateway
+Hello requires the `forward_auth` input; Cooking currently makes it optional.
+Supply the shared Redis descriptor, trusted Traefik source CIDRs and Gateway
 reference. Enable `setup_ingress_controller.enable_forward_auth` first. Apply
 `routeFilters` only to the API chart. Frontend HTML, bundles and SPA routes are
 public. Before Angular starts, the environment controller checks the proxy
@@ -84,8 +83,7 @@ proxy's static CSS/font assets so stock login/error pages render correctly.
 When upgrading an existing API-app auth release from 2.0.0, first remove document
 auth filters from its frontend HTTPRoute: chart 5.0.0 omits the unused document
 Middleware/policy in API mode. All five stock control routes remain available.
-New pilot installations can preprovision with `retain_spa_redirects = true`
-before deploying the matching server/bootstrap and public frontend builds.
+The dedicated registration module provisions a Web-only client.
 
 The same `excluded_routes` list contains Cooking's
 `POST /api/integrations/recipes/import` integration route. Exclusion skips only
@@ -100,9 +98,18 @@ are retained. Redis is shared, not provisioned by each module.
 
 ## Grafana and other Terraform-managed services
 
-For p07 Grafana, the existing Web registration can supply the client credentials:
+For a new Grafana-style service, create the assigned Web client without an API
+registration and pass its credentials to ForwardAuth:
 
 ```hcl
+module "grafana_web" {
+  source = "../register_web"
+
+  display_name  = "Grafana Web"
+  owner         = var.owner
+  redirect_uris = ["https://${var.grafana_hostname}/oauth2/callback"]
+}
+
 module "grafana_auth" {
   source = "../setup_app_forwardauth"
 
@@ -111,8 +118,8 @@ module "grafana_auth" {
   mode                = "email-header"
   hostname            = var.grafana_hostname
   tenant_id           = var.tenant_id
-  client_id           = var.grafana_client_id
-  client_secret       = var.grafana_client_secret
+  client_id           = module.grafana_web.client_id
+  client_secret       = module.grafana_web.client_secret
   trusted_proxy_cidrs = var.trusted_proxy_cidrs
   session_redis       = var.session_redis
   gateway_parent_ref  = var.gateway_parent_ref
@@ -126,10 +133,6 @@ The owning service module's HTTPRoute consumes
 `auth.proxy.header_name = X-Auth-Request-Email` configuration; sign-in assignment
 remains enforced by the existing Entra Web registration. Use `login-gate` for
 a service that needs the session check but no identity header.
-
-Adopting this in the existing Grafana installation also requires preserving
-the existing Helm release/cookie state addresses and updating its current
-HTTPRoute backend from the reverse proxy to the Grafana Service.
 
 ## Automatic login and control-route ownership
 

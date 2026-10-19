@@ -21,6 +21,8 @@ to the same release tag rather than a moving branch.
 | `create_postgres_database` | Installs PostgreSQL with a retained host-path volume and `ServiceMonitor`. |
 | `setup_postgres_schema` | Provisions a dedicated login role and owned schema for one application. |
 | `setup_redis` | Installs shared Redis with a retained host-path volume. |
+| `register_web` | Registers confidential Web clients for server-side ForwardAuth, with OIDC consent, optional API access and required user assignments. |
+| `register_spa` | Registers legacy browser-OAuth SPA clients. |
 | `setup_app_forwardauth` | Provisions per-app stock oauth2-proxy sessions, Secrets, ForwardAuth chart releases and ingress policies. |
 | `setup_victoria_metrics` | Installs VictoriaMetrics, Grafana, exporters, and Grafana ingress. |
 | `setup_victoria_logs` | Installs Alloy pod-log/Faro collection and Faro ingress. |

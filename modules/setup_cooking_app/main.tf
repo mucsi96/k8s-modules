@@ -1,5 +1,6 @@
 locals {
-  app_hostname = "cooking.${var.hostname}"
+  app_hostname      = "cooking.${var.hostname}"
+  browser_client_id = nonsensitive(var.forward_auth == null) ? module.setup_cooking_spa[0].client_id : module.setup_cooking_web[0].client_id
 }
 
 module "postgres_schema" {
@@ -30,7 +31,7 @@ module "app_base" {
   app_hostname           = local.app_hostname
   api_client_id          = module.setup_cooking_api.client_id
   api_client_secret      = module.setup_cooking_api.client_secret
-  spa_client_id          = module.setup_cooking_spa.client_id
+  spa_client_id          = local.browser_client_id
   api_resource_object_id = module.setup_cooking_api.resource_object_id
   k8s_oidc_config        = var.k8s_oidc_config
   client_log_url         = var.client_log_url
@@ -50,17 +51,30 @@ module "setup_cooking_api" {
 
 module "setup_cooking_spa" {
   source = "../register_spa"
+  count  = nonsensitive(var.forward_auth == null ? 1 : 0)
   owner  = var.owner
 
-  display_name  = nonsensitive(var.forward_auth == null) ? "Cooking SPA" : "Cooking Web"
+  display_name  = "Cooking SPA"
   redirect_uris = ["https://${local.app_hostname}/", "http://localhost:4260/"]
 
-  api_id               = module.setup_cooking_api.application_id
-  api_client_id        = module.setup_cooking_api.client_id
-  api_scope_id         = module.setup_cooking_api.scope_id
-  web_redirect_uris    = nonsensitive(var.forward_auth == null) ? [] : ["https://${local.app_hostname}/oauth2/callback"]
-  retain_spa_redirects = nonsensitive(try(var.forward_auth.retain_spa_redirects, false))
-  allowed_user_ids     = toset([for user in data.azuread_users.all.users : user.object_id])
+  api_id        = module.setup_cooking_api.application_id
+  api_client_id = module.setup_cooking_api.client_id
+  api_scope_id  = module.setup_cooking_api.scope_id
+}
+
+module "setup_cooking_web" {
+  source = "../register_web"
+  count  = nonsensitive(var.forward_auth == null ? 0 : 1)
+  owner  = var.owner
+
+  display_name  = "Cooking Web"
+  redirect_uris = ["https://${local.app_hostname}/oauth2/callback"]
+  api_access = {
+    application_id = module.setup_cooking_api.application_id
+    client_id      = module.setup_cooking_api.client_id
+    scope_id       = module.setup_cooking_api.scope_id
+  }
+  allowed_user_ids = toset([for user in data.azuread_users.all.users : user.object_id])
 }
 
 module "forward_auth" {
@@ -71,8 +85,8 @@ module "forward_auth" {
   namespace           = module.app_base.namespace
   hostname            = local.app_hostname
   tenant_id           = var.tenant_id
-  client_id           = module.setup_cooking_spa.client_id
-  client_secret       = module.setup_cooking_spa.client_secret
+  client_id           = module.setup_cooking_web[0].client_id
+  client_secret       = module.setup_cooking_web[0].client_secret
   api_client_id       = module.setup_cooking_api.client_id
   trusted_proxy_cidrs = nonsensitive(var.forward_auth.trusted_proxy_cidrs)
   session_redis       = var.forward_auth.session_redis

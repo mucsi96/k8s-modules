@@ -7,7 +7,7 @@ output "cooking_api_client_secret" {
 }
 
 output "cooking_spa_client_id" {
-  value = module.setup_cooking_spa.client_id
+  value = local.browser_client_id
 }
 
 output "cooking_api_resource_object_id" {

@@ -75,10 +75,9 @@ variable "client_log_url" {
 }
 
 variable "forward_auth" {
-  description = "Opt-in confidential Web/ForwardAuth migration. Deploy the matching cookie-auth app builds and middleware-capable charts together."
+  description = "Required ForwardAuth configuration for Hello's confidential Web client."
   type = object({
-    retain_spa_redirects = optional(bool, false)
-    trusted_proxy_cidrs  = list(string)
+    trusted_proxy_cidrs = list(string)
     session_redis = object({
       connection_url = string
       password       = string
@@ -89,6 +88,6 @@ variable "forward_auth" {
       section_name = string
     })
   })
-  default   = null
+  nullable  = false
   sensitive = true
 }

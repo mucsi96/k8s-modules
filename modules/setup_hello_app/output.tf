@@ -6,10 +6,6 @@ output "hello_api_client_secret" {
   value = module.setup_hello_api.client_secret
 }
 
-output "hello_spa_client_id" {
-  value = module.setup_hello_spa.client_id
-}
-
 output "hello_api_resource_object_id" {
   value = module.setup_hello_api.resource_object_id
 }
