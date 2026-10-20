@@ -51,3 +51,9 @@ variable "enable_forward_auth" {
   type        = bool
   default     = false
 }
+
+variable "enable_index_config" {
+  description = "Enable the pinned Traefik rewrite-body plugin used by client charts for inline runtime configuration."
+  type        = bool
+  default     = false
+}

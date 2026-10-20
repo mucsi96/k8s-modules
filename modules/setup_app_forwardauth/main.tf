@@ -46,6 +46,9 @@ resource "helm_release" "auth" {
         mode              = var.mode
         apiScope          = var.mode == "api-token" && var.api_client_id != null ? "api://${var.api_client_id}/api-access" : ""
         trustedProxyCIDRs = var.trusted_proxy_cidrs
+        # Chart 5 needs the explicit value during the app-owned policy cutover.
+        # New proxy charts use this same fixed name.
+        cookieName = "__Host-session"
       }
     }
     gateway = {
@@ -55,6 +58,7 @@ resource "helm_release" "auth" {
     }
     excludedRoutes = var.excluded_routes
     oauth2-proxy = {
+      fullnameOverride = local.release_name
       sessionStorage = {
         redis = {
           existingSecret = kubernetes_secret_v1.redis.metadata[0].name
@@ -76,12 +80,4 @@ resource "helm_release" "auth" {
       error_message = "api-token mode requires api_client_id."
     }
   }
-}
-
-data "kubernetes_config_map_v1" "route_filters" {
-  metadata {
-    name      = "${helm_release.auth.name}-route-filters"
-    namespace = var.namespace
-  }
-  depends_on = [helm_release.auth]
 }
