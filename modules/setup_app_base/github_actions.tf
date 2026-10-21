@@ -9,25 +9,6 @@ moved {
   to   = github_actions_secret.twingate_service_key
 }
 
-data "docker_login" "current" {}
-
-resource "github_actions_secret" "dockerhub_username" {
-  repository  = var.github_repository
-  secret_name = "DOCKERHUB_USERNAME"
-  value       = data.docker_login.current.username
-}
-
-resource "docker_access_token" "app" {
-  token_label = var.github_repository
-  scopes      = ["repo:read", "repo:write"]
-}
-
-resource "github_actions_secret" "dockerhub_token" {
-  repository  = var.github_repository
-  secret_name = "DOCKERHUB_TOKEN"
-  value       = docker_access_token.app.token
-}
-
 resource "github_actions_secret" "azure_client_id" {
   repository  = var.github_repository
   secret_name = "AZURE_CLIENT_ID"
