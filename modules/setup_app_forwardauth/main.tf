@@ -34,7 +34,7 @@ resource "helm_release" "auth" {
   namespace  = var.namespace
   repository = "https://mucsi96.github.io/k8s-helm-charts"
   chart      = "oauth2-proxy-forwardauth"
-  version    = "5.0.0"
+  version    = "6.0.0"
   wait       = true
   timeout    = 600
   values = [yamlencode({
@@ -46,9 +46,6 @@ resource "helm_release" "auth" {
         mode              = var.mode
         apiScope          = var.mode == "api-token" && var.api_client_id != null ? "api://${var.api_client_id}/api-access" : ""
         trustedProxyCIDRs = var.trusted_proxy_cidrs
-        # Chart 5 needs the explicit value during the app-owned policy cutover.
-        # New proxy charts use this same fixed name.
-        cookieName = "__Host-session"
       }
     }
     gateway = {

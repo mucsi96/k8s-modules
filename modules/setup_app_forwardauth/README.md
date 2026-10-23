@@ -51,14 +51,22 @@ authenticated integrations; it never makes their handlers unauthenticated.
 
 ## Publication and existing consumers
 
-The central pin is still published **5.0.0** while the new app/proxy charts await
-release. The module explicitly configures `__Host-session` on chart 5 to match
-the new app middleware. This cookie rename requires a new sign-in. First
-publish compatible app charts and expose the new deployment descriptor; convert
-all consuming app routes and discard their old Helm `routeFilters` values. New
-app charts accept `auth` only and reject nonempty legacy filter lists. Only then advance
-the proxy-chart pin to the verified release that removes old policy resources.
-Do not remove proxy-owned middleware while live routes still reference it.
+The central pin is published
+[**6.0.0**](https://github.com/mucsi96/k8s-helm-charts/releases/tag/oauth2-proxy-forwardauth-6.0.0),
+which fixes the cookie name to `__Host-session` and removes proxy-owned application
+Middleware and the policy ConfigMap. Compatible published application charts are
+client-app **24.0.0**, spring-app **32.0.0**, go-app **3.0.0**, node-app **22.0.0**
+and rust-app **2.0.0**.
+
+For existing releases, deploy app-owned middleware **before applying this module
+version**. During that preparatory stage, retain proxy chart **5.0.0**, configure
+its `global.forwardAuth.cookieName` as `__Host-session`, expose the new deployment
+descriptor and namespace permissions, and deploy compatible app charts with old
+Helm `routeFilters` values discarded. The cookie rename requires a new sign-in.
+The preceding module implementation at commit
+`8dccfa3a79faf1fc8c4a4ac88e038917cc725835` retains chart 5 for this stage.
+Verify that no live routes reference proxy-owned middleware before advancing to
+this chart-6 module. New installations can use chart 6 directly.
 
 Existing deployment scripts expecting `.route_filters` must be updated before
 adopting this module contract. p07 Cooking intentionally stays on its old module

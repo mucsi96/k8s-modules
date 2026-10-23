@@ -321,11 +321,15 @@ and rewrites to `/collect`. Compose Hello's `client_log_url` from its own HTTPS
 hostname and `setup_victoria_logs.faro_client_path` (default `/_telemetry/collect`)
 to avoid cross-origin browser preflight. Collector origin/rate limits remain.
 
-Publish and verify the new app charts, expose the proxy descriptor, then deploy
-app-owned middleware against the existing proxy. Remove old Helm `routeFilters` values before
-upgrading the proxy chart, which removes its legacy policy resources. Keep the
-central 5.0.0 pin until all consuming routes have switched. Existing scripts
-expecting policy lists need conversion; p07 Cooking retains its compatible pin.
+The module pins published proxy chart **6.0.0**, alongside compatible client-app
+**24.0.0** and spring-app **32.0.0** releases. For existing installations, first
+expose the proxy descriptor and deploy app-owned middleware against proxy chart
+**5.0.0**, configured with `__Host-session`. Remove old Helm `routeFilters` values
+and verify all consuming routes have switched before applying this module,
+because chart 6 removes the legacy policy resources. See the
+[staged upgrade instructions](modules/setup_app_forwardauth/README.md#publication-and-existing-consumers).
+Existing scripts expecting policy lists need conversion; p07 Cooking retains its
+compatible pin until its separate migration.
 
 `setup_cluster.k3s_version` defines the minimum version installed during
 provisioning; the default is `v1.36.4+k3s1`. The server's `update-server`
