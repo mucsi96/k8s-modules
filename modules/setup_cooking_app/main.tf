@@ -95,12 +95,6 @@ module "forward_auth" {
   trusted_proxy_cidrs = nonsensitive(var.forward_auth.trusted_proxy_cidrs)
   session_redis       = var.forward_auth.session_redis
   gateway_parent_ref  = var.forward_auth.gateway_parent_ref
-  excluded_routes = [{
-    path    = "/api/integrations/recipes/import"
-    method  = "POST"
-    service = "cooking-server"
-    port    = 8080
-  }]
 }
 
 # Every user in the tenant gets both recipe roles — the whole household uses

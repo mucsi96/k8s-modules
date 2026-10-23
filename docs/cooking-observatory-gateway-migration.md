@@ -4,9 +4,9 @@ Release these module changes before deploying the matching app MRs. Callers must
 pin the resulting published release; v-93 does not provide these contracts.
 
 Cooking now publishes `client-runtime-config` and the standard `forward-auth-config`
-descriptor. The exact POST `/api/integrations/recipes/import` bypass remains; the
-backend independently authenticates it. Database, PVs and workload identity are
-unchanged. The obsolete environment-bootstrap bypass is removed.
+descriptor. Cooking uses only its browser-authenticated import endpoints; no
+integration-import or environment-bootstrap bypass remains. Database, PVs and
+workload identity are unchanged.
 
 Observatory retains Rust/React. Its caller replaces `valid_email`, proxy version,
 `session_redis`, `gateway_parent_ref`, and `kubeconfig_secret_id` inputs with:
