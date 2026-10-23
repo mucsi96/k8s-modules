@@ -34,7 +34,7 @@ resource "helm_release" "auth" {
   namespace  = var.namespace
   repository = "https://mucsi96.github.io/k8s-helm-charts"
   chart      = "oauth2-proxy-forwardauth"
-  version    = "5.0.0"
+  version    = "6.0.0"
   wait       = true
   timeout    = 600
   values = [yamlencode({
@@ -55,6 +55,7 @@ resource "helm_release" "auth" {
     }
     excludedRoutes = var.excluded_routes
     oauth2-proxy = {
+      fullnameOverride = local.release_name
       sessionStorage = {
         redis = {
           existingSecret = kubernetes_secret_v1.redis.metadata[0].name
@@ -76,12 +77,4 @@ resource "helm_release" "auth" {
       error_message = "api-token mode requires api_client_id."
     }
   }
-}
-
-data "kubernetes_config_map_v1" "route_filters" {
-  metadata {
-    name      = "${helm_release.auth.name}-route-filters"
-    namespace = var.namespace
-  }
-  depends_on = [helm_release.auth]
 }

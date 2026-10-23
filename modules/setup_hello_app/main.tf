@@ -20,6 +20,10 @@ module "app_base" {
   }
   deployment_secrets = {
     forward-auth-config = jsonencode(module.forward_auth.deployment_config)
+    client-runtime-config = jsonencode({
+      clientLogUrl  = var.client_log_url
+      clientAppName = "hello-client"
+    })
   }
   azure_location         = var.azure_location
   tenant_id              = var.tenant_id
@@ -73,12 +77,6 @@ module "forward_auth" {
   trusted_proxy_cidrs = nonsensitive(var.forward_auth.trusted_proxy_cidrs)
   session_redis       = var.forward_auth.session_redis
   gateway_parent_ref  = var.forward_auth.gateway_parent_ref
-  excluded_routes = [{
-    path    = "/api/environment"
-    method  = "GET"
-    service = "hello-server"
-    port    = 8080
-  }]
 }
 
 resource "kubernetes_persistent_volume_v1" "hello_app_pv" {

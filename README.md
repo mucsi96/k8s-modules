@@ -23,7 +23,7 @@ to the same release tag rather than a moving branch.
 | `setup_redis` | Installs shared Redis with a retained host-path volume. |
 | `register_web` | Registers confidential Web clients for server-side ForwardAuth, with OIDC consent, optional API access and required user assignments. |
 | `register_spa` | Registers legacy browser-OAuth SPA clients. |
-| `setup_app_forwardauth` | Provisions per-app stock oauth2-proxy sessions, Secrets, ForwardAuth chart releases and ingress policies. |
+| `setup_app_forwardauth` | Provisions per-app stock oauth2-proxy sessions/Secrets and exports the proxy reference for application charts. |
 | `setup_victoria_metrics` | Installs VictoriaMetrics, Grafana, exporters, and Grafana ingress. |
 | `setup_victoria_logs` | Installs Alloy pod-log/Faro collection and Faro ingress. |
 | `setup_app_dashboard` | Provisions Observatory inventory, runtime/deploy RBAC, GitHub OIDC credentials, Entra proxy, and a Gateway route. |
@@ -296,6 +296,40 @@ Twingate connector
 ```
 
 ## Platform Details
+
+### Client-owned SPA routes and runtime configuration
+
+The client chart always owns SPA routing, document auth and inline configuration;
+API charts own API auth and header policies. `setup_app_forwardauth` exports a
+small proxy reference (`proxyService`, `proxyPort`, `mode`) as
+`deployment_config.auth`. Hello deployment passes that same object from app AKV
+`forward-auth-config` to each chart's `auth` value. Public runtime JSON lives in
+separate `client-runtime-config`. No policy ConfigMap or filter lists are passed.
+`create_app_namespace` grants app deployers namespace-scoped Middleware management.
+All app hosts use the fixed host-only `__Host-session` cookie with per-app secrets.
+Clients are hosted at `/`; their nested paths rewrite to `/index.html`.
+
+Set `setup_ingress_controller.enable_index_config=true` to enable the pinned
+`github.com/traefik/plugin-rewritebody` v0.3.1 plugin before deploying client
+injection. Origins serve real files; SPA fallback and index config replacement
+live in client-chart Gateway resources. Keep the quoted `__APP_CONFIG_JSON__`
+marker, uncompressed index delivery and no-store/credential-stripping policies.
+
+Set `setup_victoria_logs.faro_client_hostnames` to the participating application
+hosts. The module owns exact POST/OPTIONS collection routes, strips app credentials
+and rewrites to `/collect`. Compose Hello's `client_log_url` from its own HTTPS
+hostname and `setup_victoria_logs.faro_client_path` (default `/_telemetry/collect`)
+to avoid cross-origin browser preflight. Collector origin/rate limits remain.
+
+The module pins published proxy chart **6.0.0**, alongside compatible client-app
+**24.0.0** and spring-app **32.0.0** releases. For existing installations, first
+expose the proxy descriptor and deploy app-owned middleware against proxy chart
+**5.0.0**, configured with `__Host-session`. Remove old Helm `routeFilters` values
+and verify all consuming routes have switched before applying this module,
+because chart 6 removes the legacy policy resources. See the
+[staged upgrade instructions](modules/setup_app_forwardauth/README.md#publication-and-existing-consumers).
+Existing scripts expecting policy lists need conversion; p07 Cooking retains its
+compatible pin until its separate migration.
 
 `setup_cluster.k3s_version` defines the minimum version installed during
 provisioning; the default is `v1.36.4+k3s1`. The server's `update-server`

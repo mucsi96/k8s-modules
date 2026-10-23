@@ -22,7 +22,7 @@ resource "kubectl_manifest" "traefik_config" {
       namespace = local.ingress_controller_namespace
     }
     spec = {
-      valuesContent = yamlencode({
+      valuesContent = yamlencode(merge({
         logs = {
           general = {
             level = "INFO"
@@ -33,7 +33,7 @@ resource "kubectl_manifest" "traefik_config" {
         }
         providers = {
           kubernetesCRD = {
-            enabled = var.enable_forward_auth
+            enabled = var.enable_forward_auth || var.enable_index_config
           }
           kubernetesIngress = {
             enabled = false
@@ -83,7 +83,16 @@ resource "kubectl_manifest" "traefik_config" {
             maxUnavailable = 1
           }
         }
-      })
+        }, var.enable_index_config ? {
+        experimental = {
+          plugins = {
+            rewritebody = {
+              moduleName = "github.com/traefik/plugin-rewritebody"
+              version    = "v0.3.1"
+            }
+          }
+        }
+      } : {}))
     }
   })
 }

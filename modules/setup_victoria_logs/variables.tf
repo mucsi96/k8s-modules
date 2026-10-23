@@ -31,6 +31,22 @@ variable "faro_rate_limit_rps" {
   default     = 50
 }
 
+variable "faro_client_hostnames" {
+  description = "Application hostnames that expose same-origin Faro collection through the shared Gateway."
+  type        = list(string)
+  default     = []
+}
+
+variable "faro_client_path" {
+  description = "Exact same-origin collection path, rewritten to the Faro receiver's /collect endpoint."
+  type        = string
+  default     = "/_telemetry/collect"
+  validation {
+    condition     = can(regex("^/[^?#\\s]+$", var.faro_client_path)) && !can(regex("^/(api|oauth2)(/|$)", var.faro_client_path))
+    error_message = "Use an exact root-relative collection path outside /api and /oauth2."
+  }
+}
+
 variable "faro_rate_limit_burst" {
   description = "Burst size for the Faro receiver's token-bucket rate limiter."
   type        = number
