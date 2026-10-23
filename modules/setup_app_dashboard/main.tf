@@ -1,5 +1,6 @@
 locals {
-  name = "observatory"
+  name                     = "observatory"
+  api_service_account_name = "observatory-api-workload-identity"
   apps = concat(var.apps, [{
     name       = "Observatory"
     namespace  = local.name
@@ -15,11 +16,19 @@ resource "kubernetes_namespace_v1" "dashboard" {
   depends_on = [terraform_data.ready]
 }
 
-resource "kubernetes_service_account_v1" "dashboard" {
-  metadata {
-    name      = local.name
-    namespace = kubernetes_namespace_v1.dashboard.metadata[0].name
-  }
+removed {
+  from = kubernetes_service_account_v1.dashboard
+  lifecycle { destroy = false }
+}
+
+# Preserve the tenant-owned Graph principal through both supported predecessors.
+moved {
+  from = module.registration.azuread_service_principal.msgraph
+  to   = module.setup_observatory_spa.azuread_service_principal.msgraph
+}
+moved {
+  from = module.setup_observatory_spa.azuread_service_principal.msgraph
+  to   = module.setup_observatory_web.azuread_service_principal.msgraph
 }
 
 # Deployment readiness and images only. No secrets, logs, exec, or write access.
@@ -50,7 +59,7 @@ resource "kubernetes_role_binding_v1" "reader" {
   }
   subject {
     kind      = "ServiceAccount"
-    name      = kubernetes_service_account_v1.dashboard.metadata[0].name
+    name      = local.api_service_account_name
     namespace = kubernetes_namespace_v1.dashboard.metadata[0].name
   }
 }
@@ -60,7 +69,14 @@ resource "kubernetes_config_map_v1" "dashboard" {
     name      = local.name
     namespace = kubernetes_namespace_v1.dashboard.metadata[0].name
   }
-  data = { "config.json" = jsonencode({ environment = var.environment_name, apps = local.apps }) }
+  data = { "config.json" = jsonencode({
+    environment = var.environment_name
+    apps        = local.apps
+    auth = {
+      issuer      = "https://login.microsoftonline.com/${var.tenant_id}/v2.0"
+      apiClientId = module.setup_observatory_api.client_id
+    }
+  }) }
 }
 
 resource "kubernetes_secret_v1" "github" {
@@ -72,7 +88,7 @@ resource "kubernetes_secret_v1" "github" {
 }
 
 // Workloads are now owned by observatory-app's deployment pipeline. Preserve the
-// live resources during the handoff; kubectl apply adopts the same names.
+// live resources during the handoff; Helm adopts the same names.
 removed {
   from = kubernetes_deployment_v1.dashboard
   lifecycle { destroy = false }
@@ -83,63 +99,72 @@ removed {
   lifecycle { destroy = false }
 }
 
-module "registration" {
-  source        = "../register_webapp"
-  display_name  = "Observatory - ${var.environment_name}"
+module "setup_observatory_api" {
+  source                        = "../register_api"
+  owner                         = var.owner
+  display_name                  = "Observatory API"
+  roles                         = ["readApps"]
+  k8s_oidc_issuer_url           = var.k8s_oidc_issuer_url
+  k8s_service_account_namespace = kubernetes_namespace_v1.dashboard.metadata[0].name
+  k8s_service_account_name      = local.api_service_account_name
+}
+
+module "setup_observatory_web" {
+  source        = "../register_web"
   owner         = var.owner
+  display_name  = "Observatory Web"
   redirect_uris = ["https://${var.hostname}/oauth2/callback"]
+  api_access = {
+    application_id = module.setup_observatory_api.application_id
+    client_id      = module.setup_observatory_api.client_id
+    scope_id       = module.setup_observatory_api.scope_id
+  }
 }
 
-module "oauth2_proxy" {
-  source                     = "../setup_oauth2_proxy"
-  name                       = local.name
-  namespace                  = kubernetes_namespace_v1.dashboard.metadata[0].name
-  client_id                  = module.registration.client_id
-  client_secret              = module.registration.client_secret
-  tenant_id                  = var.tenant_id
-  valid_email                = var.valid_email
-  oauth2_proxy_chart_version = var.oauth2_proxy_chart_version
-  oauth2_proxy_image_version = var.oauth2_proxy_image_version
-  session_redis              = var.session_redis
-  upstream_uri               = "http://${local.name}:8080"
+module "forward_auth" {
+  source              = "../setup_app_forwardauth"
+  name                = local.name
+  namespace           = kubernetes_namespace_v1.dashboard.metadata[0].name
+  hostname            = var.hostname
+  tenant_id           = var.tenant_id
+  client_id           = module.setup_observatory_web.client_id
+  client_secret       = module.setup_observatory_web.client_secret
+  api_client_id       = module.setup_observatory_api.client_id
+  trusted_proxy_cidrs = nonsensitive(var.forward_auth.trusted_proxy_cidrs)
+  session_redis       = var.forward_auth.session_redis
+  gateway_parent_ref  = var.forward_auth.gateway_parent_ref
 }
 
-resource "kubectl_manifest" "route" {
-  yaml_body = yamlencode({
-    apiVersion = "gateway.networking.k8s.io/v1"
-    kind       = "HTTPRoute"
-    metadata   = { name = local.name, namespace = kubernetes_namespace_v1.dashboard.metadata[0].name }
-    spec = {
-      parentRefs = [{
-        group       = "gateway.networking.k8s.io"
-        kind        = "Gateway"
-        name        = var.gateway_parent_ref.name
-        namespace   = var.gateway_parent_ref.namespace
-        sectionName = var.gateway_parent_ref.section_name
-      }]
-      hostnames = [var.hostname]
-      rules     = [{ backendRefs = [{ name = module.oauth2_proxy.service_name, port = 80 }] }]
-    }
-  })
-}
-
-# The app trusts the OIDC proxy boundary; only that proxy may reach its HTTP port.
+# Charts own application routes; the API also validates JWTs, scope and roles.
 resource "kubernetes_network_policy_v1" "dashboard" {
   metadata {
     name      = local.name
     namespace = kubernetes_namespace_v1.dashboard.metadata[0].name
   }
   spec {
-    pod_selector { match_labels = { app = local.name } }
+    pod_selector {
+      match_expressions {
+        key      = "app"
+        operator = "In"
+        values   = [local.name, "${local.name}-client"]
+      }
+    }
     policy_types = ["Ingress"]
     ingress {
       from {
+        namespace_selector {
+          match_labels = { "kubernetes.io/metadata.name" = var.ingress_controller_namespace }
+        }
         pod_selector {
-          match_labels = { "app.kubernetes.io/instance" = "${local.name}-oauth2-proxy" }
+          match_labels = { "app.kubernetes.io/name" = "traefik" }
         }
       }
       ports {
         port     = "8080"
+        protocol = "TCP"
+      }
+      ports {
+        port     = "8000"
         protocol = "TCP"
       }
     }

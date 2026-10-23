@@ -21,11 +21,11 @@ module "app_base" {
     openai-api-key = var.openai_api_key
   }
   deployment_secrets = nonsensitive(var.forward_auth == null) ? {} : {
-    # Cooking still uses app-owned environment bootstrap until its UI cutover.
-    forward-auth-config = jsonencode(merge(module.forward_auth[0].deployment_config, {
-      session_url = "http://${module.forward_auth[0].deployment_config.auth.proxyService}.${module.app_base.namespace}.svc.cluster.local:80/oauth2/auth"
-      sign_in_url = "https://${local.app_hostname}/oauth2/start"
-    }))
+    forward-auth-config = jsonencode(module.forward_auth[0].deployment_config)
+    client-runtime-config = jsonencode({
+      clientLogUrl  = var.client_log_url
+      clientAppName = "cooking-client"
+    })
   }
   azure_location         = var.azure_location
   tenant_id              = var.tenant_id
@@ -96,11 +96,6 @@ module "forward_auth" {
   session_redis       = var.forward_auth.session_redis
   gateway_parent_ref  = var.forward_auth.gateway_parent_ref
   excluded_routes = [{
-    path    = "/api/environment"
-    method  = "GET"
-    service = "cooking-server"
-    port    = 8080
-    }, {
     path    = "/api/integrations/recipes/import"
     method  = "POST"
     service = "cooking-server"
