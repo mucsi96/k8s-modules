@@ -26,38 +26,20 @@ resource "azuread_application_federated_identity_credential" "github_deploy" {
   subject        = "repo:${var.github_repository_owner}@${data.github_user.repository_owner.id}/${var.github_repository}@${data.github_repository.app.repo_id}:ref:refs/heads/main"
 }
 
-resource "azurerm_role_assignment" "deploy_kubeconfig" {
-  scope                = var.kubeconfig_secret_id
-  role_definition_name = "Key Vault Secrets User"
-  principal_id         = azuread_service_principal.github_deploy.object_id
-}
-
 resource "kubernetes_role_v1" "deploy" {
   metadata {
     name      = "observatory-deploy"
     namespace = kubernetes_namespace_v1.dashboard.metadata[0].name
   }
   rule {
-    api_groups = ["apps"]
-    resources  = ["deployments"]
-    verbs      = ["get", "list", "watch", "create"]
+    api_groups = ["", "apps", "gateway.networking.k8s.io"]
+    resources  = ["deployments", "replicasets", "pods", "services", "serviceaccounts", "secrets", "configmaps", "httproutes"]
+    verbs      = ["get", "list", "watch", "create", "update", "patch", "delete"]
   }
   rule {
-    api_groups     = ["apps"]
-    resources      = ["deployments"]
-    resource_names = [local.name]
-    verbs          = ["update", "patch"]
-  }
-  rule {
-    api_groups = [""]
-    resources  = ["services"]
-    verbs      = ["get", "create"]
-  }
-  rule {
-    api_groups     = [""]
-    resources      = ["services"]
-    resource_names = [local.name]
-    verbs          = ["update", "patch"]
+    api_groups = ["traefik.io"]
+    resources  = ["middlewares"]
+    verbs      = ["get", "list", "watch", "create", "update", "patch", "delete"]
   }
 }
 
@@ -83,7 +65,7 @@ locals {
     AZURE_CLIENT_ID       = azuread_application.github_deploy.client_id
     AZURE_TENANT_ID       = var.tenant_id
     AZURE_SUBSCRIPTION_ID = var.azure_subscription_id
-    AZURE_KEYVAULT_NAME   = var.environment_name
+    AZURE_KEYVAULT_NAME   = azurerm_key_vault.app.name
     TWINGATE_SERVICE_KEY  = var.twingate_service_key
   }
 }
@@ -102,7 +84,8 @@ resource "github_actions_variable" "deploy_enabled" {
   depends_on = [
     github_actions_secret.deploy,
     azuread_application_federated_identity_credential.github_deploy,
-    azurerm_role_assignment.deploy_kubeconfig,
+    azurerm_role_assignment.deploy_config,
+    module.forward_auth,
     kubernetes_role_binding_v1.deploy,
     kubernetes_role_binding_v1.reader,
     kubernetes_config_map_v1.dashboard,
