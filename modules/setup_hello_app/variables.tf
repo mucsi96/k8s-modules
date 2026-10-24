@@ -91,3 +91,8 @@ variable "forward_auth" {
   nullable  = false
   sensitive = true
 }
+
+variable "client_storage_account_name" {
+  description = "Globally unique Azure Storage account for public client build files."
+  type        = string
+}

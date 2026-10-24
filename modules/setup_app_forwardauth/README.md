@@ -49,32 +49,17 @@ assets. `/oauth2/auth` and the token-bearing proxy root remain private. The
 `excluded_routes` input retains exact path/method bypasses for independently
 authenticated integrations; it never makes their handlers unauthenticated.
 
-## Publication and existing consumers
+## Published charts
 
 The central pin is published
-[**6.0.0**](https://github.com/mucsi96/k8s-helm-charts/releases/tag/oauth2-proxy-forwardauth-6.0.0),
-which fixes the cookie name to `__Host-session` and removes proxy-owned application
-Middleware and the policy ConfigMap. Compatible published application charts are
-client-app **24.0.0**, spring-app **32.0.0**, go-app **3.0.0**, node-app **22.0.0**
-and rust-app **2.0.0**.
-
-For existing releases, deploy app-owned middleware **before applying this module
-version**. During that preparatory stage, retain proxy chart **5.0.0**, configure
-its `global.forwardAuth.cookieName` as `__Host-session`, expose the new deployment
-descriptor and namespace permissions, and deploy compatible app charts with old
-Helm `routeFilters` values discarded. The cookie rename requires a new sign-in.
-The preceding module implementation at commit
-`8dccfa3a79faf1fc8c4a4ac88e038917cc725835` retains chart 5 for this stage.
-Verify that no live routes reference proxy-owned middleware before advancing to
-this chart-6 module. New installations can use chart 6 directly.
-
-Existing deployment scripts expecting `.route_filters` must be updated before
-adopting this module contract. p07 Cooking intentionally stays on its old module
-pin until that app cutover. The new Cooking module retains its backend bootstrap
-URLs in its own deployment configuration until its separate UI migration.
+[**7.0.0**](https://github.com/mucsi96/k8s-helm-charts/releases/tag/oauth2-proxy-forwardauth-7.0.0).
+The cookie name is fixed to `__Host-session`; application charts own their route
+Middleware. Published application charts are client-app **26.0.0**,
+static-client-app **2.0.0**, spring-app **34.0.0**, go-app **5.0.0**,
+node-app **24.0.0** and rust-app **4.0.0**.
 
 Client/API deployments need namespace-scoped `traefik.io/middlewares` permissions;
-`create_app_namespace` supplies those without granting other Traefik resources
-or cluster permissions. UI routes/config injection always stay client-owned.
+`create_app_namespace` supplies those plus same-namespace `traefikservices`
+permissions for external static origins. UI routes/config injection stay client-owned.
 Enable ingress `enable_index_config` before deploying runtime injection. Validate
 Terraform without applying infrastructure.
