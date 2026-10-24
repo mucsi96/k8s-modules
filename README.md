@@ -322,7 +322,7 @@ hostname and `setup_victoria_logs.faro_client_path` (default `/_telemetry/collec
 to avoid cross-origin browser preflight. Collector origin/rate limits remain.
 
 The module pins published proxy chart **7.0.0**, alongside client-app **25.0.0**,
-  static-client-app **2.0.0** and spring-app **33.0.0**. See the
+  static-client-app **2.0.0** and spring-app **34.0.0**. See the
 [proxy module contract](modules/setup_app_forwardauth/README.md#published-charts).
 
 `setup_cluster.k3s_version` defines the minimum version installed during
@@ -437,5 +437,5 @@ first consumer and now requires `client_storage_account_name`. Enable
 `setup_ingress_controller.enable_static_origins` and deploy the dedicated
 document-only `static-client-app` **2.0.0** chart with `staticOrigin`.
 Documents use the website endpoint; browser assets use the public `assets` Blob
-container with application-origin CORS. Publish the chart before application rollout.
+container with application-origin CORS. Both application charts are published.
 See [the module contract](modules/setup_static_website/README.md).

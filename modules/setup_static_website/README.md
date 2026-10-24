@@ -14,7 +14,7 @@ separately scoped to `$web` and `assets`. The provisioning provider must use
 `storage_use_azuread = true` and have storage service-property management access.
 
 Terraform owns storage and permissions; the application pipeline owns blobs.
-Use the document-only `static-client-app` chart's `staticOrigin` value and
+Use the published document-only `static-client-app` **2.0.0** chart's `staticOrigin` value and
 enable external origins in the ingress module. The app namespace role permits
 same-namespace TraefikServices.
 The existing Web registration/session and API validation are retained.
