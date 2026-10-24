@@ -4,11 +4,6 @@ resource "github_actions_secret" "twingate_service_key" {
   value       = var.twingate_service_key
 }
 
-moved {
-  from = github_actions_secret.twingate_service_key[0]
-  to   = github_actions_secret.twingate_service_key
-}
-
 data "docker_login" "current" {}
 
 resource "github_actions_secret" "dockerhub_username" {

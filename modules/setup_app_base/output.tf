@@ -6,3 +6,8 @@ output "key_vault_id" {
 output "namespace" {
   value = module.create_namespace.k8s_namespace
 }
+
+output "deploy_principal_id" {
+  description = "Object ID of the app's federated GitHub deploy service principal."
+  value       = azuread_service_principal.github_deploy.object_id
+}

@@ -321,15 +321,9 @@ and rewrites to `/collect`. Compose Hello's `client_log_url` from its own HTTPS
 hostname and `setup_victoria_logs.faro_client_path` (default `/_telemetry/collect`)
 to avoid cross-origin browser preflight. Collector origin/rate limits remain.
 
-The module pins published proxy chart **6.0.0**, alongside compatible client-app
-**24.0.0** and spring-app **32.0.0** releases. For existing installations, first
-expose the proxy descriptor and deploy app-owned middleware against proxy chart
-**5.0.0**, configured with `__Host-session`. Remove old Helm `routeFilters` values
-and verify all consuming routes have switched before applying this module,
-because chart 6 removes the legacy policy resources. See the
-[staged upgrade instructions](modules/setup_app_forwardauth/README.md#publication-and-existing-consumers).
-Existing scripts expecting policy lists need conversion; p07 Cooking retains its
-compatible pin until its separate migration.
+The module pins published proxy chart **7.0.0**, alongside client-app **25.0.0**,
+static-client-app **1.0.0** and spring-app **33.0.0**. See the
+[proxy module contract](modules/setup_app_forwardauth/README.md#published-charts).
 
 `setup_cluster.k3s_version` defines the minimum version installed during
 provisioning; the default is `v1.36.4+k3s1`. The server's `update-server`
@@ -435,3 +429,11 @@ ansible-playbook --syntax-check -i 'localhost,' modules/setup_cluster/publish_k3
 
 Install Python dependencies from `requirements.txt`. The OIDC publication
 controller also requires the `azwi` executable.
+## Static client origins
+
+`setup_static_website` provisions public build-resource hosting on a dedicated
+Azure Storage account with container-scoped Entra upload permissions. Hello is the
+first consumer and now requires `client_storage_account_name`. Enable
+`setup_ingress_controller.enable_static_origins` and deploy the dedicated
+published `static-client-app` **1.0.0** chart with `staticOrigin`.
+See [the module contract](modules/setup_static_website/README.md).

@@ -21,16 +21,6 @@ removed {
   lifecycle { destroy = false }
 }
 
-# Preserve the tenant-owned Graph principal through both supported predecessors.
-moved {
-  from = module.registration.azuread_service_principal.msgraph
-  to   = module.setup_observatory_spa.azuread_service_principal.msgraph
-}
-moved {
-  from = module.setup_observatory_spa.azuread_service_principal.msgraph
-  to   = module.setup_observatory_web.azuread_service_principal.msgraph
-}
-
 # Deployment readiness and images only. No secrets, logs, exec, or write access.
 resource "kubernetes_role_v1" "reader" {
   for_each = toset([for app in local.apps : app.namespace])

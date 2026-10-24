@@ -57,3 +57,9 @@ variable "enable_index_config" {
   type        = bool
   default     = false
 }
+
+variable "enable_static_origins" {
+  description = "Allow CRD TraefikServices to reach external static website origins over HTTPS."
+  type        = bool
+  default     = false
+}

@@ -19,7 +19,8 @@ module "app_base" {
     claude-api-key = var.claude_api_key
   }
   deployment_secrets = {
-    forward-auth-config = jsonencode(module.forward_auth.deployment_config)
+    client-storage-config = jsonencode(module.client_storage.deployment_config)
+    forward-auth-config   = jsonencode(module.forward_auth.deployment_config)
     client-runtime-config = jsonencode({
       clientLogUrl  = var.client_log_url
       clientAppName = "hello-client"
@@ -37,6 +38,15 @@ module "app_base" {
   api_resource_object_id = module.setup_hello_api.resource_object_id
   k8s_oidc_config        = var.k8s_oidc_config
   client_log_url         = var.client_log_url
+}
+
+module "client_storage" {
+  source = "../setup_static_website"
+
+  name                = var.client_storage_account_name
+  resource_group_name = var.environment_name
+  location            = var.azure_location
+  deploy_principal_id = module.app_base.deploy_principal_id
 }
 
 module "setup_hello_api" {

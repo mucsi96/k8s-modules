@@ -33,7 +33,8 @@ resource "kubectl_manifest" "traefik_config" {
         }
         providers = {
           kubernetesCRD = {
-            enabled = var.enable_forward_auth || var.enable_index_config
+            enabled                   = var.enable_forward_auth || var.enable_index_config || var.enable_static_origins
+            allowExternalNameServices = var.enable_static_origins
           }
           kubernetesIngress = {
             enabled = false
