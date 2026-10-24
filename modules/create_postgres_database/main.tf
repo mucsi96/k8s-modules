@@ -52,7 +52,7 @@ resource "helm_release" "database" {
   name       = var.k8s_name
   repository = "https://mucsi96.github.io/k8s-helm-charts"
   chart      = "postgres-db"
-  version    = "16.0.0"
+  version    = "17.0.0"
   namespace  = var.k8s_namespace
   wait       = true
   # https://github.com/mucsi96/k8s-helm-charts/tree/main/charts/postgres_db
@@ -69,7 +69,6 @@ resource "helm_release" "database" {
     exporterPassword = random_password.exporter_password.result
   })]
 
-  # The chart ships a ServiceMonitor (monitoring.coreos.com/v1); the Prometheus
-  # Operator CRDs must already exist or the release fails at manifest build.
+  # Preserve the caller's explicit provisioning dependency.
   depends_on = [terraform_data.wait_for]
 }
