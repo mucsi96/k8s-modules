@@ -11,6 +11,15 @@ locals {
 
 resource "terraform_data" "ready" { input = var.wait_for }
 
+module "client_storage" {
+  source              = "../setup_static_website"
+  name                = var.client_storage_account_name
+  resource_group_name = var.environment_name
+  location            = var.azure_location
+  app_origin          = "https://${var.hostname}"
+  deploy_principal_id = azuread_service_principal.github_deploy.object_id
+}
+
 resource "kubernetes_namespace_v1" "dashboard" {
   metadata { name = local.name }
   depends_on = [terraform_data.ready]
