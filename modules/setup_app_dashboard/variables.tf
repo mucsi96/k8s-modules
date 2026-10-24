@@ -1,4 +1,8 @@
 variable "environment_name" { type = string }
+variable "client_storage_account_name" {
+  description = "Globally unique Azure Storage account name for public client documents and assets."
+  type        = string
+}
 variable "hostname" { type = string }
 variable "github_repository_owner" {
   type    = string

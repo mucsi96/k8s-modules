@@ -15,10 +15,11 @@ resource "azurerm_role_assignment" "owner_vault" {
 
 locals {
   deployment_config = {
-    k8s-config          = var.k8s_oidc_config
-    hostname            = var.hostname
-    api-client-id       = module.setup_observatory_api.client_id
-    forward-auth-config = jsonencode(module.forward_auth.deployment_config)
+    k8s-config            = var.k8s_oidc_config
+    hostname              = var.hostname
+    api-client-id         = module.setup_observatory_api.client_id
+    forward-auth-config   = jsonencode(module.forward_auth.deployment_config)
+    client-storage-config = jsonencode(module.client_storage.deployment_config)
     client-runtime-config = jsonencode({
       clientAppName = "observatory-client"
       clientLogUrl  = var.client_log_url
