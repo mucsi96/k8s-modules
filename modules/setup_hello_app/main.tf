@@ -47,6 +47,7 @@ module "client_storage" {
   resource_group_name = var.environment_name
   location            = var.azure_location
   deploy_principal_id = module.app_base.deploy_principal_id
+  app_origin          = "https://${local.app_hostname}"
 }
 
 module "setup_hello_api" {
