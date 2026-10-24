@@ -34,10 +34,8 @@ resources. Application workloads are installed by their own repositories.
 Application modules expose a non-secret `dashboard_app` inventory descriptor
 consumed by [observatory-app](https://github.com/mucsi96/observatory-app).
 
-`setup_app_dashboard` requires Terraform 1.7+ for its workload handoff: `removed`
-blocks forget the earlier Deployment and Service without deleting them. Apply
-the updated module before running observatory-app's pipeline, which adopts those
-resources. The module grants its GitHub deploy identity read access only to the
+`setup_app_dashboard` requires Terraform 1.7+. The module grants its GitHub deploy
+identity read access only to the
 platform `k8s-oidc-config` secret and workload deployment access in `observatory`.
 OIDC, routing, runtime configuration and the collector's read-only access remain
 Terraform-managed. After inventory or runtime-token updates, rerun the app pipeline
