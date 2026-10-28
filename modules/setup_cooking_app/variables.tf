@@ -3,6 +3,11 @@ variable "environment_name" {
   type        = string
 }
 
+variable "client_storage_account_name" {
+  description = "Globally unique Azure Storage account for public client documents and assets."
+  type        = string
+}
+
 variable "azure_location" {
   description = "The Azure location to deploy resources"
   type        = string

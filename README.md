@@ -432,7 +432,7 @@ controller also requires the `azwi` executable.
 `setup_static_website` provisions public build-resource hosting on a dedicated
 Azure Storage account with container-scoped Entra upload permissions. Hello is the
 first consumer and requires `client_storage_account_name`.
-`setup_app_dashboard` also requires `client_storage_account_name` for Observatory,
+`setup_cooking_app` and `setup_app_dashboard` also require `client_storage_account_name` for Cooking and Observatory,
 reusing the same website/Blob hosting and scoped deployment-secret contract. Enable
 `setup_ingress_controller.enable_static_origins` and deploy the dedicated
 document-only `static-client-app` **2.0.0** chart with `staticOrigin`.
