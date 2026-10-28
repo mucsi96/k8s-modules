@@ -21,7 +21,8 @@ module "app_base" {
     openai-api-key = var.openai_api_key
   }
   deployment_secrets = nonsensitive(var.forward_auth == null) ? {} : {
-    forward-auth-config = jsonencode(module.forward_auth[0].deployment_config)
+    client-storage-config = jsonencode(module.client_storage.deployment_config)
+    forward-auth-config   = jsonencode(module.forward_auth[0].deployment_config)
     client-runtime-config = jsonencode({
       clientLogUrl  = var.client_log_url
       clientAppName = "cooking-client"
@@ -39,6 +40,16 @@ module "app_base" {
   api_resource_object_id = module.setup_cooking_api.resource_object_id
   k8s_oidc_config        = var.k8s_oidc_config
   client_log_url         = var.client_log_url
+}
+
+module "client_storage" {
+  source = "../setup_static_website"
+
+  name                = var.client_storage_account_name
+  resource_group_name = var.environment_name
+  location            = var.azure_location
+  deploy_principal_id = module.app_base.deploy_principal_id
+  app_origin          = "https://${local.app_hostname}"
 }
 
 module "setup_cooking_api" {
