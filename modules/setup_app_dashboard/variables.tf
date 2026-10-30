@@ -18,10 +18,10 @@ variable "twingate_service_key" {
   sensitive = true
 }
 variable "apps" {
-  description = "Application descriptors exported by setup_*_app modules."
+  description = "Application descriptors, or repository-only entries with namespace omitted. Deploy Observatory repository-only support before adding these entries."
   type = list(object({
     name       = string
-    namespace  = string
+    namespace  = optional(string, "")
     repository = string
     url        = string
   }))

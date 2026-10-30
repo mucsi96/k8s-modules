@@ -32,7 +32,7 @@ removed {
 
 # Deployment readiness and images only. No secrets, logs, exec, or write access.
 resource "kubernetes_role_v1" "reader" {
-  for_each = toset([for app in local.apps : app.namespace])
+  for_each = toset([for app in local.apps : app.namespace if app.namespace != ""])
   metadata {
     name      = "observatory-reader"
     namespace = each.value
