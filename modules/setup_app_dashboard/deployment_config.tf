@@ -20,10 +20,6 @@ locals {
     api-client-id         = module.setup_observatory_api.client_id
     forward-auth-config   = jsonencode(module.forward_auth.deployment_config)
     client-storage-config = jsonencode(module.client_storage.deployment_config)
-    client-runtime-config = jsonencode({
-      clientAppName = "observatory-client"
-      clientLogUrl  = var.client_log_url
-    })
   }
 }
 

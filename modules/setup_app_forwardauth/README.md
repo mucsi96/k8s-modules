@@ -28,8 +28,9 @@ client/API chart `auth`. The client performs a document check; backend charts
 perform an API check. The release name supports deployment preflight.
 
 There is no policy ConfigMap/readback, document-auth toggle or filter-list handoff.
-Hello publishes public runtime JSON separately as `client-runtime-config`, which
-deployment passes to the client chart. Proxy credentials never belong there.
+Hello, Cooking and Observatory compile public Faro settings into their client
+bundles. Their deployment uses no runtime JSON or HTML response-body injection.
+Proxy credentials remain server-side.
 
 ## Modes and ownership
 

@@ -21,10 +21,6 @@ module "app_base" {
   deployment_secrets = {
     client-storage-config = jsonencode(module.client_storage.deployment_config)
     forward-auth-config   = jsonencode(module.forward_auth.deployment_config)
-    client-runtime-config = jsonencode({
-      clientLogUrl  = var.client_log_url
-      clientAppName = "hello-client"
-    })
   }
   azure_location         = var.azure_location
   tenant_id              = var.tenant_id
