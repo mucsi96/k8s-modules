@@ -53,14 +53,11 @@ authenticated integrations; it never makes their handlers unauthenticated.
 ## Published charts
 
 The central pin is published
-[**7.0.0**](https://github.com/mucsi96/k8s-helm-charts/releases/tag/oauth2-proxy-forwardauth-7.0.0).
+[**8.0.0**](https://github.com/mucsi96/k8s-helm-charts/releases/tag/oauth2-proxy-forwardauth-8.0.0).
 The cookie name is fixed to `__Host-session`; application charts own their route
-Middleware. Published application charts are client-app **26.0.0**,
-static-client-app **2.0.0**, spring-app **34.0.0**, go-app **5.0.0**,
-node-app **24.0.0** and rust-app **4.0.0**.
+Middleware; application repositories pin their own client/API charts.
 
 Client/API deployments need namespace-scoped `traefik.io/middlewares` permissions;
 `create_app_namespace` supplies those plus same-namespace `traefikservices`
-permissions for external static origins. UI routes/config injection stay client-owned.
-Enable ingress `enable_index_config` before deploying runtime injection. Validate
-Terraform without applying infrastructure.
+permissions for external static origins. UI routes stay client-owned; public
+configuration is built into clients. Validate Terraform without applying infrastructure.

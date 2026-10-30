@@ -121,6 +121,7 @@ resource "helm_release" "workload_identity_webhook" {
   name             = "workload-identity-webhook"
   repository       = "https://azure.github.io/azure-workload-identity/charts"
   chart            = "workload-identity-webhook"
+  version          = "1.6.1"
   namespace        = "azure-workload-identity-system"
   create_namespace = true
 

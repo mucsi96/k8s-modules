@@ -323,8 +323,7 @@ and rewrites to `/collect`. The three built clients use the fixed
 preflight. Collector origin/rate limits remain. Legacy `client_log_url` module
 inputs remain compatible for other consumers; they no longer configure these UIs.
 
-The module pins published proxy chart **7.0.0**, alongside client-app **25.0.0**,
-  static-client-app **2.0.0** and spring-app **34.0.0**. See the
+The module pins published proxy chart **8.0.0**. See the
 [proxy module contract](modules/setup_app_forwardauth/README.md#published-charts).
 
 `setup_cluster.k3s_version` defines the minimum version installed during
