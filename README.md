@@ -38,10 +38,10 @@ Application-specific infrastructure now lives directly in
 [p07](https://github.com/mucsi96/p07): Hello, Cooking, Library, Learn Language,
 Training Log, Expense Tracker, Party, Observatory, Backup and the bank email worker.
 Their former modules have been removed from this library. Consumers must migrate
-before upgrading to a release containing these removals. p07's
-[`app_moves.tf`](https://github.com/mucsi96/p07/blob/main/app_moves.tf) preserves
-existing resource addresses during the move; see its
-[migration guide](https://github.com/mucsi96/p07/blob/main/docs/application-ownership.md).
+before upgrading to a release containing these removals. The live p07 state has
+already been migrated and its completed move blocks removed; see its
+[migration record](https://github.com/mucsi96/p07/blob/main/docs/application-ownership.md)
+for compatibility with pre-migration state snapshots.
 Published older tags remain available. Application workloads continue to be
 installed by their own repositories.
 
