@@ -4,11 +4,6 @@ resource "github_actions_secret" "twingate_service_key" {
   value       = var.twingate_service_key
 }
 
-moved {
-  from = github_actions_secret.twingate_service_key[0]
-  to   = github_actions_secret.twingate_service_key
-}
-
 resource "github_actions_secret" "azure_client_id" {
   repository  = var.github_repository
   secret_name = "AZURE_CLIENT_ID"

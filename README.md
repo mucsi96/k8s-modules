@@ -21,6 +21,9 @@ to the same release tag rather than a moving branch.
 | `create_postgres_database` | Installs PostgreSQL with a retained host-path volume and `ServiceMonitor`. |
 | `setup_postgres_schema` | Provisions a dedicated login role and owned schema for one application. |
 | `setup_redis` | Installs shared Redis with a retained host-path volume. |
+| `register_web` | Registers confidential Web clients for server-side ForwardAuth, with OIDC consent, optional API access and required user assignments. |
+| `register_spa` | Registers legacy browser-OAuth SPA clients. |
+| `setup_app_forwardauth` | Provisions per-app stock oauth2-proxy sessions/Secrets and exports the proxy reference for application charts. |
 | `setup_victoria_metrics` | Installs VictoriaMetrics, Grafana, exporters, and Grafana ingress. |
 | `setup_victoria_logs` | Installs Alloy pod-log/Faro collection and Faro ingress. |
 | `setup_app_dashboard` | Provisions Observatory inventory, runtime/deploy RBAC, GitHub OIDC credentials, Entra proxy, and a Gateway route. |
@@ -31,10 +34,8 @@ resources. Application workloads are installed by their own repositories.
 Application modules expose a non-secret `dashboard_app` inventory descriptor
 consumed by [observatory-app](https://github.com/mucsi96/observatory-app).
 
-`setup_app_dashboard` requires Terraform 1.7+ for its workload handoff: `removed`
-blocks forget the earlier Deployment and Service without deleting them. Apply
-the updated module before running observatory-app's pipeline, which adopts those
-resources. The module grants its GitHub deploy identity read access only to the
+`setup_app_dashboard` requires Terraform 1.7+. The module grants its GitHub deploy
+identity read access only to the
 platform `k8s-oidc-config` secret and workload deployment access in `observatory`.
 OIDC, routing, runtime configuration and the collector's read-only access remain
 Terraform-managed. After inventory or runtime-token updates, rerun the app pipeline
@@ -294,6 +295,37 @@ Twingate connector
 
 ## Platform Details
 
+### Client-owned SPA routes and build-time configuration
+
+The client chart always owns SPA routing and document auth;
+API charts own API auth and header policies. `setup_app_forwardauth` exports a
+small proxy reference (`proxyService`, `proxyPort`, `mode`) as
+`deployment_config.auth`. Hello deployment passes that same object from app AKV
+`forward-auth-config` to each chart's `auth` value. Hello, Cooking and Observatory
+compile their public Faro app name and same-origin `/_telemetry/collect` path into
+their bundles. No `client-runtime-config`, policy ConfigMap or filter lists are passed.
+`create_app_namespace` grants app deployers namespace-scoped Middleware management.
+All app hosts use the fixed host-only `__Host-session` cookie with per-app secrets.
+Clients are hosted at `/`; their nested paths rewrite to `/index.html`.
+
+These applications omit chart `runtimeConfig` and reset Helm values, so their
+document routes have no response-body rewriting middleware. Origins serve real
+files; SPA fallback remains in client-chart Gateway resources, with no-store and
+credential-stripping policies. `enable_index_config` remains available only for
+older consumers; it can be disabled once all live index-config middleware is gone.
+Deploy all three build-config clients before applying this module release: it
+removes their obsolete configuration secrets and secret-scoped read grants.
+
+Set `setup_victoria_logs.faro_client_hostnames` to the participating application
+hosts. The module owns exact POST/OPTIONS collection routes, strips app credentials
+and rewrites to `/collect`. The three built clients use the fixed
+`/_telemetry/collect` path on their app host, avoiding cross-origin browser
+preflight. Collector origin/rate limits remain. Legacy `client_log_url` module
+inputs remain compatible for other consumers; they no longer configure these UIs.
+
+The module pins published proxy chart **8.0.0**. See the
+[proxy module contract](modules/setup_app_forwardauth/README.md#published-charts).
+
 `setup_cluster.k3s_version` defines the minimum version installed during
 provisioning; the default is `v1.36.4+k3s1`. The server's `update-server`
 maintenance helper advances k3s to newer releases from the stable channel and
@@ -398,3 +430,15 @@ ansible-playbook --syntax-check -i 'localhost,' modules/setup_cluster/publish_k3
 
 Install Python dependencies from `requirements.txt`. The OIDC publication
 controller also requires the `azwi` executable.
+## Static client origins
+
+`setup_static_website` provisions public build-resource hosting on a dedicated
+Azure Storage account with container-scoped Entra upload permissions. Hello is the
+first consumer and requires `client_storage_account_name`.
+`setup_cooking_app` and `setup_app_dashboard` also require `client_storage_account_name` for Cooking and Observatory,
+reusing the same website/Blob hosting and scoped deployment-secret contract. Enable
+`setup_ingress_controller.enable_static_origins` and deploy the dedicated
+document-only `static-client-app` **2.0.0** chart with `staticOrigin`.
+Documents use the website endpoint; browser assets use the public `assets` Blob
+container with application-origin CORS. Both application charts are published.
+See [the module contract](modules/setup_static_website/README.md).

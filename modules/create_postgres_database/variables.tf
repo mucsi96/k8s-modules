@@ -14,7 +14,7 @@ variable "db_name" {
 }
 
 variable "wait_for" {
-  description = "Optional dependency to wait for before deploying. The postgres-db chart ships a ServiceMonitor, so this must gate on the Prometheus Operator CRDs being installed."
+  description = "Optional dependency to wait for before deploying."
   type        = string
   default     = null
 }

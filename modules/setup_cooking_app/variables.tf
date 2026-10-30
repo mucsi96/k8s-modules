@@ -3,6 +3,11 @@ variable "environment_name" {
   type        = string
 }
 
+variable "client_storage_account_name" {
+  description = "Globally unique Azure Storage account for public client documents and assets."
+  type        = string
+}
+
 variable "azure_location" {
   description = "The Azure location to deploy resources"
   type        = string
@@ -78,4 +83,22 @@ variable "k8s_oidc_config" {
 variable "client_log_url" {
   description = "URL the app's SPA POSTs client-side telemetry to. Forwarded to setup_app_base, which stores it in this app's Key Vault as `client-log-url`."
   type        = string
+}
+
+variable "forward_auth" {
+  description = "ForwardAuth configuration using a dedicated confidential Web client with household access."
+  type = object({
+    trusted_proxy_cidrs = list(string)
+    session_redis = object({
+      connection_url = string
+      password       = string
+    })
+    gateway_parent_ref = object({
+      name         = string
+      namespace    = string
+      section_name = string
+    })
+  })
+  default   = null
+  sensitive = true
 }

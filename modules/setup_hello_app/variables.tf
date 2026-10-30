@@ -73,3 +73,26 @@ variable "client_log_url" {
   description = "URL the app's SPA POSTs client-side telemetry to. Forwarded to setup_app_base, which stores it in this app's Key Vault as `client-log-url`."
   type        = string
 }
+
+variable "forward_auth" {
+  description = "Required ForwardAuth configuration for Hello's confidential Web client."
+  type = object({
+    trusted_proxy_cidrs = list(string)
+    session_redis = object({
+      connection_url = string
+      password       = string
+    })
+    gateway_parent_ref = object({
+      name         = string
+      namespace    = string
+      section_name = string
+    })
+  })
+  nullable  = false
+  sensitive = true
+}
+
+variable "client_storage_account_name" {
+  description = "Globally unique Azure Storage account for public client build files."
+  type        = string
+}
