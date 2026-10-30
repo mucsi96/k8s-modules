@@ -28,8 +28,9 @@ client/API chart `auth`. The client performs a document check; backend charts
 perform an API check. The release name supports deployment preflight.
 
 There is no policy ConfigMap/readback, document-auth toggle or filter-list handoff.
-Hello publishes public runtime JSON separately as `client-runtime-config`, which
-deployment passes to the client chart. Proxy credentials never belong there.
+Hello, Cooking and Observatory compile public Faro settings into their client
+bundles. Their deployment uses no runtime JSON or HTML response-body injection.
+Proxy credentials remain server-side.
 
 ## Modes and ownership
 
@@ -52,14 +53,11 @@ authenticated integrations; it never makes their handlers unauthenticated.
 ## Published charts
 
 The central pin is published
-[**7.0.0**](https://github.com/mucsi96/k8s-helm-charts/releases/tag/oauth2-proxy-forwardauth-7.0.0).
+[**8.0.0**](https://github.com/mucsi96/k8s-helm-charts/releases/tag/oauth2-proxy-forwardauth-8.0.0).
 The cookie name is fixed to `__Host-session`; application charts own their route
-Middleware. Published application charts are client-app **26.0.0**,
-static-client-app **2.0.0**, spring-app **34.0.0**, go-app **5.0.0**,
-node-app **24.0.0** and rust-app **4.0.0**.
+Middleware; application repositories pin their own client/API charts.
 
 Client/API deployments need namespace-scoped `traefik.io/middlewares` permissions;
 `create_app_namespace` supplies those plus same-namespace `traefikservices`
-permissions for external static origins. UI routes/config injection stay client-owned.
-Enable ingress `enable_index_config` before deploying runtime injection. Validate
-Terraform without applying infrastructure.
+permissions for external static origins. UI routes stay client-owned; public
+configuration is built into clients. Validate Terraform without applying infrastructure.

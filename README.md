@@ -295,32 +295,35 @@ Twingate connector
 
 ## Platform Details
 
-### Client-owned SPA routes and runtime configuration
+### Client-owned SPA routes and build-time configuration
 
-The client chart always owns SPA routing, document auth and inline configuration;
+The client chart always owns SPA routing and document auth;
 API charts own API auth and header policies. `setup_app_forwardauth` exports a
 small proxy reference (`proxyService`, `proxyPort`, `mode`) as
 `deployment_config.auth`. Hello deployment passes that same object from app AKV
-`forward-auth-config` to each chart's `auth` value. Public runtime JSON lives in
-separate `client-runtime-config`. No policy ConfigMap or filter lists are passed.
+`forward-auth-config` to each chart's `auth` value. Hello, Cooking and Observatory
+compile their public Faro app name and same-origin `/_telemetry/collect` path into
+their bundles. No `client-runtime-config`, policy ConfigMap or filter lists are passed.
 `create_app_namespace` grants app deployers namespace-scoped Middleware management.
 All app hosts use the fixed host-only `__Host-session` cookie with per-app secrets.
 Clients are hosted at `/`; their nested paths rewrite to `/index.html`.
 
-Set `setup_ingress_controller.enable_index_config=true` to enable the pinned
-`github.com/traefik/plugin-rewritebody` v0.3.1 plugin before deploying client
-injection. Origins serve real files; SPA fallback and index config replacement
-live in client-chart Gateway resources. Keep the quoted `__APP_CONFIG_JSON__`
-marker, uncompressed index delivery and no-store/credential-stripping policies.
+These applications omit chart `runtimeConfig` and reset Helm values, so their
+document routes have no response-body rewriting middleware. Origins serve real
+files; SPA fallback remains in client-chart Gateway resources, with no-store and
+credential-stripping policies. `enable_index_config` remains available only for
+older consumers; it can be disabled once all live index-config middleware is gone.
+Deploy all three build-config clients before applying this module release: it
+removes their obsolete configuration secrets and secret-scoped read grants.
 
 Set `setup_victoria_logs.faro_client_hostnames` to the participating application
 hosts. The module owns exact POST/OPTIONS collection routes, strips app credentials
-and rewrites to `/collect`. Compose Hello's `client_log_url` from its own HTTPS
-hostname and `setup_victoria_logs.faro_client_path` (default `/_telemetry/collect`)
-to avoid cross-origin browser preflight. Collector origin/rate limits remain.
+and rewrites to `/collect`. The three built clients use the fixed
+`/_telemetry/collect` path on their app host, avoiding cross-origin browser
+preflight. Collector origin/rate limits remain. Legacy `client_log_url` module
+inputs remain compatible for other consumers; they no longer configure these UIs.
 
-The module pins published proxy chart **7.0.0**, alongside client-app **25.0.0**,
-  static-client-app **2.0.0** and spring-app **34.0.0**. See the
+The module pins published proxy chart **8.0.0**. See the
 [proxy module contract](modules/setup_app_forwardauth/README.md#published-charts).
 
 `setup_cluster.k3s_version` defines the minimum version installed during
