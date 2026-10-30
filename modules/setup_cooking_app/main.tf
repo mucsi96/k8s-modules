@@ -1,5 +1,6 @@
 locals {
-  app_hostname = "cooking.${var.hostname}"
+  app_hostname      = "cooking.${var.hostname}"
+  browser_client_id = nonsensitive(var.forward_auth == null) ? module.setup_cooking_spa[0].client_id : module.setup_cooking_web[0].client_id
 }
 
 module "postgres_schema" {
@@ -19,6 +20,10 @@ module "app_base" {
     claude-api-key = var.claude_api_key
     openai-api-key = var.openai_api_key
   }
+  deployment_secrets = nonsensitive(var.forward_auth == null) ? {} : {
+    client-storage-config = jsonencode(module.client_storage.deployment_config)
+    forward-auth-config   = jsonencode(module.forward_auth[0].deployment_config)
+  }
   azure_location         = var.azure_location
   tenant_id              = var.tenant_id
   azure_subscription_id  = var.azure_subscription_id
@@ -27,10 +32,20 @@ module "app_base" {
   app_hostname           = local.app_hostname
   api_client_id          = module.setup_cooking_api.client_id
   api_client_secret      = module.setup_cooking_api.client_secret
-  spa_client_id          = module.setup_cooking_spa.client_id
+  spa_client_id          = local.browser_client_id
   api_resource_object_id = module.setup_cooking_api.resource_object_id
   k8s_oidc_config        = var.k8s_oidc_config
   client_log_url         = var.client_log_url
+}
+
+module "client_storage" {
+  source = "../setup_static_website"
+
+  name                = var.client_storage_account_name
+  resource_group_name = var.environment_name
+  location            = var.azure_location
+  deploy_principal_id = module.app_base.deploy_principal_id
+  app_origin          = "https://${local.app_hostname}"
 }
 
 module "setup_cooking_api" {
@@ -47,6 +62,7 @@ module "setup_cooking_api" {
 
 module "setup_cooking_spa" {
   source = "../register_spa"
+  count  = nonsensitive(var.forward_auth == null ? 1 : 0)
   owner  = var.owner
 
   display_name  = "Cooking SPA"
@@ -55,6 +71,37 @@ module "setup_cooking_spa" {
   api_id        = module.setup_cooking_api.application_id
   api_client_id = module.setup_cooking_api.client_id
   api_scope_id  = module.setup_cooking_api.scope_id
+}
+
+module "setup_cooking_web" {
+  source = "../register_web"
+  count  = nonsensitive(var.forward_auth == null ? 0 : 1)
+  owner  = var.owner
+
+  display_name  = "Cooking Web"
+  redirect_uris = ["https://${local.app_hostname}/oauth2/callback"]
+  api_access = {
+    application_id = module.setup_cooking_api.application_id
+    client_id      = module.setup_cooking_api.client_id
+    scope_id       = module.setup_cooking_api.scope_id
+  }
+  allowed_user_ids = toset([for user in data.azuread_users.all.users : user.object_id])
+}
+
+module "forward_auth" {
+  source = "../setup_app_forwardauth"
+  count  = nonsensitive(var.forward_auth == null ? 0 : 1)
+
+  name                = "cooking"
+  namespace           = module.app_base.namespace
+  hostname            = local.app_hostname
+  tenant_id           = var.tenant_id
+  client_id           = module.setup_cooking_web[0].client_id
+  client_secret       = module.setup_cooking_web[0].client_secret
+  api_client_id       = module.setup_cooking_api.client_id
+  trusted_proxy_cidrs = nonsensitive(var.forward_auth.trusted_proxy_cidrs)
+  session_redis       = var.forward_auth.session_redis
+  gateway_parent_ref  = var.forward_auth.gateway_parent_ref
 }
 
 # Every user in the tenant gets both recipe roles — the whole household uses

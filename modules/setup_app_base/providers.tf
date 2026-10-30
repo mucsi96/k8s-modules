@@ -12,10 +12,6 @@ terraform {
       source = "integrations/github"
     }
 
-    docker = {
-      source = "docker/docker"
-    }
-
     kubernetes = {
       source = "hashicorp/kubernetes"
     }

@@ -1,5 +1,8 @@
 terraform {
   required_providers {
+    helm = {
+      source = "hashicorp/helm"
+    }
     random = {
       source = "hashicorp/random"
     }
@@ -18,10 +21,6 @@ terraform {
 
     github = {
       source = "integrations/github"
-    }
-
-    docker = {
-      source = "docker/docker"
     }
   }
 }

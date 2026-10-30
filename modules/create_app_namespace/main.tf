@@ -24,6 +24,12 @@ resource "kubernetes_role_v1" "role" {
   }
 
   rule {
+    api_groups = ["traefik.io"]
+    resources  = ["middlewares", "traefikservices"]
+    verbs      = ["get", "list", "watch", "create", "update", "patch", "delete"]
+  }
+
+  rule {
     api_groups = [
       "", "batch", "extensions", "apps", "networking.k8s.io", "gateway.networking.k8s.io", "monitoring.coreos.com"
     ]

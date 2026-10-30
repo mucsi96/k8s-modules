@@ -45,3 +45,21 @@ variable "edge_firewall_exceptions" {
   }))
   default = []
 }
+
+variable "enable_forward_auth" {
+  description = "Enable the Traefik CRD provider needed for Middleware HTTPRoute ExtensionRefs."
+  type        = bool
+  default     = false
+}
+
+variable "enable_index_config" {
+  description = "Enable the pinned Traefik rewrite-body plugin used by client charts for inline runtime configuration."
+  type        = bool
+  default     = false
+}
+
+variable "enable_static_origins" {
+  description = "Allow CRD TraefikServices to reach external static website origins over HTTPS."
+  type        = bool
+  default     = false
+}

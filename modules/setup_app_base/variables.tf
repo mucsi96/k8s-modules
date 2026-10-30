@@ -20,6 +20,13 @@ variable "app_secrets" {
   default     = {}
 }
 
+variable "deployment_secrets" {
+  description = "Deployment configuration written to the app Key Vault and readable by its GitHub deployment identity."
+  type        = map(string)
+  sensitive   = true
+  default     = {}
+}
+
 variable "azure_location" {
   description = "The Azure location to deploy resources"
   type        = string
