@@ -26,20 +26,21 @@ to the same release tag rather than a moving branch.
 | `setup_app_forwardauth` | Provisions per-app stock oauth2-proxy sessions/Secrets and exports the proxy reference for application charts. |
 | `setup_victoria_metrics` | Installs VictoriaMetrics, Grafana, exporters, and Grafana ingress. |
 | `setup_victoria_logs` | Installs Alloy pod-log/Faro collection and Faro ingress. |
-| `setup_app_dashboard` | Provisions Observatory inventory, runtime/deploy RBAC, GitHub OIDC credentials, Entra proxy, and a Gateway route. |
+| `setup_app_base` | Provisions an application's namespace, vault, deployment identity and dashboard descriptor. |
+| `setup_static_website` | Provisions static client document/asset storage and scoped deployment access. |
 
-The registration, application-base, and opinionated application modules create
-their Entra, Cloudflare, Key Vault, namespace, persistence, and deployment
-resources. Application workloads are installed by their own repositories.
-Application modules expose a non-secret `dashboard_app` inventory descriptor
-consumed by [observatory-app](https://github.com/mucsi96/observatory-app).
+The registration and application-base modules provide reusable Entra, Key Vault,
+namespace and deployment resources. `setup_app_base` exposes a non-secret
+`dashboard_app` inventory descriptor consumed by
+[observatory-app](https://github.com/mucsi96/observatory-app).
 
-`setup_app_dashboard` requires Terraform 1.7+. The module grants its GitHub deploy
-identity read access only to the
-platform `k8s-oidc-config` secret and workload deployment access in `observatory`.
-OIDC, routing, runtime configuration and the collector's read-only access remain
-Terraform-managed. After inventory or runtime-token updates, rerun the app pipeline
-to restart the collector and load the updated values.
+Application-specific infrastructure belongs in consumer repositories. The former
+Hello, Cooking, Library, Learn Language, Training Log, Expense Tracker, Party,
+Observatory, Backup and bank email worker modules have been removed from this
+library. Consumers must migrate their definitions and Terraform resource addresses
+before upgrading to a release containing these removals.
+Published older tags remain available. Application workloads continue to be
+installed by their own repositories.
 
 ## PostgreSQL Credentials
 
@@ -86,7 +87,8 @@ locals {
 The action also reruns when the password, target, SQL, or helper changes. Normal
 plans do not execute SQL or detect database-level drift. For a database reset
 outside Terraform, explicitly replace the affected action, for example
-`terraform apply -replace=module.setup_hello_app.module.postgres_schema.terraform_data.init`.
+`terraform apply -replace=module.app_schema.terraform_data.init`, using the
+consumer's actual schema module address.
 There is no destroy-time SQL: deleting Terraform resources does not drop schemas.
 
 Upgrading removes provisioning Jobs, ConfigMaps, workload identities, and the
@@ -433,10 +435,9 @@ controller also requires the `azwi` executable.
 ## Static client origins
 
 `setup_static_website` provisions public build-resource hosting on a dedicated
-Azure Storage account with container-scoped Entra upload permissions. Hello is the
-first consumer and requires `client_storage_account_name`.
-`setup_cooking_app` and `setup_app_dashboard` also require `client_storage_account_name` for Cooking and Observatory,
-reusing the same website/Blob hosting and scoped deployment-secret contract. Enable
+Azure Storage account with container-scoped Entra upload permissions. Consumers
+supply per-app storage account names, reusing
+the same website/Blob hosting and scoped deployment-secret contract. Enable
 `setup_ingress_controller.enable_static_origins` and deploy the dedicated
 document-only `static-client-app` **2.0.0** chart with `staticOrigin`.
 Documents use the website endpoint; browser assets use the public `assets` Blob
