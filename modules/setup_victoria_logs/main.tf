@@ -144,11 +144,11 @@ resource "helm_release" "alloy" {
       }
       resources = {
         requests = {
-          cpu    = "10m"
-          memory = "96Mi"
+          cpu    = "20m"
+          memory = "160Mi"
         }
         limits = {
-          memory = "256Mi"
+          memory = "384Mi"
         }
       }
     }
