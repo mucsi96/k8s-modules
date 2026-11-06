@@ -31,14 +31,10 @@ variable "valid_email" {
   sensitive   = true
 }
 
-variable "oauth2_proxy_chart_version" {
-  description = "Helm chart version for oauth2-proxy"
-  type        = string
-}
-
-variable "oauth2_proxy_image_version" {
-  description = "Container image tag for oauth2-proxy"
-  type        = string
+variable "trusted_proxy_cidrs" {
+  description = "Pod/node CIDRs from which Traefik connects to oauth2-proxy. Defaults to the platform's k3s pod CIDR."
+  type        = list(string)
+  default     = ["10.42.0.0/16"]
 }
 
 variable "session_redis" {

@@ -42,6 +42,30 @@ before upgrading to a release containing these removals.
 Published older tags remain available. Application workloads continue to be
 installed by their own repositories.
 
+## Grafana ForwardAuth upgrade
+
+`setup_victoria_metrics` uses `setup_app_forwardauth` with the
+`mucsi96/oauth2-proxy-forwardauth` 9.0.0 chart in `email-header` mode. Its
+`valid_email` allowlist remains enforced by oauth2-proxy. The Grafana route
+strips client-supplied identity headers before Traefik forwards the verified
+email. The chart owns the unauthenticated `/oauth2` login/callback route.
+
+Move blocks retain the existing `grafana-oauth2-proxy` Helm release and cookie
+secret resource. The new `__Host-session` cookie requires a fresh browser login.
+The PostgreSQL schema, Grafana accounts and encryption settings are retained.
+The unused `setup_oauth2_proxy` module and the monitoring module's
+`oauth2_proxy_chart_version` / `oauth2_proxy_image_version` inputs are removed;
+the shared chart owns these pins. Set `trusted_proxy_cidrs` when Traefik
+uses a source range other than the default k3s pod CIDR `10.42.0.0/16`.
+
+The companion chart's email-allowlist changes are published in 9.0.0.
+Publish a module release containing this change and update p07's explicit module
+pins and remove those two obsolete inputs (and their unused locals) before
+planning the rollout. Review the plan for an in-place proxy Helm
+upgrade, new credential/Redis Secrets and Middleware, and the updated Grafana
+route. After an approved apply, verify login, rejected non-allowlisted accounts,
+spoofed email headers, dashboards and Grafana Live WebSockets.
+
 ## PostgreSQL Credentials
 
 Each application's `setup_postgres_schema` has one password generator and one
@@ -325,7 +349,7 @@ and rewrites to `/collect`. The three built clients use the fixed
 preflight. Collector origin/rate limits remain. Legacy `client_log_url` module
 inputs remain compatible for other consumers; they no longer configure these UIs.
 
-The module pins published proxy chart **8.0.0**. See the
+The module pins published proxy chart **9.0.0**. See the
 [proxy module contract](modules/setup_app_forwardauth/README.md#published-charts).
 
 `setup_cluster.k3s_version` defines the minimum version installed during

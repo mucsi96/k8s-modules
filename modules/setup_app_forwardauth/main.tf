@@ -34,7 +34,7 @@ resource "helm_release" "auth" {
   namespace  = var.namespace
   repository = "https://mucsi96.github.io/k8s-helm-charts"
   chart      = "oauth2-proxy-forwardauth"
-  version    = "8.0.0"
+  version    = "9.0.0"
   wait       = true
   timeout    = 600
   values = [yamlencode({
@@ -56,6 +56,10 @@ resource "helm_release" "auth" {
     excludedRoutes = var.excluded_routes
     oauth2-proxy = {
       fullnameOverride = local.release_name
+      authenticatedEmailsFile = {
+        enabled           = length(var.allowed_emails) > 0
+        restricted_access = join("\n", var.allowed_emails)
+      }
       sessionStorage = {
         redis = {
           existingSecret = kubernetes_secret_v1.redis.metadata[0].name

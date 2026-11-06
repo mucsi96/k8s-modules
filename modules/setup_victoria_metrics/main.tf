@@ -470,27 +470,56 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
 }
 
 module "grafana_oauth2_proxy" {
-  source = "../setup_oauth2_proxy"
+  source = "../setup_app_forwardauth"
 
-  name                       = "grafana"
-  namespace                  = kubernetes_namespace_v1.monitoring.metadata[0].name
-  client_id                  = var.grafana_client_id
-  client_secret              = var.grafana_client_secret
-  tenant_id                  = var.tenant_id
-  valid_email                = var.valid_email
-  oauth2_proxy_chart_version = var.oauth2_proxy_chart_version
-  oauth2_proxy_image_version = var.oauth2_proxy_image_version
-  upstream_uri               = "http://${local.grafana_service_name}.${kubernetes_namespace_v1.monitoring.metadata[0].name}.svc.cluster.local:${local.grafana_port}"
-  session_redis              = var.session_redis
-
-  inject_request_headers = [{
-    name = local.email_header_name
-    values = [{
-      claim = "email"
-    }]
-  }]
+  name                = "grafana"
+  namespace           = kubernetes_namespace_v1.monitoring.metadata[0].name
+  client_id           = var.grafana_client_id
+  client_secret       = var.grafana_client_secret
+  tenant_id           = var.tenant_id
+  hostname            = var.grafana_hostname
+  mode                = "email-header"
+  allowed_emails      = [var.valid_email]
+  trusted_proxy_cidrs = var.trusted_proxy_cidrs
+  gateway_parent_ref  = var.gateway_parent_ref
+  session_redis       = var.session_redis
 
   depends_on = [helm_release.victoria_metrics_k8s_stack]
+}
+
+moved {
+  from = module.grafana_oauth2_proxy.random_password.cookie_secret
+  to   = module.grafana_oauth2_proxy.random_password.cookie
+}
+
+moved {
+  from = module.grafana_oauth2_proxy.helm_release.oauth2_proxy
+  to   = module.grafana_oauth2_proxy.helm_release.auth
+}
+
+resource "kubectl_manifest" "grafana_auth" {
+  yaml_body = yamlencode({
+    apiVersion = "traefik.io/v1alpha1"
+    kind       = "Middleware"
+    metadata = {
+      name      = "grafana-auth"
+      namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
+    }
+    spec = {
+      forwardAuth = {
+        # The root endpoint starts browser login and returns identity headers
+        # after authentication; /oauth2/auth would only return a bare 401.
+        address                  = "http://${module.grafana_oauth2_proxy.deployment_config.auth.proxyService}.${kubernetes_namespace_v1.monitoring.metadata[0].name}.svc.cluster.local:80/"
+        trustForwardHeader       = false
+        forwardBody              = false
+        preserveLocationHeader   = true
+        maxResponseBodySize      = 65536
+        authRequestHeaders       = ["Cookie", "Accept", "Origin", "X-Requested-With", "Sec-WebSocket-Key"]
+        authResponseHeaders      = [local.email_header_name]
+        addAuthCookiesToResponse = ["__Host-session", "__Host-session_csrf"]
+      }
+    }
+  })
 }
 
 resource "kubectl_manifest" "grafana_httproute" {
@@ -511,13 +540,26 @@ resource "kubectl_manifest" "grafana_httproute" {
       }]
       hostnames = [var.grafana_hostname]
       rules = [{
+        filters = [{
+          type = "RequestHeaderModifier"
+          requestHeaderModifier = {
+            remove = ["Authorization", "X-Auth-Request-Email", "X-Auth-Request-Access-Token", "X-Auth-Request-User", "X-Forwarded-User", "X-Forwarded-Email"]
+          }
+          }, {
+          type = "ExtensionRef"
+          extensionRef = {
+            group = "traefik.io"
+            kind  = "Middleware"
+            name  = "grafana-auth"
+          }
+        }]
         backendRefs = [{
-          name = module.grafana_oauth2_proxy.service_name
-          port = 80
+          name = local.grafana_service_name
+          port = local.grafana_port
         }]
       }]
     }
   })
 
-  depends_on = [module.grafana_oauth2_proxy]
+  depends_on = [module.grafana_oauth2_proxy, kubectl_manifest.grafana_auth]
 }

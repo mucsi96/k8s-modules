@@ -53,9 +53,13 @@ authenticated integrations; it never makes their handlers unauthenticated.
 ## Published charts
 
 The central pin is published
-[**8.0.0**](https://github.com/mucsi96/k8s-helm-charts/releases/tag/oauth2-proxy-forwardauth-8.0.0).
+[**9.0.0**](https://github.com/mucsi96/k8s-helm-charts/releases/tag/oauth2-proxy-forwardauth-9.0.0).
 The cookie name is fixed to `__Host-session`; application charts own their route
 Middleware; application repositories pin their own client/API charts.
+
+Set `allowed_emails` for services restricted to specific email addresses, such
+as Grafana. The chart disables wildcard email-domain access when this list is
+enabled. An empty list retains the default Entra assignment-based policy.
 
 Client/API deployments need namespace-scoped `traefik.io/middlewares` permissions;
 `create_app_namespace` supplies those plus same-namespace `traefikservices`
