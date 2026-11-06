@@ -126,14 +126,15 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
             }
           }
         }
-        # The 36h working set averaged 653Mi and peaked at 783Mi.
+        # p07's 2026-11-06 audit: 680Mi median working set, 756Mi peak RSS.
+        # Reserve 768Mi; 1152Mi leaves 22% over the 942Mi working-set peak.
         resources = {
           requests = {
             cpu    = "60m"
-            memory = "512Mi"
+            memory = "768Mi"
           }
           limits = {
-            memory = "960Mi"
+            memory = "1152Mi"
           }
         }
       }
@@ -142,19 +143,16 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
       enabled = true
       spec = {
         # 60s (down from 30s) halves the sample volume; on a single node with
-        # low-churn workloads the finer resolution buys nothing. Combined with
-        # the retention cut this drops RAM from ~680Mi to well under 300Mi
-        # across VMSingle + VMAgent.
+        # low-churn workloads this reduces ingestion and storage overhead.
         scrapeInterval = "60s"
         extraArgs = {
           "promscrape.streamParse" = "true"
         }
-        # The 36h RSS averaged 134Mi and peaked at 180Mi; working-set peak was
-        # 223Mi.
+        # p07's 77h sample: 190Mi median working set, 230Mi sampled peak.
         resources = {
           requests = {
             cpu    = "25m"
-            memory = "160Mi"
+            memory = "224Mi"
           }
           limits = {
             memory = "320Mi"
@@ -163,7 +161,7 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
         configReloaderResources = {
           requests = {
             cpu    = "5m"
-            memory = "16Mi"
+            memory = "24Mi"
           }
           limits = {
             memory = "64Mi"
@@ -183,7 +181,7 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
         resources = {
           requests = {
             cpu    = "10m"
-            memory = "64Mi"
+            memory = "96Mi"
           }
           limits = {
             memory = "128Mi"
@@ -192,7 +190,7 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
         configReloaderResources = {
           requests = {
             cpu    = "5m"
-            memory = "16Mi"
+            memory = "24Mi"
           }
           limits = {
             memory = "64Mi"
@@ -367,15 +365,15 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
           }
         }
       }
-      # The 36h RSS averaged 224Mi and peaked at 331Mi; working-set peak was
-      # 449Mi.
+      # p07's 77h sample: 492Mi median working set and 573Mi peak against
+      # the former 576Mi limit. Reserve 512Mi and allow 34% peak headroom.
       resources = {
         requests = {
           cpu    = "60m"
-          memory = "288Mi"
+          memory = "512Mi"
         }
         limits = {
-          memory = "576Mi"
+          memory = "768Mi"
         }
       }
       # Trust the email header injected by oauth2-proxy. oauth2-proxy already
@@ -423,7 +421,7 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
       resources = {
         requests = {
           cpu    = "10m"
-          memory = "48Mi"
+          memory = "64Mi"
         }
         limits = {
           memory = "128Mi"
@@ -445,7 +443,7 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
           configReloaderResources = {
             requests = {
               cpu    = "5m"
-              memory = "16Mi"
+              memory = "24Mi"
             }
             limits = {
               memory = "64Mi"
@@ -458,7 +456,7 @@ resource "helm_release" "victoria_metrics_k8s_stack" {
       resources = {
         requests = {
           cpu    = "10m"
-          memory = "16Mi"
+          memory = "48Mi"
         }
         limits = {
           memory = "64Mi"
