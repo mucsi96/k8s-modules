@@ -23,6 +23,13 @@ variable "client_secret" {
   sensitive = true
 }
 
+variable "allowed_emails" {
+  description = "Optional exact email allowlist in addition to the identity provider's assignment policy."
+  type        = list(string)
+  default     = []
+  sensitive   = true
+}
+
 variable "api_client_id" {
   description = "API audience used in api-token mode; header-authenticated and login-gated services do not require an API registration."
   type        = string

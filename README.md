@@ -42,6 +42,37 @@ before upgrading to a release containing these removals.
 Published older tags remain available. Application workloads continue to be
 installed by their own repositories.
 
+## Grafana ForwardAuth upgrade
+
+`setup_victoria_metrics` uses `setup_app_forwardauth` with the
+`mucsi96/oauth2-proxy-forwardauth` 9.0.0 chart in `email-header` mode. Its
+`valid_email` allowlist remains enforced by oauth2-proxy. The Grafana route
+strips client-supplied identity headers before Traefik forwards the verified
+email. The chart owns the unauthenticated `/oauth2` login/callback route.
+
+Set `setup_ingress_controller.enable_forward_auth = true` before upgrading
+Grafana. This enables Traefik's Kubernetes CRD provider, which is required to
+resolve the new Middleware HTTPRoute ExtensionRef. The ingress module defaults
+this flag to `false`; leaving all middleware feature flags disabled makes the
+Grafana route unusable. With an externally managed Gateway, enable the equivalent
+Traefik Kubernetes CRD provider configuration.
+
+The new `__Host-session` cookie requires a fresh browser login.
+The PostgreSQL schema, Grafana accounts and encryption settings are retained.
+The unused `setup_oauth2_proxy` module and the monitoring module's
+`oauth2_proxy_chart_version` / `oauth2_proxy_image_version` inputs are removed;
+the shared chart owns these pins. Set `trusted_proxy_cidrs` when Traefik
+uses a source range other than the default k3s pod CIDR `10.42.0.0/16`.
+
+The companion chart's email-allowlist changes are published in 9.0.0.
+Publish a module release containing this change and update p07's explicit module
+pins and remove those two obsolete inputs (and their unused locals) before
+planning the rollout. The proxy Helm release and cookie generator have new
+Terraform resource addresses without state migration blocks. Review the plan
+for proxy replacement, new credential/Redis Secrets and Middleware, and the updated Grafana
+route. After an approved apply, verify login, rejected non-allowlisted accounts,
+spoofed email headers, dashboards and Grafana Live WebSockets.
+
 ## PostgreSQL Credentials
 
 Each application's `setup_postgres_schema` has one password generator and one
@@ -266,7 +297,8 @@ Pass the shared Gateway contract to modules that create HTTPRoutes:
 ```hcl
 module "setup_ingress_controller" {
   # Other inputs omitted.
-  k8s_config = module.setup_cluster.k8s_config
+  k8s_config          = module.setup_cluster.k8s_config
+  enable_forward_auth = true # Required by Grafana's Middleware ExtensionRef.
 }
 
 module "setup_victoria_metrics" {
@@ -325,7 +357,7 @@ and rewrites to `/collect`. The three built clients use the fixed
 preflight. Collector origin/rate limits remain. Legacy `client_log_url` module
 inputs remain compatible for other consumers; they no longer configure these UIs.
 
-The module pins published proxy chart **8.0.0**. See the
+The module pins published proxy chart **9.0.0**. See the
 [proxy module contract](modules/setup_app_forwardauth/README.md#published-charts).
 
 `setup_cluster.k3s_version` defines the minimum version installed during
