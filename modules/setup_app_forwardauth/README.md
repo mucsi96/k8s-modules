@@ -53,7 +53,9 @@ authenticated integrations; it never makes their handlers unauthenticated.
 ## Published charts
 
 The central pin is published
-[**9.0.0**](https://github.com/mucsi96/k8s-helm-charts/releases/tag/oauth2-proxy-forwardauth-9.0.0).
+[**10.0.0**](https://github.com/mucsi96/k8s-helm-charts/releases/tag/oauth2-proxy-forwardauth-10.0.0).
+This release removes the deprecated OIDC user-ID setting that overrode Grafana's
+email claim and caused allowlisted users to receive 403 responses.
 The cookie name is fixed to `__Host-session`; application charts own their route
 Middleware; application repositories pin their own client/API charts.
 
