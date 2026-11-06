@@ -50,8 +50,7 @@ installed by their own repositories.
 strips client-supplied identity headers before Traefik forwards the verified
 email. The chart owns the unauthenticated `/oauth2` login/callback route.
 
-Move blocks retain the existing `grafana-oauth2-proxy` Helm release and cookie
-secret resource. The new `__Host-session` cookie requires a fresh browser login.
+The new `__Host-session` cookie requires a fresh browser login.
 The PostgreSQL schema, Grafana accounts and encryption settings are retained.
 The unused `setup_oauth2_proxy` module and the monitoring module's
 `oauth2_proxy_chart_version` / `oauth2_proxy_image_version` inputs are removed;
@@ -61,8 +60,9 @@ uses a source range other than the default k3s pod CIDR `10.42.0.0/16`.
 The companion chart's email-allowlist changes are published in 9.0.0.
 Publish a module release containing this change and update p07's explicit module
 pins and remove those two obsolete inputs (and their unused locals) before
-planning the rollout. Review the plan for an in-place proxy Helm
-upgrade, new credential/Redis Secrets and Middleware, and the updated Grafana
+planning the rollout. The proxy Helm release and cookie generator have new
+Terraform resource addresses without state migration blocks. Review the plan
+for proxy replacement, new credential/Redis Secrets and Middleware, and the updated Grafana
 route. After an approved apply, verify login, rejected non-allowlisted accounts,
 spoofed email headers, dashboards and Grafana Live WebSockets.
 

@@ -487,16 +487,6 @@ module "grafana_oauth2_proxy" {
   depends_on = [helm_release.victoria_metrics_k8s_stack]
 }
 
-moved {
-  from = module.grafana_oauth2_proxy.random_password.cookie_secret
-  to   = module.grafana_oauth2_proxy.random_password.cookie
-}
-
-moved {
-  from = module.grafana_oauth2_proxy.helm_release.oauth2_proxy
-  to   = module.grafana_oauth2_proxy.helm_release.auth
-}
-
 resource "kubectl_manifest" "grafana_auth" {
   yaml_body = yamlencode({
     apiVersion = "traefik.io/v1alpha1"
