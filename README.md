@@ -50,6 +50,13 @@ installed by their own repositories.
 strips client-supplied identity headers before Traefik forwards the verified
 email. The chart owns the unauthenticated `/oauth2` login/callback route.
 
+Set `setup_ingress_controller.enable_forward_auth = true` before upgrading
+Grafana. This enables Traefik's Kubernetes CRD provider, which is required to
+resolve the new Middleware HTTPRoute ExtensionRef. The ingress module defaults
+this flag to `false`; leaving all middleware feature flags disabled makes the
+Grafana route unusable. With an externally managed Gateway, enable the equivalent
+Traefik Kubernetes CRD provider configuration.
+
 The new `__Host-session` cookie requires a fresh browser login.
 The PostgreSQL schema, Grafana accounts and encryption settings are retained.
 The unused `setup_oauth2_proxy` module and the monitoring module's
@@ -290,7 +297,8 @@ Pass the shared Gateway contract to modules that create HTTPRoutes:
 ```hcl
 module "setup_ingress_controller" {
   # Other inputs omitted.
-  k8s_config = module.setup_cluster.k8s_config
+  k8s_config          = module.setup_cluster.k8s_config
+  enable_forward_auth = true # Required by Grafana's Middleware ExtensionRef.
 }
 
 module "setup_victoria_metrics" {

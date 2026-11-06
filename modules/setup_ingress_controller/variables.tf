@@ -47,7 +47,7 @@ variable "edge_firewall_exceptions" {
 }
 
 variable "enable_forward_auth" {
-  description = "Enable the Traefik CRD provider needed for Middleware HTTPRoute ExtensionRefs."
+  description = "Enable the Traefik CRD provider needed for Middleware HTTPRoute ExtensionRefs. Required when using setup_victoria_metrics for Grafana or app ForwardAuth."
   type        = bool
   default     = false
 }
