@@ -222,9 +222,10 @@ resource "kubernetes_config_map_v1" "faro_alloy_config" {
       //   3. moves every other extracted field into the log entry's fields —
       //      still queryable with `| key="value"` and expandable in Grafana,
       //      but out of the log line;
-      //   4. rewrites the log line as `<timestamp> [LEVEL] <message>`.
-      //      The [LEVEL] bracket is suppressed when level is empty (events,
-      //      measurements, exceptions don't have one).
+      //   4. formats console logs as `<timestamp> [LEVEL] <message>`.
+      //      Keep other payloads in their original logfmt form: exceptions use
+      //      value/stacktrace, not message, and events/measurements carry dynamic
+      //      fields that would be lost by replacing the line with message.
       loki.process "faro" {
         forward_to = [loki.write.default.receiver]
 
@@ -238,8 +239,8 @@ resource "kubernetes_config_map_v1" "faro_alloy_config" {
             event_name      = "",
             event_domain    = "",
             type            = "",
-            exception_type  = "",
-            exception_value = "",
+            exception_value = "value",
+            stacktrace      = "",
             sdk_name        = "",
             sdk_version     = "",
             app_version     = "",
@@ -264,8 +265,9 @@ resource "kubernetes_config_map_v1" "faro_alloy_config" {
             event_name      = "event_name",
             event_domain    = "event_domain",
             type            = "type",
-            exception_type  = "exception_type",
+            exception_type  = "type",
             exception_value = "exception_value",
+            stacktrace      = "stacktrace",
             sdk_name        = "sdk_name",
             sdk_version     = "sdk_version",
             app_version     = "app_version",
@@ -277,13 +279,17 @@ resource "kubernetes_config_map_v1" "faro_alloy_config" {
           }
         }
 
-        stage.template {
-          source   = "output_line"
-          template = "{{ .timestamp | toDate `2006-01-02 15:04:05 -0700 MST` | date `02/Jan/2006:15:04:05` }}{{ if .level }} [{{ .level | upper }}]{{ end }} {{ .message }}"
-        }
+        stage.match {
+          selector = "{kind=\"log\"}"
 
-        stage.output {
-          source = "output_line"
+          stage.template {
+            source   = "output_line"
+            template = "{{ .timestamp | toDate `2006-01-02 15:04:05 -0700 MST` | date `02/Jan/2006:15:04:05` }}{{ if .level }} [{{ .level | upper }}]{{ end }} {{ .message }}"
+          }
+
+          stage.output {
+            source = "output_line"
+          }
         }
       }
 
